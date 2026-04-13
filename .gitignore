@@ -34,8 +34,12 @@ coverage/
 *.coverage
 *.coveragexml
 
-# OMC state files (session-specific)
+# OMC state and session files
 .omc/state/
+.omc/sessions/
+
+# State directory
+state/
 
 # Claude Code
-.claude/projects/
+.claude/
