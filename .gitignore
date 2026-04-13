@@ -1,0 +1,41 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+
+# Build logs
+*.log
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+packages/
+
+# Test coverage
+coverage/
+*.coverage
+*.coveragexml
+
+# OMC state files (session-specific)
+.omc/state/
+
+# Claude Code
+.claude/projects/
