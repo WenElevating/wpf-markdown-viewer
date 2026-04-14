@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Wpf.Rendering;
@@ -127,8 +128,28 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MarkdownEditor)d;
+        var theme = (EditorTheme)e.NewValue;
         editor.UpdateRenderer();
         editor.RenderPreview();
+
+        // Editor pane colors
+        editor.EditorTextBox.Background = new SolidColorBrush(theme.BackgroundColor);
+        editor.EditorTextBox.Foreground = new SolidColorBrush(theme.ForegroundColor);
+        editor.EditorSplitter.Background = new SolidColorBrush(theme.ThematicBreakColor);
+
+        // Preview pane colors
+        editor.PreviewReader.Background = new SolidColorBrush(theme.BackgroundColor);
+
+        // Toolbar brushes — semi-transparent overlays adapt to both themes
+        var isDark = theme.BackgroundColor.R < 128;
+        editor.Resources["PreviewToolbarForeground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0xFF, 0xFF, 0xFF) : Color.FromRgb(0x61, 0x61, 0x61));
+        editor.Resources["PreviewToolbarHover"] = new SolidColorBrush(
+            isDark ? Color.FromArgb(0x32, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00));
+        editor.Resources["PreviewToolbarPressed"] = new SolidColorBrush(
+            isDark ? Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x28, 0x00, 0x00, 0x00));
+        editor.Resources["PreviewToolbarAccent"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x60, 0xCD, 0xFF) : Color.FromRgb(0x00, 0x5F, 0xB8));
     }
 
     private void UpdateRenderer()

@@ -43,3 +43,4 @@ state/
 
 # Claude Code
 .claude/
+.superpowers/

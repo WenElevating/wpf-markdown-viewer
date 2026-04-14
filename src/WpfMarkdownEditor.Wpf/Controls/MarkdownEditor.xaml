@@ -4,7 +4,14 @@
              xmlns:c="clr-namespace:WpfMarkdownEditor.Wpf.Converters">
     <UserControl.Resources>
         <c:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+        <!-- Preview toolbar brushes (replaced in code-behind on theme change) -->
+        <SolidColorBrush x:Key="PreviewToolbarForeground" Color="#616161"/>
+        <SolidColorBrush x:Key="PreviewToolbarHover" Color="#18000000"/>
+        <SolidColorBrush x:Key="PreviewToolbarPressed" Color="#28000000"/>
+        <SolidColorBrush x:Key="PreviewToolbarAccent" Color="#005FB8"/>
     </UserControl.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*" />
@@ -21,20 +28,207 @@
                  HorizontalScrollBarVisibility="Auto"
                  Text="{Binding Markdown, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  TextChanged="OnEditorTextChanged"
-                 FontFamily="Consolas"
-                 FontSize="14" />
+                 FontFamily="Cascadia Code, Consolas"
+                 FontSize="14"
+                 BorderThickness="0"
+                 Padding="16,12" />
 
         <!-- Splitter -->
-        <GridSplitter Grid.Column="1"
-                      Width="5"
+        <GridSplitter x:Name="EditorSplitter" Grid.Column="1"
+                      Width="1"
                       HorizontalAlignment="Center"
-                      VerticalAlignment="Stretch"
-                      Background="#DDDDDD" />
+                      VerticalAlignment="Stretch" />
 
         <!-- Preview Pane -->
         <FlowDocumentReader x:Name="PreviewReader"
                             Grid.Column="2"
                             ViewingMode="Scroll"
-                            Visibility="{Binding ShowPreview, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            Visibility="{Binding ShowPreview, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}">
+            <FlowDocumentReader.Resources>
+                <!-- ScrollBar Style -->
+                <Style TargetType="ScrollBar">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Width" Value="8"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Grid Background="Transparent">
+                                    <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                        <Track.Thumb>
+                                            <Thumb x:Name="Thumb" Opacity="0.3">
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="{x:Type Thumb}">
+                                                        <Border x:Name="Bd" Background="{DynamicResource PreviewToolbarForeground}" CornerRadius="4"/>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsDragging" Value="True">
+                                                                <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Thumb" Property="Opacity" Value="0.6"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <!-- Modern implicit styles for FlowDocumentReader toolbar -->
+
+                <!-- Button -->
+                <Style TargetType="Button">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PreviewToolbarForeground}"/>
+                    <Setter Property="Padding" Value="8,4"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                        CornerRadius="4" Padding="{TemplateBinding Padding}"
+                                        SnapsToDevicePixels="True">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarHover}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarPressed}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <!-- ToggleButton (layout mode, find toggle) -->
+                <Style TargetType="ToggleButton">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PreviewToolbarForeground}"/>
+                    <Setter Property="Padding" Value="8,4"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                        CornerRadius="4" Padding="{TemplateBinding Padding}"
+                                        SnapsToDevicePixels="True">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarHover}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarPressed}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarPressed}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource PreviewToolbarAccent}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <!-- RepeatButton (zoom +/-) -->
+                <Style TargetType="RepeatButton">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PreviewToolbarForeground}"/>
+                    <Setter Property="Focusable" Value="False"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="RepeatButton">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                        CornerRadius="4" Padding="6,4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarHover}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PreviewToolbarPressed}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <!-- Slider (zoom slider) -->
+                <Style TargetType="Slider">
+                    <Setter Property="Height" Value="20"/>
+                    <Setter Property="Width" Value="100"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Slider">
+                                <Grid>
+                                    <Border Height="3" VerticalAlignment="Center"
+                                            CornerRadius="1.5" Background="{DynamicResource PreviewToolbarPressed}"/>
+                                    <Track x:Name="PART_Track">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="Slider.DecreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate><Border Background="Transparent"/></ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="Slider.IncreaseLarge">
+                                                <RepeatButton.Template>
+                                                    <ControlTemplate><Border Background="Transparent"/></ControlTemplate>
+                                                </RepeatButton.Template>
+                                            </RepeatButton>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb>
+                                                <Thumb.Template>
+                                                    <ControlTemplate>
+                                                        <Ellipse Width="14" Height="14"
+                                                                 Fill="White"
+                                                                 Stroke="{DynamicResource PreviewToolbarAccent}"
+                                                                 StrokeThickness="2"/>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <!-- TextBox (search box) -->
+                <Style TargetType="TextBox">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PreviewToolbarForeground}"/>
+                    <Setter Property="CaretBrush" Value="{DynamicResource PreviewToolbarForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource PreviewToolbarForeground}"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                    <Setter Property="Padding" Value="4,2"/>
+                    <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI"/>
+                    <Setter Property="FontSize" Value="12"/>
+                </Style>
+
+                <!-- Separator -->
+                <Style TargetType="Separator">
+                    <Setter Property="Background" Value="{DynamicResource PreviewToolbarPressed}"/>
+                    <Setter Property="Height" Value="1"/>
+                    <Setter Property="Margin" Value="4,6"/>
+                </Style>
+            </FlowDocumentReader.Resources>
+        </FlowDocumentReader>
     </Grid>
 </UserControl>
