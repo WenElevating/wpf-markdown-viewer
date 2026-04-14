@@ -12,15 +12,12 @@ public sealed class ImageLoader : IImageResolver, IDisposable
 {
     private readonly HttpClient _http;
     private readonly string? _baseDirectory;
-    private readonly string _tempDir;
     private bool _disposed;
 
     public ImageLoader(string? baseDirectory = null)
     {
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         _baseDirectory = baseDirectory;
-        _tempDir = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor", Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(_tempDir);
     }
 
     public async Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct)
@@ -87,11 +84,16 @@ public sealed class ImageLoader : IImageResolver, IDisposable
         if (!Path.IsPathRooted(url) && _baseDirectory is not null)
             path = Path.Combine(_baseDirectory, url);
 
-        if (!File.Exists(path)) return null;
-
-        var data = File.ReadAllBytes(path);
-        var format = InferFormatFromUrl(url) ?? "png";
-        return new ImageData { Data = data, Format = format };
+        try
+        {
+            var data = File.ReadAllBytes(path);
+            var format = InferFormatFromUrl(url) ?? "png";
+            return new ImageData { Data = data, Format = format };
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     private static string? InferFormatFromUrl(string? url)
@@ -128,7 +130,5 @@ public sealed class ImageLoader : IImageResolver, IDisposable
         if (_disposed) return;
         _disposed = true;
         _http.Dispose();
-        try { if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
     }
 }
