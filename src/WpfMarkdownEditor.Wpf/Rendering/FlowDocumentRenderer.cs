@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
+using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
 using WpfMarkdownEditor.Wpf.Rendering.Renderers;
+using WpfMarkdownEditor.Wpf.SyntaxHighlighting;
 using WpfMarkdownEditor.Wpf.Theming;
 using CoreBlock = WpfMarkdownEditor.Core.Parsing.Block;
 
@@ -16,20 +18,25 @@ public sealed class FlowDocumentRenderer
     private readonly Dictionary<Type, IBlockRenderer> _renderers;
     private readonly EditorTheme _theme;
 
-    public FlowDocumentRenderer(EditorTheme theme)
+    public FlowDocumentRenderer(EditorTheme theme) : this(theme, null, null) { }
+
+    public FlowDocumentRenderer(EditorTheme theme, IImageResolver? imageResolver) : this(theme, imageResolver, null) { }
+
+    public FlowDocumentRenderer(EditorTheme theme, IImageResolver? imageResolver, SyntaxHighlighter? highlighter)
     {
         _theme = theme;
         _renderers = new()
         {
             [typeof(HeadingBlock)] = new HeadingRenderer(theme),
             [typeof(ParagraphBlock)] = new ParagraphRenderer(theme),
-            [typeof(CodeBlock)] = new CodeBlockRenderer(theme),
+            [typeof(CodeBlock)] = new CodeBlockRenderer(theme, highlighter),
             [typeof(TableBlock)] = new TableRenderer(theme),
-            [typeof(BlockquoteBlock)] = new BlockquoteRenderer(theme),
             [typeof(ListBlock)] = new ListRenderer(theme),
             [typeof(ThematicBreakBlock)] = new ThematicBreakRenderer(theme),
-            [typeof(ImageBlock)] = new ImageRenderer(theme),
+            [typeof(ImageBlock)] = new ImageRenderer(theme, imageResolver),
         };
+        // BlockquoteRenderer references the parent — must be added after dictionary is built
+        _renderers[typeof(BlockquoteBlock)] = new BlockquoteRenderer(theme, this);
     }
 
     /// <summary>

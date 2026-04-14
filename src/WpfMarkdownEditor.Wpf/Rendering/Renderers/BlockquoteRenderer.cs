@@ -6,10 +6,8 @@ using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Wpf.Rendering.Renderers;
 
-public sealed class BlockquoteRenderer(EditorTheme theme) : IBlockRenderer
+public sealed class BlockquoteRenderer(EditorTheme theme, FlowDocumentRenderer parent) : IBlockRenderer
 {
-    private readonly FlowDocumentRenderer _innerRenderer = new(theme);
-
     public System.Windows.Documents.Block Render(Core.Parsing.Block block)
     {
         var bq = (BlockquoteBlock)block;
@@ -24,7 +22,7 @@ public sealed class BlockquoteRenderer(EditorTheme theme) : IBlockRenderer
 
         foreach (var child in bq.Children)
         {
-            var rendered = _innerRenderer.RenderBlock(child);
+            var rendered = parent.RenderBlock(child);
             if (rendered is not null)
                 section.Blocks.Add(rendered);
         }

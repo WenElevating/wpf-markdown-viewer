@@ -21,14 +21,47 @@ public sealed class InlineRenderer
 
     public void RenderInlines(Paragraph paragraph, List<CoreInline> inlines)
     {
-        foreach (var inline in inlines)
+        foreach (var inline in BatchTextInlines(inlines))
             paragraph.Inlines.Add(RenderInline(inline));
     }
 
     public void RenderInlines(Span span, List<CoreInline> inlines)
     {
-        foreach (var inline in inlines)
+        foreach (var inline in BatchTextInlines(inlines))
             span.Inlines.Add(RenderInline(inline));
+    }
+
+    /// <summary>
+    /// Merge adjacent TextInline nodes into single TextInline to reduce WPF Run elements.
+    /// </summary>
+    private static List<CoreInline> BatchTextInlines(List<CoreInline> inlines)
+    {
+        if (inlines.Count <= 1) return inlines;
+
+        var result = new List<CoreInline>(inlines.Count);
+        var textBuffer = new System.Text.StringBuilder();
+
+        foreach (var inline in inlines)
+        {
+            if (inline is TextInline ti)
+            {
+                textBuffer.Append(ti.Content);
+            }
+            else
+            {
+                if (textBuffer.Length > 0)
+                {
+                    result.Add(new TextInline { Content = textBuffer.ToString() });
+                    textBuffer.Clear();
+                }
+                result.Add(inline);
+            }
+        }
+
+        if (textBuffer.Length > 0)
+            result.Add(new TextInline { Content = textBuffer.ToString() });
+
+        return result;
     }
 
     private System.Windows.Documents.Inline RenderInline(CoreInline inline) => inline switch

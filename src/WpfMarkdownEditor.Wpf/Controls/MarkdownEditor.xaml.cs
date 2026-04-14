@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Wpf.Rendering;
+using WpfMarkdownEditor.Wpf.Services;
+using WpfMarkdownEditor.Wpf.SyntaxHighlighting;
 using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Wpf.Controls;
@@ -11,10 +13,12 @@ namespace WpfMarkdownEditor.Wpf.Controls;
 /// <summary>
 /// Embeddable Markdown editor with side-by-side preview.
 /// </summary>
-public partial class MarkdownEditor : UserControl
+public partial class MarkdownEditor : UserControl, IDisposable
 {
     private readonly MarkdownParser _parser = new();
     private readonly DispatcherTimer _debounceTimer;
+    private readonly ImageLoader _imageLoader;
+    private readonly SyntaxHighlighter _highlighter = new();
     private FlowDocumentRenderer? _renderer;
     private CancellationTokenSource? _cts;
     private int _renderVersion;
@@ -84,6 +88,7 @@ public partial class MarkdownEditor : UserControl
     public MarkdownEditor()
     {
         InitializeComponent();
+        _imageLoader = new ImageLoader();
         _debounceTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(100),
@@ -128,13 +133,13 @@ public partial class MarkdownEditor : UserControl
 
     private void UpdateRenderer()
     {
-        _renderer = new FlowDocumentRenderer(Theme);
+        _renderer = new FlowDocumentRenderer(Theme, _imageLoader, _highlighter);
     }
 
     private void OnEditorTextChanged(object sender, TextChangedEventArgs e)
     {
         _debounceTimer.Stop();
-        _cts?.Cancel();
+        SwapCts()?.Cancel();
         _debounceTimer.Start();
     }
 
@@ -147,9 +152,10 @@ public partial class MarkdownEditor : UserControl
     private async void RenderPreview()
     {
         var version = Interlocked.Increment(ref _renderVersion);
-        _cts?.Cancel();
-        _cts = new CancellationTokenSource();
-        var ct = _cts.Token;
+        var oldCts = SwapCts();
+        oldCts?.Cancel();
+        oldCts?.Dispose();
+        var ct = _cts!.Token;
 
         try
         {
@@ -174,6 +180,25 @@ public partial class MarkdownEditor : UserControl
         {
             // Newer render superseded this one
         }
+    }
+
+    /// <summary>
+    /// Atomically swap the CancellationTokenSource with a new one. Returns the old CTS for disposal.
+    /// </summary>
+    private CancellationTokenSource? SwapCts()
+    {
+        var newCts = new CancellationTokenSource();
+        return Interlocked.Exchange(ref _cts, newCts);
+    }
+
+    public void Dispose()
+    {
+        _imageLoader.Dispose();
+        _debounceTimer.Stop();
+        var oldCts = Interlocked.Exchange(ref _cts, null);
+        oldCts?.Cancel();
+        oldCts?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #endregion
