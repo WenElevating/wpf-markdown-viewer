@@ -1,9 +1,10 @@
 # WPF Markdown Editor Control - Implementation Plan
 
 **Created:** 2026-04-13
-**Status:** Draft
+**Status:** Approved (Ralplan Consensus, Round 2)
 **Target:** .NET 8 + WPF
 **Type:** Greenfield
+**Consensus:** APPROVED by Planner + Architect + Critic (2-round Ralplan)
 
 ---
 
@@ -650,20 +651,97 @@ Phase 9 (Sample):
 
 ---
 
-## Open Questions
+## Open Questions (Resolved by Deep Interview)
 
-1. **Remote Image Caching:** Should cached images persist across sessions or be session-only?
-   - *Design spec says:* Temp directory, session cleanup
-   - *Recommendation:* Session-only, clean on app exit
+1. **Remote Image Caching:** Session-only, system Temp directory, cleanup on app exit (confirmed)
+2. **Syntax Highlighter Scope:** No auto-detection; only activates when language hint present (confirmed)
 
-2. **Syntax Highlighter Scope:** Should we support language auto-detection for code blocks without language hint?
-   - *Design spec says:* Only when language specified
-   - *Recommendation:* No auto-detection; keep it simple
+---
+
+## Ralplan Consensus Enhancements (Approved Round 2)
+
+The following enhancements were adopted by Planner + Architect + Critic consensus:
+
+### 1. StrikethroughInline (GFM Compliance)
+
+Add `StrikethroughInline` to AST model (Phase 1), parser (Phase 2), and renderer (Phase 4).
+```csharp
+public sealed class StrikethroughInline : Inline
+{
+    public List<Inline> Children { get; set; } = [];
+}
+```
+
+### 2. SourceSpan on All AST Nodes
+
+Extend base classes with source position tracking for debugging and future scroll-sync:
+```csharp
+public abstract class Block
+{
+    public int LineStart { get; set; }
+    public int LineEnd { get; set; }
+    public int ColumnStart { get; set; }  // NEW
+}
+
+public abstract class Inline
+{
+    public int SourceOffset { get; set; }  // NEW (character offset)
+    public int SourceLength { get; set; }  // NEW
+}
+```
+
+### 3. IImageResolver Interface (Clean Boundary)
+
+Define in Core, implement in WPF:
+```csharp
+// WpfMarkdownEditor.Core
+public interface IImageResolver
+{
+    Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct);
+}
+```
+
+### 4. Async Version Counter (Race Condition Prevention)
+
+Prevent stale renders with monotonic version check:
+```csharp
+private int _renderVersion;
+
+private async void OnDebounceTick(...)
+{
+    var version = _renderVersion;
+    var blocks = await Task.Run(() => _parser.Parse(markdown), _cts.Token);
+    if (version != _renderVersion) return; // Stale - discard
+    var document = _renderer.Render(blocks);
+    if (version != _renderVersion) return; // Stale - discard
+    PreviewReader.Document = document;
+}
+```
+
+### 5. Centralized InlineRenderer
+
+`InlineRenderer.cs` (already planned in Phase 4) handles all inline rendering via pattern matching. Block renderers delegate inline rendering to this shared class, eliminating duplication.
+
+### 6. End-to-End Stopwatch Benchmarks from Phase 1
+
+Performance baselines established in Phase 1 using manual `Stopwatch`, exercised every phase. No external benchmark libraries.
+
+### 7. Per-Phase Verification Gates
+
+Each phase has explicit acceptance criteria that must pass before proceeding. See each phase's "Acceptance Criteria" section.
+
+### Rejected Changes (Constraint Violations)
+
+The following were explicitly REJECTED by consensus:
+- Markdig dependency (zero-dep constraint)
+- Project rename to WpfMarkdownViewer (keep WpfMarkdownEditor)
+- Visitor pattern for blocks (Dictionary dispatch supports Open/Closed Principle)
+- BenchmarkDotNet (Stopwatch is sufficient, zero-dep)
+- ColorCode/TextMateSharp (self-built lexers only)
+- Third project structure (keep Core + Wpf only)
 
 ---
 
 ## Next Steps
 
-1. User confirms plan
-2. Hand off to `/oh-my-claudecode:start-work wpf-markdown-editor`
-3. Begin Phase 1 implementation
+Plan approved. Begin Phase 1 implementation via Autopilot.

@@ -1,0 +1,33 @@
+<Window x:Class="WpfMarkdownEditor.Sample.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="clr-namespace:WpfMarkdownEditor.Wpf.Controls;assembly=WpfMarkdownEditor.Wpf"
+        xmlns:theme="clr-namespace:WpfMarkdownEditor.Wpf.Theming;assembly=WpfMarkdownEditor.Wpf"
+        Title="WPF Markdown Editor - Sample"
+        Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- Toolbar -->
+        <ToolBarTray DockPanel.Dock="Top">
+            <ToolBar>
+                <Button Content="Open File" Click="OnOpenFile" />
+                <Button Content="Save File" Click="OnSaveFile" />
+                <Separator />
+                <Button Content="Light Theme" Click="OnLightTheme" />
+                <Button Content="Dark Theme" Click="OnDarkTheme" />
+                <Separator />
+                <Button Content="Toggle Preview" Click="OnTogglePreview" />
+            </ToolBar>
+        </ToolBarTray>
+
+        <!-- Status Bar -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Text="Ready" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- Editor Control -->
+        <ctrl:MarkdownEditor x:Name="Editor" />
+    </DockPanel>
+</Window>

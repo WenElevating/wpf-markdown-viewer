@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>WpfMarkdownEditor.Wpf</RootNamespace>
+    <PackageId>WpfMarkdownEditor.Wpf</PackageId>
+    <Version>0.1.0</Version>
+    <Description>WPF Markdown editor control with real-time preview</Description>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WpfMarkdownEditor.Core\WpfMarkdownEditor.Core.csproj" />
+  </ItemGroup>
+
+</Project>
