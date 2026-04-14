@@ -95,16 +95,16 @@ Token 层级:
 │
 ├── Accent (强调色)
 │   ├── Default                — 主强调 (#005FB8 / #60CDFF)
-│   ├── Hover                  — 悬停态
-│   └── Pressed                — 按下态
+│   ├── Hover                  — 悬停 (#1A7FCC / #7AD5FF)
+│   └── Pressed                — 按下 (#004A93 / #4DB8E8)
 │
 ├── Control (控件交互态)
-│   ├── Hover                  — 悬停背景
-│   ├── Pressed                — 按下背景
-│   └── Selected               — 选中背景
+│   ├── Hover                  — 悬停背景 (#F5F5F5 / #383838)
+│   ├── Pressed                — 按下背景 (#E8E8E8 / #434343)
+│   └── Selected               — 选中背景 (#E0E0E0 / #404040)
 │
 └── Shadow (阴影)
-    └── Flyout                 — 弹出层阴影
+    └── Flyout                 — 弹出层阴影 (0 8px 16px rgba(0,0,0,0.14))
 ```
 
 #### 1.2 Fix Dark Theme FlowDocumentReader Toolbar
@@ -147,7 +147,7 @@ Window (Chromeless, Mica)
 - 水平排列标签，每个显示文件名 + 关闭按钮
 - 右侧 "+" 新建按钮
 - 暗色主题：活动标签 #1E1E1E + 底部蓝色指示条，非活动标签 #2D2D2D
-- 支持拖拽排序
+- 基础切换，不支持拖拽排序（见 Out of Scope）
 
 #### 2.3 FormattingToolbar (格式化工具栏)
 
@@ -162,7 +162,7 @@ Window (Chromeless, Mica)
 - 默认宽度 200px，可拖拽调整
 - 顶部 "Explorer" 标题栏
 - Ctrl+B 折叠/展开
-- 折叠后宽度为 0，GridLength 动画过渡
+- 折叠后宽度为 0，使用 ColumnDefinition.Width 绑定 + DoubleAnimation 在 LayoutTransform 上实现平滑过渡（WPF 不直接支持 GridLength 动画）
 
 **右侧大纲：**
 - 默认宽度 180px，同理可折叠
@@ -185,7 +185,7 @@ Window (Chromeless, Mica)
 - **数据源：** 用户通过 "打开文件夹" 选择根目录，递归扫描 `.md` 文件
 - **展示：** TreeView 控件，文件夹可展开/折叠，文件图标按类型区分
 - **交互：** 单击文件 → 在新标签页打开（已打开则切换到对应标签）
-- **折叠：** Ctrl+B，GridLength 动画过渡
+- **折叠：** Ctrl+B，同文件树的动画方式
 - **位置：** Sample 应用层，独立 UserControl
 
 #### 3.2 FormattingToolbar (格式化工具栏)
@@ -206,7 +206,7 @@ Window (Chromeless, Mica)
 
 #### 3.3 OutlineView (文档大纲)
 
-- **数据源：** MarkdownEditor 新增 `OutlineChanged` 事件，解析 markdown 提取所有标题（H1-H6），返回标题列表和行号
+- **数据源：** MarkdownEditor 新增 `OutlineChanged` 事件，事件参数 `OutlineChangedEventArgs` 包含 `List<OutlineItem>`，每个 `OutlineItem` 包含 `{ int Level, string Text, int LineNumber }`
 - **展示：** ListView，按层级缩进
 - **交互：** 点击项滚动编辑器到对应行，编辑内容变化时实时更新，当前光标所在标题高亮
 - **折叠：** Ctrl+Shift+O
@@ -220,7 +220,7 @@ Window (Chromeless, Mica)
 |------|---------|
 | `Controls/MarkdownEditor.xaml` | FlowDocumentReader 完整 ControlTemplate，修复暗色主题样式 |
 | `Controls/MarkdownEditor.xaml.cs` | 新增 WrapSelection, InsertAtCursor, GetCursorPosition, GetSelectionRange 方法；新增 OutlineChanged 事件 |
-| `Theming/EditorTheme.cs` | 无重大变化，可能添加 CursorColor 属性 |
+| `Theming/EditorTheme.cs` | 新增 `CursorColor` 属性，暗色主题白色光标、亮色主题黑色光标 |
 
 ### Sample App (WpfMarkdownEditor.Sample)
 
