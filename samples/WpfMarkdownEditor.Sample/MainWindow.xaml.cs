@@ -1,149 +1,263 @@
 using System.Windows;
-using System.Windows.Media;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
-using Microsoft.Win32;
-using WpfMarkdownEditor.Wpf.Theming;
+using System.Windows.Threading;
+using WpfMarkdownEditor.Sample.Controls;
 using WpfMarkdownEditor.Sample.Helpers;
+using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Sample;
 
 public partial class MainWindow : Window
 {
+    private readonly TabManager _tabManager = new();
     private bool _isDarkTheme;
+    private bool _isSidePanelVisible = true;
+    private readonly DispatcherTimer _cursorUpdateTimer;
+    private WpfMarkdownEditor.Wpf.Controls.MarkdownEditor? _currentEditor;
+
+    // Commands
+    public static readonly RoutedCommand ToggleSidePanelCommand = new();
+    public static readonly RoutedCommand SaveCommand = new();
 
     public MainWindow()
     {
         InitializeComponent();
 
-        Editor.Markdown = """
-            # Welcome to WPF Markdown Editor
+        // Setup commands
+        InputBindings.Add(new KeyBinding(ToggleSidePanelCommand, Key.B, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(SaveCommand, Key.S, ModifierKeys.Control));
 
-            ## Features
+        CommandBindings.Add(new CommandBinding(ToggleSidePanelCommand, OnToggleSidePanel));
+        CommandBindings.Add(new CommandBinding(SaveCommand, OnSave));
 
-            - **Real-time preview** with less than 50ms latency
-            - *Italic* and **bold** text
-            - `Inline code` support
-            - [Links](https://example.com)
+        // Cursor position update timer (50ms throttle)
+        _cursorUpdateTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+        _cursorUpdateTimer.Tick += OnCursorUpdateTick;
 
-            ## Code Block
+        // Wire TabBar
+        TabBarControl.TabManager = _tabManager;
+        _tabManager.ActiveTabChanged += OnActiveTabChanged;
 
-            ```csharp
-            public class HelloWorld
-            {
-                public static void Main()
-                {
-                    Console.WriteLine("Hello, Markdown!");
-                }
-            }
-            ```
+        // Wire Toolbar
+        Toolbar.ThemeChanged += OnThemeChanged;
 
-            ## Table
+        // Wire SidePanel
+        SidePanel.FileSelected += OnFileSelected;
 
-            | Feature | Status |
-            | ------- | ------ |
-            | Parser | Done |
-            | Renderer | Done |
-            | Theme | Done |
-
-            ## Blockquote
-
-            > This is a blockquote.
-            > It supports **inline formatting**.
-
-            ---
-
-            *Built with .NET 8 and WPF. Zero external dependencies.*
-            """;
+        // Create welcome tab
+        _tabManager.NewTab("Welcome.md", Constants.WelcomeMarkdown);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
 
-        IntPtr hWnd = new WindowInteropHelper(this).Handle;
-
-        // Enable Mica
-        int backdropType = (int)Win32Interop.DWM_SYSTEMBACKDROP_TYPE.DWMSBT_MAINWINDOW;
-        Win32Interop.DwmSetWindowAttribute(hWnd, Win32Interop.DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
-
-        // Enable Immersive Dark Mode
-        int darkMode = 1;
-        Win32Interop.DwmSetWindowAttribute(hWnd, Win32Interop.DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
-    }
-
-    private void OnOpenFile(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog
+        try
         {
-            Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
-            DefaultExt = ".md"
-        };
-
-        if (dialog.ShowDialog() == true)
+            IntPtr hWnd = new WindowInteropHelper(this).Handle;
+            int backdropType = (int)Win32Interop.DWM_SYSTEMBACKDROP_TYPE.DWMSBT_MAINWINDOW;
+            Win32Interop.DwmSetWindowAttribute(hWnd, Win32Interop.DWMWINDOWATTRIBUTE.DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
+            UpdateMicaDarkMode(false);
+        }
+        catch
         {
-            try
-            {
-                Editor.LoadFile(dialog.FileName);
-                StatusText.Text = $"Loaded: {dialog.FileName}";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to load file: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            // Win10 fallback: use opaque background, keep rounded corners
+            RootBorder.Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xF3, 0xF3, 0xF3));
         }
     }
 
-    private async void OnSaveFile(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SaveFileDialog
-        {
-            Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
-            DefaultExt = ".md"
-        };
+    #region Tab Management
 
-        if (dialog.ShowDialog() == true)
+    private void OnActiveTabChanged(object? sender, EventArgs e)
+    {
+        var tab = _tabManager.ActiveTab;
+        if (tab == null)
         {
-            try
+            _currentEditor = null;
+            Toolbar.Editor = null;
+            SidePanel.BindEditor(null);
+            _cursorUpdateTimer.Stop();
+            return;
+        }
+
+        // Ensure editor is in ContentPanel
+        if (tab.Editor != null && !ContentPanel.Children.Contains(tab.Editor))
+        {
+            ContentPanel.Children.Add(tab.Editor);
+        }
+
+        // Show active editor, hide others
+        foreach (var t in _tabManager.Tabs)
+        {
+            if (t.Editor != null)
             {
-                await Editor.SaveFileAsync(dialog.FileName);
+                t.Editor.Visibility = (t == tab) ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        // Update bindings
+        _currentEditor = tab.Editor;
+        Toolbar.Editor = tab.Editor;
+        Toolbar.UpdateEditorBinding();
+        SidePanel.BindEditor(tab.Editor);
+
+        // Track IsDirty changes
+        tab.PropertyChanged -= OnTabPropertyChanged;
+        tab.PropertyChanged += OnTabPropertyChanged;
+
+        // Start cursor tracking
+        if (tab.Editor != null)
+        {
+            _cursorUpdateTimer.Start();
+            UpdateCursorPosition();
+        }
+
+        StatusText.Text = tab.FilePath != string.Empty ? tab.FilePath : tab.FileName;
+    }
+
+    private void OnTabPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // TabBar will pick up IsDirty changes through data binding
+    }
+
+    #endregion
+
+    #region Theme Management
+
+    private void OnThemeChanged(bool isDark)
+    {
+        _isDarkTheme = isDark;
+        SwapThemeDictionary(isDark);
+
+        // Apply theme to all MarkdownEditor instances
+        var theme = isDark ? EditorTheme.Dark : EditorTheme.Light;
+        foreach (var tab in _tabManager.Tabs.Where(t => t.Editor != null))
+        {
+            tab.Editor!.ApplyTheme(theme);
+        }
+
+        // Update Mica dark mode
+        UpdateMicaDarkMode(isDark);
+
+        StatusText.Text = isDark ? "Dark theme" : "Light theme";
+    }
+
+    private void SwapThemeDictionary(bool isDark)
+    {
+        var resources = Application.Current.Resources.MergedDictionaries;
+
+        // Find and remove current theme
+        ResourceDictionary? currentTheme = null;
+        foreach (var rd in resources)
+        {
+            if (rd.Source != null && (rd.Source.OriginalString.Contains("FluentTheme.xaml") ||
+                                       rd.Source.OriginalString.Contains("FluentTheme.Dark.xaml")))
+            {
+                currentTheme = rd;
+                break;
+            }
+        }
+
+        if (currentTheme != null)
+        {
+            resources.Remove(currentTheme);
+        }
+
+        // Add the new theme
+        var newThemeSource = isDark
+            ? new Uri("pack://application:,,,/Resources/FluentTheme.Dark.xaml")
+            : new Uri("pack://application:,,,/Resources/FluentTheme.xaml");
+
+        resources.Insert(0, new ResourceDictionary { Source = newThemeSource });
+    }
+
+    private void UpdateMicaDarkMode(bool isDark)
+    {
+        try
+        {
+            IntPtr hWnd = new WindowInteropHelper(this).Handle;
+            int darkMode = isDark ? 1 : 0;
+            Win32Interop.DwmSetWindowAttribute(hWnd, Win32Interop.DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+        }
+        catch { /* Not supported on Win10 */ }
+    }
+
+    #endregion
+
+    #region Sidebar Collapse
+
+    private void OnToggleSidePanel(object sender, ExecutedRoutedEventArgs e)
+    {
+        _isSidePanelVisible = !_isSidePanelVisible;
+        GridLengthAnimation.AnimateColumnWidth(SidePanelColumn, _isSidePanelVisible ? 260 : 0);
+        SidePanel.Visibility = _isSidePanelVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    #endregion
+
+    #region File Operations
+
+    private void OnFileSelected(string path)
+    {
+        _tabManager.OpenFile(path);
+    }
+
+    private async void OnSave(object sender, ExecutedRoutedEventArgs e)
+    {
+        var tab = _tabManager.ActiveTab;
+        if (tab?.Editor == null) return;
+
+        if (!string.IsNullOrEmpty(tab.FilePath))
+        {
+            await tab.Editor.SaveFileAsync(tab.FilePath);
+            tab.IsDirty = false;
+            tab.Editor.MarkAsSaved();
+            StatusText.Text = $"Saved: {tab.FilePath}";
+        }
+        else
+        {
+            // Untitled file - show save dialog
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
+                DefaultExt = ".md",
+                FileName = tab.FileName
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                await tab.Editor.SaveFileAsync(dialog.FileName);
                 StatusText.Text = $"Saved: {dialog.FileName}";
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to save file: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
         }
     }
 
-    private void OnLightTheme(object sender, RoutedEventArgs e)
+    #endregion
+
+    #region Status Bar
+
+    private void OnCursorUpdateTick(object? sender, EventArgs e)
     {
-        if (!_isDarkTheme) return;
-        _isDarkTheme = false;
-        BtnLight.Tag = "Active";
-        BtnDark.Tag = null;
-        ApplyWindowTheme(false);
-        Editor.ApplyTheme(EditorTheme.Light);
-        StatusText.Text = "Light theme";
+        UpdateCursorPosition();
     }
 
-    private void OnDarkTheme(object sender, RoutedEventArgs e)
+    private void UpdateCursorPosition()
     {
-        if (_isDarkTheme) return;
-        _isDarkTheme = true;
-        BtnDark.Tag = "Active";
-        BtnLight.Tag = null;
-        ApplyWindowTheme(true);
-        Editor.ApplyTheme(EditorTheme.Dark);
-        StatusText.Text = "Dark theme";
+        if (_currentEditor == null) return;
+
+        var (line, col) = _currentEditor.GetCursorPosition();
+        CursorInfo.Text = $"Ln {line}, Col {col} · UTF-8 · Markdown";
     }
 
-    private void OnTogglePreview(object sender, RoutedEventArgs e)
-    {
-        Editor.ShowPreview = !Editor.ShowPreview;
-        StatusText.Text = Editor.ShowPreview ? "Preview visible" : "Preview hidden";
-    }
+    #endregion
+
+    #region Window Controls
 
     private void OnMinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
 
@@ -155,38 +269,11 @@ public partial class MainWindow : Window
             SystemCommands.MaximizeWindow(this);
     }
 
-    private void OnCloseClick(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
-
-    private void OnTitleBarMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void OnCloseClick(object sender, RoutedEventArgs e)
     {
-        if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
-        {
-            DragMove();
-        }
-    }
-private void ApplyWindowTheme(bool dark)
-{
-    var r = Application.Current.Resources;
-
-    // Window with slight transparency for Mica to shine through
-    SetBrushColor(r, "WindowBackgroundBrush", dark ? "#E0202020" : "#E0F3F3F3");
-    SetBrushColor(r, "WindowBorderBrush", dark ? "#30FFFFFF" : "#40000000"); // Semi-transparent border
-
-    SetBrushColor(r, "SurfaceBackgroundBrush", dark ? "#282828" : "#FAFAFA");
-    SetBrushColor(r, "CardBackgroundBrush", dark ? "#2D2D2D" : "#FFFFFF");
-
-    SetBrushColor(r, "TextPrimaryBrush", dark ? "#FFFFFF" : "#1A1A1A");
-        SetBrushColor(r, "TextSecondaryBrush", dark ? "#9E9E9E" : "#616161");
-        SetBrushColor(r, "AccentBrush", dark ? "#60CDFF" : "#005FB8");
-        SetBrushColor(r, "DividerBrush", dark ? "#3D3D3D" : "#E5E5E5");
-        SetBrushColor(r, "HoverBackgroundBrush", dark ? "#383838" : "#F5F5F5");
-        SetBrushColor(r, "PressedBackgroundBrush", dark ? "#434343" : "#E8E8E8");
-        SetBrushColor(r, "SegmentBackgroundBrush", dark ? "#404040" : "#E0E0E0");
+        // TODO: Check for unsaved tabs before closing
+        SystemCommands.CloseWindow(this);
     }
 
-    private static void SetBrushColor(ResourceDictionary r, string key, string hex)
-    {
-        var color = (Color)ColorConverter.ConvertFromString(hex);
-        r[key] = new SolidColorBrush(color);
-    }
+    #endregion
 }

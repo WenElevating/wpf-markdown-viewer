@@ -5,41 +5,32 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/FluentTheme.xaml"/>
                 <ResourceDictionary Source="Resources/ModernStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            
+
             <!-- Windows 11 Typography -->
             <FontFamily x:Key="UIFont">Segoe UI Variable, Segoe UI</FontFamily>
             <FontFamily x:Key="CodeFont">Cascadia Code, Consolas</FontFamily>
 
-            <!-- Windows 11 Light Theme Brushes -->
-            <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
-            <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3"/>
-            <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#FAFAFA"/>
-            <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A1A"/>
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#616161"/>
-            <SolidColorBrush x:Key="AccentBrush" Color="#005FB8"/>
-            <SolidColorBrush x:Key="DividerBrush" Color="#E5E5E5"/>
-            <SolidColorBrush x:Key="HoverBackgroundBrush" Color="#F5F5F5"/>
-            <SolidColorBrush x:Key="PressedBackgroundBrush" Color="#E8E8E8"/>
-            <SolidColorBrush x:Key="SegmentBackgroundBrush" Color="#E0E0E0"/>
-
-            <!-- Toolbar Button -->
-            <Style x:Key="ToolbarButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="Transparent"/>
+            <!-- Fluent ToggleButton -->
+            <Style x:Key="FluentToggleButtonStyle" TargetType="ToggleButton">
+                <Setter Property="Background" Value="{DynamicResource ControlFillBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Padding" Value="12,6"/>
-                <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
-                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="14,6"/>
+                <Setter Property="FontFamily" Value="{DynamicResource UIFont}"/>
+                <Setter Property="FontSize" Value="12"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
                     <Setter.Value>
-                        <ControlTemplate TargetType="Button">
+                        <ControlTemplate TargetType="ToggleButton">
                             <Border x:Name="Bd"
                                     Background="{TemplateBinding Background}"
-                                    CornerRadius="4"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
                                     Padding="{TemplateBinding Padding}"
                                     SnapsToDevicePixels="True">
                                 <ContentPresenter HorizontalAlignment="Center"
@@ -48,11 +39,52 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Bd" Property="Background"
-                                            Value="{DynamicResource HoverBackgroundBrush}"/>
+                                            Value="{DynamicResource ControlHoverBrush}"/>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="Bd" Property="Background"
-                                            Value="{DynamicResource PressedBackgroundBrush}"/>
+                                            Value="{DynamicResource ControlPressedBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource ControlSelectedBrush}"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush"
+                                            Value="{DynamicResource AccentDefaultBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Toolbar Button -->
+            <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="10,5"/>
+                <Setter Property="FontFamily" Value="{DynamicResource UIFont}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource ControlHoverBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource ControlPressedBrush}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -62,12 +94,12 @@
 
             <!-- Segment Button (theme toggle) -->
             <Style x:Key="SegmentButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Background" Value="{DynamicResource TransparentBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Padding" Value="16,4"/>
-                <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+                <Setter Property="Padding" Value="16,5"/>
+                <Setter Property="FontFamily" Value="{DynamicResource UIFont}"/>
                 <Setter Property="FontSize" Value="12"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
@@ -75,7 +107,7 @@
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="Bd"
                                     Background="{TemplateBinding Background}"
-                                    CornerRadius="4"
+                                    CornerRadius="5"
                                     Padding="{TemplateBinding Padding}"
                                     SnapsToDevicePixels="True">
                                 <ContentPresenter HorizontalAlignment="Center"
@@ -83,10 +115,10 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#0A000000"/>
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#15000000"/>
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlPressedBrush}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -94,11 +126,85 @@
                 </Setter>
                 <Style.Triggers>
                     <Trigger Property="Tag" Value="Active">
-                        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+                        <Setter Property="Background" Value="{DynamicResource LayerBackgroundCardBrush}"/>
                         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                         <Setter Property="FontWeight" Value="SemiBold"/>
                     </Trigger>
                 </Style.Triggers>
+            </Style>
+
+            <!-- Accent Button (for Save Dialog) -->
+            <Style x:Key="AccentButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="20,8"/>
+                <Setter Property="FontFamily" Value="{DynamicResource UIFont}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource AccentHoverBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource AccentPressedBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Secondary Button (for Save Dialog) -->
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource ControlFillBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="20,8"/>
+                <Setter Property="FontFamily" Value="{DynamicResource UIFont}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource ControlHoverBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource ControlPressedBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

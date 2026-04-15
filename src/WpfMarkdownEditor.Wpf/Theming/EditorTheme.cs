@@ -20,6 +20,7 @@ public sealed class EditorTheme
 
     // Block-specific colors
     public Color HeadingColor { get; init; } = Color.FromRgb(0x1a, 0x1a, 0x1a);
+    public Color CursorColor { get; init; } = Colors.Black;
     public Color CodeBackground { get; init; } = Color.FromRgb(0xf5, 0xf5, 0xf5);
     public Color CodeForeground { get; init; } = Color.FromRgb(0x24, 0x24, 0x24);
     public Color BlockquoteBorder { get; init; } = Color.FromRgb(0xdd, 0xdd, 0xdd);
@@ -45,6 +46,7 @@ public sealed class EditorTheme
         BackgroundColor = Color.FromRgb(0x1e, 0x1e, 0x1e),
         ForegroundColor = Color.FromRgb(0xd4, 0xd4, 0xd4),
         HeadingColor = Color.FromRgb(0xff, 0xff, 0xff),
+        CursorColor = Colors.White,
         CodeBackground = Color.FromRgb(0x2d, 0x2d, 0x2d),
         CodeForeground = Color.FromRgb(0xd4, 0xd4, 0xd4),
         BlockquoteBackground = Color.FromRgb(0x28, 0x28, 0x28),

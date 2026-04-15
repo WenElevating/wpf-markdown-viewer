@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctrl="clr-namespace:WpfMarkdownEditor.Wpf.Controls;assembly=WpfMarkdownEditor.Wpf"
+        xmlns:local="clr-namespace:WpfMarkdownEditor.Sample.Controls"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Markdown Editor"
         Width="1200" Height="800"
@@ -11,124 +12,117 @@
         AllowsTransparency="True"
         Background="Transparent">
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0"/>
+        <WindowChrome CaptionHeight="46" ResizeBorderThickness="6" GlassFrameThickness="0"/>
     </WindowChrome.WindowChrome>
-    <Border x:Name="RootBorder" 
-            CornerRadius="8" 
-            Background="{DynamicResource WindowBackgroundBrush}" 
-            BorderBrush="{DynamicResource WindowBorderBrush}" 
+
+    <Border x:Name="RootBorder"
+            CornerRadius="10"
+            Background="{DynamicResource WindowBackgroundBrush}"
+            BorderBrush="{DynamicResource WindowBorderBrush}"
             BorderThickness="1"
             SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="44"/>
+                <RowDefinition Height="46"/>
+                <RowDefinition Height="48"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="26"/>
+                <RowDefinition Height="30"/>
             </Grid.RowDefinitions>
 
-            <!-- Header Bar -->
+            <!-- Row 0: TitleBar + TabBar -->
             <Border Grid.Row="0"
                     Background="{DynamicResource SurfaceBackgroundBrush}"
-                    BorderBrush="{DynamicResource DividerBrush}"
-                    BorderThickness="0,0,0,1"
-                    CornerRadius="8,8,0,0"
-                    WindowChrome.IsHitTestVisibleInChrome="True"
-                    MouseLeftButtonDown="OnTitleBarMouseDown">
-                <Grid Margin="16,0">
-                    <!-- Title -->
-                    <TextBlock VerticalAlignment="Center"
-                               FontFamily="{StaticResource UIFont}" FontSize="13">
-                        <Run Text="Markdown " FontWeight="SemiBold"
-                             Foreground="{DynamicResource TextPrimaryBrush}"/>
-                        <Run Text="Editor" FontWeight="SemiBold"
-                             Foreground="{DynamicResource AccentBrush}"/>
-                    </TextBlock>
+                    CornerRadius="10,10,0,0"
+                    WindowChrome.IsHitTestVisibleInChrome="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                    <!-- Toolbar -->
-                    <DockPanel LastChildFill="False" HorizontalAlignment="Right">
-                        <!-- Open -->
+                    <!-- App Icon + Title -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="20,0,16,0">
+                        <TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16" Foreground="{DynamicResource AccentDefaultBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontFamily="{StaticResource UIFont}" FontSize="13">
+                            <Run Text="Markdown " FontWeight="SemiBold"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Run Text="Editor" FontWeight="Regular"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- TabBar -->
+                    <local:TabBar x:Name="TabBarControl" Grid.Column="1"
+                                  VerticalAlignment="Center"/>
+
+                    <!-- Window Controls -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                VerticalAlignment="Center">
                         <Button Style="{StaticResource ToolbarButtonStyle}"
-                                Click="OnOpenFile" ToolTip="Open file">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE838;" FontFamily="Segoe MDL2 Assets"
-                                           FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock Text="Open"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Save -->
-                        <Button Style="{StaticResource ToolbarButtonStyle}"
-                                Click="OnSaveFile" ToolTip="Save file">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets"
-                                           FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock Text="Save"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Separator -->
-                        <Border Width="1" Height="16"
-                                Background="{DynamicResource DividerBrush}" Margin="6,0"/>
-
-                        <!-- Theme Toggle -->
-                        <Border Background="{DynamicResource SegmentBackgroundBrush}"
-                                CornerRadius="5" Padding="2" Margin="2,0">
-                            <StackPanel Orientation="Horizontal">
-                                <Button x:Name="BtnLight" Content="Light" Tag="Active"
-                                        Style="{StaticResource SegmentButtonStyle}"
-                                        Click="OnLightTheme"/>
-                                <Button x:Name="BtnDark" Content="Dark"
-                                        Style="{StaticResource SegmentButtonStyle}"
-                                        Click="OnDarkTheme"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Separator -->
-                        <Border Width="1" Height="16"
-                                Background="{DynamicResource DividerBrush}" Margin="6,0"/>
-
-                        <!-- Window Controls -->
-                        <Button Style="{StaticResource ToolbarButtonStyle}"
-                                Width="40" Click="OnMinimizeClick" ToolTip="Minimize">
+                                Width="46" Height="46" Click="OnMinimizeClick" ToolTip="Minimize">
                             <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets"
-                                       FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
+                                       FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                        VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
                         <Button Style="{StaticResource ToolbarButtonStyle}"
-                                Width="40" Click="OnMaximizeClick" ToolTip="Maximize/Restore">
+                                Width="46" Height="46" Click="OnMaximizeClick" ToolTip="Maximize/Restore">
                             <TextBlock Text="&#xE922;" FontFamily="Segoe MDL2 Assets"
-                                       FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
+                                       FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                        VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
                         <Button Style="{StaticResource ToolbarButtonStyle}"
-                                Width="40" Click="OnCloseClick" ToolTip="Close">
+                                Width="46" Height="46" Click="OnCloseClick" ToolTip="Close"
+                                x:Name="CloseWindowButton">
                             <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets"
-                                       FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
+                                       FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                        VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
-                    </DockPanel>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Editor -->
-            <ctrl:MarkdownEditor x:Name="Editor" Grid.Row="1"/>
+            <!-- Row 1: Formatting Toolbar -->
+            <local:FormattingToolbar x:Name="Toolbar" Grid.Row="1"/>
 
-            <!-- Status Bar -->
-            <Border Grid.Row="2"
+            <!-- Row 2: Main Content (SidePanel + Editor) -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="SidePanelColumn" Width="260" MinWidth="0"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Side Panel (Explorer + Outline tabs) -->
+                <local:SidePanel x:Name="SidePanel" Grid.Column="0"/>
+
+                <!-- Divider -->
+                <Border Grid.Column="1" Width="1"
+                        Background="{DynamicResource DividerBrush}"
+                        SnapsToDevicePixels="True"/>
+
+                <!-- Editor Content Panel -->
+                <Grid x:Name="ContentPanel" Grid.Column="2" Margin="4,0"/>
+            </Grid>
+
+            <!-- Row 3: Status Bar -->
+            <Border Grid.Row="3"
                     Background="{DynamicResource SurfaceBackgroundBrush}"
-                    BorderBrush="{DynamicResource DividerBrush}"
-                    BorderThickness="0,1,0,0"
-                    CornerRadius="0,0,8,8">
-                <Grid Margin="16,0">
+                    CornerRadius="0,0,10,10">
+                <Grid Margin="20,0">
                     <TextBlock x:Name="StatusText" Text="Ready"
                                FontFamily="{StaticResource UIFont}" FontSize="11"
-                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
                                VerticalAlignment="Center"/>
-                    <TextBlock HorizontalAlignment="Right"
+                    <TextBlock x:Name="CursorInfo" HorizontalAlignment="Right"
                                FontFamily="{StaticResource UIFont}" FontSize="11"
-                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
                                VerticalAlignment="Center"
-                               Text="UTF-8 · Markdown"/>
+                               Text="Ln 1, Col 1 · UTF-8 · Markdown"/>
                 </Grid>
             </Border>
         </Grid>

@@ -1,0 +1,52 @@
+<UserControl x:Class="WpfMarkdownEditor.Sample.Controls.FileTreeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="20,12" Background="{DynamicResource LayerBackgroundAltBrush}"
+                Visibility="{Binding ShowHeader, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="打开文件夹" Click="OnOpenFolder"
+                        Style="{StaticResource SecondaryButtonStyle}" FontSize="11" Padding="10,4" Margin="0,0,-4,0"/>
+                <TextBlock Text="Explorer" FontWeight="SemiBold" FontSize="11"
+                           Foreground="{DynamicResource TextTertiaryBrush}"
+                           FontFamily="{StaticResource UIFont}" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Tree -->
+        <TreeView x:Name="FileTree" Grid.Row="1"
+                  Background="{DynamicResource LayerBackgroundBaseBrush}"
+                  BorderThickness="0"
+                  Foreground="{DynamicResource TextPrimaryBrush}"
+                  FontFamily="{StaticResource UIFont}" FontSize="13"
+                  Padding="6"
+                  TreeViewItem.Expanded="OnTreeViewItemExpanded"
+                  TreeViewItem.Selected="OnTreeViewItemSelected">
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal" Margin="4,4">
+                        <TextBlock x:Name="Icon" Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets"
+                                   FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"/>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <HierarchicalDataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                            <Setter TargetName="Icon" Property="Text" Value="&#xE188;"/>
+                            <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                            <Setter TargetName="Icon" Property="Text" Value="&#xE712;"/>
+                        </DataTrigger>
+                    </HierarchicalDataTemplate.Triggers>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </Grid>
+</UserControl>

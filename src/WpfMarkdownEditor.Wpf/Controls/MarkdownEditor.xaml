@@ -10,6 +10,10 @@
         <SolidColorBrush x:Key="PreviewToolbarHover" Color="#18000000"/>
         <SolidColorBrush x:Key="PreviewToolbarPressed" Color="#28000000"/>
         <SolidColorBrush x:Key="PreviewToolbarAccent" Color="#005FB8"/>
+
+        <!-- Splitter styling -->
+        <SolidColorBrush x:Key="EditorSplitterBrush" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="EditorSplitterHoverBrush" Color="#005FB8"/>
     </UserControl.Resources>
 
     <Grid>
@@ -33,11 +37,19 @@
                  BorderThickness="0"
                  Padding="16,12" />
 
-        <!-- Splitter -->
-        <GridSplitter x:Name="EditorSplitter" Grid.Column="1"
-                      Width="1"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Stretch" />
+        <!-- Splitter: visible accent-colored line with hover highlight -->
+        <Grid Grid.Column="1" Width="12" HorizontalAlignment="Center">
+            <GridSplitter x:Name="EditorSplitter"
+                          Width="12"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent" />
+            <Border x:Name="SplitterLine" Width="1"
+                    Background="{DynamicResource EditorSplitterBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Stretch"
+                    SnapsToDevicePixels="True" />
+        </Grid>
 
         <!-- Preview Pane -->
         <FlowDocumentReader x:Name="PreviewReader"
@@ -48,20 +60,20 @@
                 <!-- ScrollBar Style -->
                 <Style TargetType="ScrollBar">
                     <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="Width" Value="8"/>
+                    <Setter Property="Width" Value="6"/>
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ScrollBar">
-                                <Grid Background="Transparent">
+                                <Grid Background="Transparent" Margin="2,0">
                                     <Track x:Name="PART_Track" IsDirectionReversed="True">
                                         <Track.Thumb>
-                                            <Thumb x:Name="Thumb" Opacity="0.3">
+                                            <Thumb x:Name="Thumb" Opacity="0.2">
                                                 <Thumb.Template>
                                                     <ControlTemplate TargetType="{x:Type Thumb}">
-                                                        <Border x:Name="Bd" Background="{DynamicResource PreviewToolbarForeground}" CornerRadius="4"/>
+                                                        <Border x:Name="Bd" Background="{DynamicResource PreviewToolbarForeground}" CornerRadius="3"/>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsDragging" Value="True">
-                                                                <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
+                                                                <Setter TargetName="Bd" Property="Opacity" Value="0.8"/>
                                                             </Trigger>
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
@@ -72,7 +84,7 @@
                                 </Grid>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Thumb" Property="Opacity" Value="0.6"/>
+                                        <Setter TargetName="Thumb" Property="Opacity" Value="0.5"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>

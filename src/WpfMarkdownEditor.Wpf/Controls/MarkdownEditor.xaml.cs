@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Core.Parsing;
+using WpfMarkdownEditor.Core.Parsing.Inlines;
 using WpfMarkdownEditor.Wpf.Rendering;
 using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.SyntaxHighlighting;
@@ -23,6 +24,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private FlowDocumentRenderer? _renderer;
     private CancellationTokenSource? _cts;
     private int _renderVersion;
+    private bool _suppressDirtyTracking;
 
     #region DependencyProperties
 
@@ -54,6 +56,13 @@ public partial class MarkdownEditor : UserControl, IDisposable
             typeof(MarkdownEditor),
             new PropertyMetadata(new GridLength(1, GridUnitType.Star)));
 
+    public static readonly DependencyProperty IsDirtyProperty =
+        DependencyProperty.Register(
+            nameof(IsDirty),
+            typeof(bool),
+            typeof(MarkdownEditor),
+            new PropertyMetadata(false));
+
     #endregion
 
     #region Public API
@@ -82,7 +91,15 @@ public partial class MarkdownEditor : UserControl, IDisposable
         set => SetValue(PreviewWidthProperty, value);
     }
 
+    public bool IsDirty
+    {
+        get => (bool)GetValue(IsDirtyProperty);
+        set => SetValue(IsDirtyProperty, value);
+    }
+
     public event EventHandler<MarkdownChangedEventArgs>? MarkdownChanged;
+    public event EventHandler? IsDirtyChanged;
+    public event EventHandler<Events.OutlineChangedEventArgs>? OutlineChanged;
 
     #endregion
 
@@ -100,16 +117,93 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     #region Methods
 
-    public void LoadFile(string path) => Markdown = File.ReadAllText(path);
+    public void LoadFile(string path)
+    {
+        _suppressDirtyTracking = true;
+        try
+        {
+            Markdown = File.ReadAllText(path);
+            MarkAsSaved();
+        }
+        finally
+        {
+            _suppressDirtyTracking = false;
+        }
+    }
 
     public async Task SaveFileAsync(string path)
     {
         await Task.Run(() => File.WriteAllText(path, Markdown));
+        MarkAsSaved();
+    }
+
+    public void MarkAsSaved()
+    {
+        IsDirty = false;
+        IsDirtyChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void ApplyTheme(EditorTheme theme) => Theme = theme;
 
     public void FocusEditor() => EditorTextBox.Focus();
+
+    public void WrapSelection(string prefix, string suffix)
+    {
+        var textBox = EditorTextBox;
+        textBox.BeginChange();
+        try
+        {
+            if (textBox.SelectionLength > 0)
+            {
+                var selected = textBox.SelectedText;
+                textBox.SelectedText = prefix + selected + suffix;
+            }
+            else
+            {
+                var caretIndex = textBox.CaretIndex;
+                textBox.Text = textBox.Text.Insert(caretIndex, prefix + suffix);
+                textBox.CaretIndex = caretIndex + prefix.Length;
+            }
+        }
+        finally { textBox.EndChange(); }
+    }
+
+    public void InsertAtCursor(string text)
+    {
+        var textBox = EditorTextBox;
+        textBox.BeginChange();
+        try
+        {
+            var caretIndex = textBox.CaretIndex;
+            textBox.Text = textBox.Text.Insert(caretIndex, text);
+            textBox.CaretIndex = caretIndex + text.Length;
+        }
+        finally { textBox.EndChange(); }
+    }
+
+    public (int Line, int Column) GetCursorPosition()
+    {
+        var text = EditorTextBox.Text;
+        var caretIndex = EditorTextBox.CaretIndex;
+        int line = 1, col = 1;
+        for (int i = 0; i < caretIndex && i < text.Length; i++)
+        {
+            if (text[i] == '\n') { line++; col = 1; }
+            else col++;
+        }
+        return (line, col);
+    }
+
+    public (int Start, int Length) GetSelectionRange()
+    {
+        return (EditorTextBox.SelectionStart, EditorTextBox.SelectionLength);
+    }
+
+    public void ScrollToLine(int lineNumber)
+    {
+        EditorTextBox.ScrollToLine(lineNumber - 1);
+        EditorTextBox.Focus();
+    }
 
     #endregion
 
@@ -118,11 +212,20 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MarkdownEditor)d;
+        var oldValue = (string?)e.OldValue ?? string.Empty;
+        var newValue = (string?)e.NewValue ?? string.Empty;
+
         editor.MarkdownChanged?.Invoke(editor, new MarkdownChangedEventArgs
         {
-            OldMarkdown = (string?)e.OldValue ?? string.Empty,
-            NewMarkdown = (string?)e.NewValue ?? string.Empty,
+            OldMarkdown = oldValue,
+            NewMarkdown = newValue,
         });
+
+        if (!editor._suppressDirtyTracking && oldValue != newValue)
+        {
+            editor.IsDirty = true;
+            editor.IsDirtyChanged?.Invoke(editor, EventArgs.Empty);
+        }
     }
 
     private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -135,13 +238,20 @@ public partial class MarkdownEditor : UserControl, IDisposable
         // Editor pane colors
         editor.EditorTextBox.Background = new SolidColorBrush(theme.BackgroundColor);
         editor.EditorTextBox.Foreground = new SolidColorBrush(theme.ForegroundColor);
-        editor.EditorSplitter.Background = new SolidColorBrush(theme.ThematicBreakColor);
-
-        // Preview pane colors
-        editor.PreviewReader.Background = new SolidColorBrush(theme.BackgroundColor);
+        editor.EditorTextBox.CaretBrush = new SolidColorBrush(theme.CursorColor);
 
         // Toolbar brushes — semi-transparent overlays adapt to both themes
         var isDark = theme.BackgroundColor.R < 128;
+
+        // Splitter colors
+        var splitterColor = isDark
+            ? Color.FromRgb(0x3A, 0x3A, 0x3A)
+            : Color.FromRgb(0xD8, 0xD8, 0xD8);
+        editor.Resources["EditorSplitterBrush"] = new SolidColorBrush(splitterColor);
+        editor.Resources["EditorSplitterHoverBrush"] = new SolidColorBrush(theme.LinkColor);
+
+        // Preview pane colors
+        editor.PreviewReader.Background = new SolidColorBrush(theme.BackgroundColor);
         editor.Resources["PreviewToolbarForeground"] = new SolidColorBrush(
             isDark ? Color.FromRgb(0xFF, 0xFF, 0xFF) : Color.FromRgb(0x61, 0x61, 0x61));
         editor.Resources["PreviewToolbarHover"] = new SolidColorBrush(
@@ -150,6 +260,27 @@ public partial class MarkdownEditor : UserControl, IDisposable
             isDark ? Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x28, 0x00, 0x00, 0x00));
         editor.Resources["PreviewToolbarAccent"] = new SolidColorBrush(
             isDark ? Color.FromRgb(0x60, 0xCD, 0xFF) : Color.FromRgb(0x00, 0x5F, 0xB8));
+    }
+
+    private static string ExtractInlineText(List<Inline> inlines)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var inline in inlines)
+        {
+            switch (inline)
+            {
+                case TextInline t: sb.Append(t.Content); break;
+                case CodeInline c: sb.Append(c.Code); break;
+                case ImageInline i: sb.Append(i.Alt ?? ""); break;
+                case LinkInline l: sb.Append(ExtractInlineText(l.Children)); break;
+                case BoldInline b: sb.Append(ExtractInlineText(b.Children)); break;
+                case ItalicInline i: sb.Append(ExtractInlineText(i.Children)); break;
+                case BoldItalicInline bi: sb.Append(ExtractInlineText(bi.Children)); break;
+                case StrikethroughInline s: sb.Append(ExtractInlineText(s.Children)); break;
+                case LineBreakInline: break;
+            }
+        }
+        return sb.ToString();
     }
 
     private void UpdateRenderer()
@@ -189,6 +320,19 @@ public partial class MarkdownEditor : UserControl, IDisposable
             // Version check — discard stale results
             if (version != Volatile.Read(ref _renderVersion)) return;
             ct.ThrowIfCancellationRequested();
+
+            // Extract outline from parsed blocks (no additional parsing)
+            var headingBlocks = blocks.OfType<WpfMarkdownEditor.Core.Parsing.Blocks.HeadingBlock>().ToList();
+            if (headingBlocks.Count > 0)
+            {
+                var outline = headingBlocks.Select(h => new Models.OutlineItem
+                {
+                    Level = h.Level,
+                    Text = ExtractInlineText(h.Inlines),
+                    LineNumber = h.LineStart
+                }).ToList();
+                OutlineChanged?.Invoke(this, new Events.OutlineChangedEventArgs { Outline = outline });
+            }
 
             var document = renderer.Render(blocks);
 

@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:WpfMarkdownEditor.Sample.Controls">
+    <!-- ═══════════════════════════════════════════════════
+         Light Theme — Clean Web Style
+         Pure whites, vivid blue accent, cool grays
+         ═══════════════════════════════════════════════════ -->
+
+    <!-- Layer Tokens (Background) -->
+    <SolidColorBrush x:Key="LayerBackgroundBaseBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="LayerBackgroundAltBrush" Color="#F5F7FA"/>
+    <SolidColorBrush x:Key="LayerBackgroundCardBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="LayerBackgroundOverlayBrush" Color="#FFFFFFE0"/>
+
+    <!-- Text Tokens -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A2E"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5A6578"/>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#9AA5B4"/>
+    <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FFFFFF"/>
+
+    <!-- Stroke Tokens -->
+    <SolidColorBrush x:Key="StrokeCardBrush" Color="#DCE1E8"/>
+    <SolidColorBrush x:Key="StrokeDividerBrush" Color="#E4E8EE"/>
+    <SolidColorBrush x:Key="StrokeSurfaceBrush" Color="#DCE1E850"/>
+
+    <!-- Accent Tokens — Vivid Blue -->
+    <SolidColorBrush x:Key="AccentDefaultBrush" Color="#0066FF"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#3385FF"/>
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#0050CC"/>
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="#0066FF0C"/>
+
+    <!-- Control Tokens -->
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="#00000005"/>
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="#0000000A"/>
+    <SolidColorBrush x:Key="ControlSelectedBrush" Color="#E8ECF2"/>
+    <SolidColorBrush x:Key="ControlFillBrush" Color="#F0F2F5"/>
+    <SolidColorBrush x:Key="ControlStrokeBrush" Color="#D0D5DD"/>
+
+    <!-- Shadow Tokens -->
+    <SolidColorBrush x:Key="ShadowFlyoutBrush" Color="#0000000C"/>
+    <SolidColorBrush x:Key="ShadowDialogBrush" Color="#00000018"/>
+
+    <!-- Legacy compatibility keys -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="WindowBorderBrush" Color="#D0D5DD"/>
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#F5F7FA"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#E4E8EE"/>
+    <SolidColorBrush x:Key="HoverBackgroundBrush" Color="#00000005"/>
+    <SolidColorBrush x:Key="PressedBackgroundBrush" Color="#0000000A"/>
+    <SolidColorBrush x:Key="SegmentBackgroundBrush" Color="#E8ECF2"/>
+    <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
+
+    <!-- Converters -->
+    <controls:LevelToMarginConverter x:Key="LevelToMarginConverter"/>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+</ResourceDictionary>
