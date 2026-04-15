@@ -9,12 +9,11 @@ public abstract class Lexer
     protected abstract HashSet<string> Keywords { get; }
     protected abstract HashSet<string> Types { get; }
 
-    protected static bool IsWordChar(char c) =>
+    protected virtual bool IsWordChar(char c) =>
         char.IsLetterOrDigit(c) || c == '_';
 
     protected static bool IsNumberChar(char c) =>
-        char.IsDigit(c) || c == '.' || c == 'x' || c == 'X' ||
-        (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+        char.IsDigit(c) || c == '.';
 
     protected static bool IsWhitespace(char c) =>
         c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -30,11 +29,6 @@ public abstract class Lexer
     {
         var i = start;
         while (i < code.Length && IsNumberChar(code[i])) i++;
-        // Consume trailing type suffixes (f, d, m, l, u, UL, etc.)
-        while (i < code.Length && (code[i] == 'f' || code[i] == 'F' ||
-               code[i] == 'd' || code[i] == 'D' || code[i] == 'm' || code[i] == 'M' ||
-               code[i] == 'l' || code[i] == 'L' || code[i] == 'u' || code[i] == 'U'))
-            i++;
         return (code[start..i], i - start);
     }
 
@@ -42,6 +36,19 @@ public abstract class Lexer
     {
         var i = start;
         while (i < code.Length && IsWhitespace(code[i])) i++;
+        return (code[start..i], i - start);
+    }
+
+    protected static (string text, int length) ReadString(string code, int start, char quote, bool breakOnNewline = false)
+    {
+        var i = start + 1;
+        while (i < code.Length)
+        {
+            if (code[i] == '\\') { i += 2; continue; }
+            if (code[i] == quote) { i++; break; }
+            if (breakOnNewline && code[i] == '\n') break;
+            i++;
+        }
         return (code[start..i], i - start);
     }
 

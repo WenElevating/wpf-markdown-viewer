@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace WpfMarkdownEditor.Wpf.SyntaxHighlighting.Lexers;
 
 public sealed class CSharpLexer : Lexer, ISyntaxHighlighter
@@ -96,12 +94,22 @@ public sealed class CSharpLexer : Lexer, ISyntaxHighlighter
                 continue;
             }
 
-            // Number
+            // Number (including hex 0x...)
             if (char.IsDigit(c) || (c == '.' && i + 1 < code.Length && char.IsDigit(code[i + 1])))
             {
-                var (num, len) = ReadNumber(code, i);
-                tokens.Add(new SyntaxToken(TokenType.Number, num));
-                i += len;
+                if (c == '0' && i + 1 < code.Length && (code[i + 1] == 'x' || code[i + 1] == 'X'))
+                {
+                    var start = i;
+                    i += 2;
+                    while (i < code.Length && (char.IsLetterOrDigit(code[i]) || code[i] == '_')) i++;
+                    tokens.Add(new SyntaxToken(TokenType.Number, code[start..i]));
+                }
+                else
+                {
+                    var (num, len) = ReadNumberWithSuffix(code, i);
+                    tokens.Add(new SyntaxToken(TokenType.Number, num));
+                    i += len;
+                }
                 continue;
             }
 
@@ -131,15 +139,14 @@ public sealed class CSharpLexer : Lexer, ISyntaxHighlighter
         return tokens;
     }
 
-    private static (string text, int length) ReadString(string code, int start, char quote)
+    private (string token, int length) ReadNumberWithSuffix(string code, int start)
     {
-        var i = start + 1;
-        while (i < code.Length)
-        {
-            if (code[i] == '\\') { i += 2; continue; }
-            if (code[i] == quote) { i++; break; }
+        var (_, len) = ReadNumber(code, start);
+        var i = start + len;
+        while (i < code.Length && (code[i] == 'f' || code[i] == 'F' ||
+               code[i] == 'd' || code[i] == 'D' || code[i] == 'm' || code[i] == 'M' ||
+               code[i] == 'l' || code[i] == 'L' || code[i] == 'u' || code[i] == 'U'))
             i++;
-        }
         return (code[start..i], i - start);
     }
 }

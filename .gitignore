@@ -34,13 +34,15 @@ coverage/
 *.coverage
 *.coveragexml
 
-# OMC state and session files
-.omc/state/
-.omc/sessions/
+# OMC
+.omc/
 
 # State directory
 state/
 
 # Claude Code
 .claude/
-/.omc/project-memory.json
+.superpowers/
+
+# Gemini
+GEMINI.md

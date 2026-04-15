@@ -82,9 +82,12 @@ public sealed class ImageRenderer(EditorTheme theme, IImageResolver? imageResolv
         {
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
-            bitmap.StreamSource = new MemoryStream(imageData.Data);
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
+            using (var stream = new MemoryStream(imageData.Data))
+            {
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+            }
             bitmap.Freeze();
             return bitmap;
         }

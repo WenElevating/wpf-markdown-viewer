@@ -14,6 +14,7 @@ public sealed class CodeBlockRenderer(EditorTheme theme, SyntaxHighlighter? high
     private static readonly SolidColorBrush StringBrush = new(Color.FromRgb(0xce, 0x91, 0x78));
     private static readonly SolidColorBrush NumberBrush = new(Color.FromRgb(0xb5, 0xce, 0xa8));
     private static readonly SolidColorBrush TypeBrush = new(Color.FromRgb(0x4e, 0xc9, 0xb0));
+    private readonly SolidColorBrush _defaultBrush = new(theme.CodeForeground);
 
     public System.Windows.Documents.Block Render(Core.Parsing.Block block)
     {
@@ -56,6 +57,6 @@ public sealed class CodeBlockRenderer(EditorTheme theme, SyntaxHighlighter? high
         TokenType.String => StringBrush,
         TokenType.Number => NumberBrush,
         TokenType.Type => TypeBrush,
-        _ => new SolidColorBrush(theme.CodeForeground)
+        _ => _defaultBrush
     };
 }

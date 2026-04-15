@@ -57,7 +57,7 @@ public sealed class PythonLexer : Lexer, ISyntaxHighlighter
             // String literal
             if (c == '"' || c == '\'')
             {
-                var (str, len) = ReadString(code, i, c);
+                var (str, len) = ReadString(code, i, c, breakOnNewline: true);
                 tokens.Add(new SyntaxToken(TokenType.String, str));
                 i += len;
                 continue;
@@ -127,26 +127,12 @@ public sealed class PythonLexer : Lexer, ISyntaxHighlighter
         return tokens;
     }
 
-    private static (string text, int length) ReadString(string code, int start, char quote)
-    {
-        var i = start + 1;
-        while (i < code.Length)
-        {
-            if (code[i] == '\\') { i += 2; continue; }
-            if (code[i] == quote) { i++; break; }
-            if (code[i] == '\n') break; // Python: unterminated string ends at newline
-            i++;
-        }
-        return (code[start..i], i - start);
-    }
-
     private static (string text, int length) ReadTripleQuoted(string code, int start, char quote)
     {
         var i = start + 3;
-        var closeSeq = new string(quote, 3);
         while (i < code.Length)
         {
-            if (code[i] == '\\') { i++; continue; }
+            if (code[i] == '\\') { i += 2; continue; }
             if (i + 2 < code.Length && code[i] == quote && code[i + 1] == quote && code[i + 2] == quote)
             {
                 i += 3;

@@ -23,6 +23,9 @@ public sealed class JavaScriptLexer : Lexer, ISyntaxHighlighter
     protected override HashSet<string> Keywords => s_keywords;
     protected override HashSet<string> Types => s_types;
 
+    protected override bool IsWordChar(char c) =>
+        char.IsLetterOrDigit(c) || c == '_' || c == '$';
+
     public bool SupportsLanguage(string language) =>
         language.Equals("javascript", StringComparison.OrdinalIgnoreCase) ||
         language.Equals("js", StringComparison.OrdinalIgnoreCase) ||
@@ -99,10 +102,9 @@ public sealed class JavaScriptLexer : Lexer, ISyntaxHighlighter
             // Word
             if (char.IsLetter(c) || c == '_' || c == '$')
             {
-                var start = i;
-                while (i < code.Length && (char.IsLetterOrDigit(code[i]) || code[i] == '_' || code[i] == '$')) i++;
-                var word = code[start..i];
+                var (word, len) = ReadWord(code, i);
                 tokens.Add(new SyntaxToken(ClassifyWord(word), word));
+                i += len;
                 continue;
             }
 
@@ -112,18 +114,6 @@ public sealed class JavaScriptLexer : Lexer, ISyntaxHighlighter
         }
 
         return tokens;
-    }
-
-    private static (string text, int length) ReadString(string code, int start, char quote)
-    {
-        var i = start + 1;
-        while (i < code.Length)
-        {
-            if (code[i] == '\\') { i += 2; continue; }
-            if (code[i] == quote) { i++; break; }
-            i++;
-        }
-        return (code[start..i], i - start);
     }
 
     private static (string text, int length) ReadTemplateLiteral(string code, int start)
