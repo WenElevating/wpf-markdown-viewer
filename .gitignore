@@ -46,3 +46,6 @@ state/
 
 # Gemini
 GEMINI.md
+
+# Worktrees
+.worktrees/
