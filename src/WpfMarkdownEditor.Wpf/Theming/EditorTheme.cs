@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Media;
 
 namespace WpfMarkdownEditor.Wpf.Theming;
@@ -12,6 +13,11 @@ public sealed class EditorTheme
     // Document colors
     public Color BackgroundColor { get; init; } = Colors.White;
     public Color ForegroundColor { get; init; } = Colors.Black;
+
+    // Editor-specific styling (thinner, softer for readability)
+    public Color EditorForegroundColor { get; init; } = Color.FromRgb(0x24, 0x29, 0x2f);
+    public Color EditorCaretColor { get; init; } = Color.FromRgb(0x24, 0x29, 0x2f);
+    public FontWeight EditorFontWeight { get; init; } = FontWeights.Light;
 
     // Typography
     public FontFamily BodyFont { get; init; } = new("Segoe UI");
@@ -52,6 +58,7 @@ public sealed class EditorTheme
         Name = "Dark",
         BackgroundColor = Color.FromRgb(0x1e, 0x1e, 0x1e),
         ForegroundColor = Color.FromRgb(0xd4, 0xd4, 0xd4),
+        EditorCaretColor = Color.FromRgb(0xd4, 0xd4, 0xd4),
         HeadingColor = Color.FromRgb(0xff, 0xff, 0xff),
         CodeBackground = Color.FromRgb(0x2d, 0x2d, 0x2d),
         CodeForeground = Color.FromRgb(0xd4, 0xd4, 0xd4),
@@ -71,8 +78,9 @@ public sealed class EditorTheme
     public static EditorTheme GitHub { get; } = new()
     {
         Name = "GitHub",
-        BackgroundColor = Color.FromRgb(0xff, 0xff, 0xff),
+        BackgroundColor = Color.FromRgb(0xfa, 0xfb, 0xfc),
         ForegroundColor = Color.FromRgb(0x24, 0x29, 0x2f),
+        EditorCaretColor = Color.FromRgb(0x24, 0x29, 0x2f),
         BodyFont = new("Segoe UI"),
         HeadingFont = new("Segoe UI Semibold"),
         CodeFont = new("Consolas"),
@@ -104,6 +112,8 @@ public sealed class EditorTheme
         Name = "GitHub Dark",
         BackgroundColor = Color.FromRgb(0x0d, 0x11, 0x17),
         ForegroundColor = Color.FromRgb(0xe6, 0xed, 0xf3),
+        EditorForegroundColor = Color.FromRgb(0xe6, 0xed, 0xf3),
+        EditorCaretColor = Color.FromRgb(0xe6, 0xed, 0xf3),
         BodyFont = new("Segoe UI"),
         HeadingFont = new("Segoe UI Semibold"),
         CodeFont = new("Consolas"),
@@ -122,6 +132,72 @@ public sealed class EditorTheme
         InlineCodeForeground = Color.FromRgb(0xe6, 0xed, 0xf3),
         CodeBlockBorderColor = Color.FromRgb(0x30, 0x36, 0x3d),
         TableAltRowBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        ParagraphSpacing = 16,
+        HeadingMarginTop = 24,
+        HeadingMarginBottom = 12,
+        BlockquotePaddingLeft = 16,
+        BlockquoteBorderWidth = 4,
+    };
+
+    /// <summary>Claude-inspired warm terracotta theme.</summary>
+    public static EditorTheme Claude { get; } = new()
+    {
+        Name = "Claude",
+        BackgroundColor = Color.FromRgb(0xfa, 0xf9, 0xf6),
+        ForegroundColor = Color.FromRgb(0x2d, 0x2d, 0x2d),
+        EditorForegroundColor = Color.FromRgb(0x2d, 0x2d, 0x2d),
+        EditorCaretColor = Color.FromRgb(0x2d, 0x2d, 0x2d),
+        BodyFont = new("Segoe UI"),
+        HeadingFont = new("Segoe UI Semibold"),
+        CodeFont = new("Consolas"),
+        HeadingColor = Color.FromRgb(0x1a, 0x1a, 0x1a),
+        CodeBackground = Color.FromRgb(0xf0, 0xed, 0xe8),
+        CodeForeground = Color.FromRgb(0x2d, 0x2d, 0x2d),
+        BlockquoteBorder = Color.FromRgb(0xd9, 0x77, 0x57),
+        BlockquoteBackground = Color.FromRgb(0xfd, 0xf5, 0xf0),
+        LinkColor = Color.FromRgb(0xc4, 0x62, 0x2d),
+        TableHeaderBackground = Color.FromRgb(0xf0, 0xed, 0xe8),
+        TableBorderColor = Color.FromRgb(0xe0, 0xd9, 0xd0),
+        ThematicBreakColor = Color.FromRgb(0xe0, 0xd9, 0xd0),
+        HeadingBorderColor = Color.FromRgb(0xe0, 0xd9, 0xd0),
+        ShowHeadingBorders = true,
+        InlineCodeBackground = Color.FromRgb(0xf0, 0xed, 0xe8),
+        InlineCodeForeground = Color.FromRgb(0x2d, 0x2d, 0x2d),
+        CodeBlockBorderColor = Color.FromRgb(0xe0, 0xd9, 0xd0),
+        TableAltRowBackground = Color.FromRgb(0xf5, 0xf0, 0xeb),
+        ParagraphSpacing = 16,
+        HeadingMarginTop = 24,
+        HeadingMarginBottom = 12,
+        BlockquotePaddingLeft = 16,
+        BlockquoteBorderWidth = 4,
+    };
+
+    /// <summary>Claude Dark — warm terracotta accent on deep charcoal.</summary>
+    public static EditorTheme ClaudeDark { get; } = new()
+    {
+        Name = "Claude Dark",
+        BackgroundColor = Color.FromRgb(0x1c, 0x1c, 0x1e),
+        ForegroundColor = Color.FromRgb(0xe8, 0xe2, 0xd9),
+        EditorForegroundColor = Color.FromRgb(0xe8, 0xe2, 0xd9),
+        EditorCaretColor = Color.FromRgb(0xe8, 0xe2, 0xd9),
+        BodyFont = new("Segoe UI"),
+        HeadingFont = new("Segoe UI Semibold"),
+        CodeFont = new("Consolas"),
+        HeadingColor = Color.FromRgb(0xff, 0xff, 0xff),
+        CodeBackground = Color.FromRgb(0x2a, 0x28, 0x26),
+        CodeForeground = Color.FromRgb(0xe8, 0xe2, 0xd9),
+        BlockquoteBorder = Color.FromRgb(0xd9, 0x77, 0x57),
+        BlockquoteBackground = Color.FromRgb(0x26, 0x22, 0x20),
+        LinkColor = Color.FromRgb(0xe8, 0x91, 0x5a),
+        TableHeaderBackground = Color.FromRgb(0x2a, 0x28, 0x26),
+        TableBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
+        ThematicBreakColor = Color.FromRgb(0x3a, 0x36, 0x32),
+        HeadingBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
+        ShowHeadingBorders = true,
+        InlineCodeBackground = Color.FromRgb(0x2a, 0x28, 0x26),
+        InlineCodeForeground = Color.FromRgb(0xe8, 0xe2, 0xd9),
+        CodeBlockBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
+        TableAltRowBackground = Color.FromRgb(0x24, 0x22, 0x20),
         ParagraphSpacing = 16,
         HeadingMarginTop = 24,
         HeadingMarginBottom = 12,

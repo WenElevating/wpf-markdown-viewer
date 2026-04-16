@@ -219,24 +219,40 @@ public partial class MarkdownEditor : UserControl, IDisposable
         editor.UpdateRenderer();
         editor.RenderPreview();
 
-        // Editor pane colors
+        // Editor pane colors — use softer foreground for readability
         editor.EditorTextBox.Background = new SolidColorBrush(theme.BackgroundColor);
-        editor.EditorTextBox.Foreground = new SolidColorBrush(theme.ForegroundColor);
+        editor.EditorTextBox.Foreground = new SolidColorBrush(theme.EditorForegroundColor);
+        editor.EditorTextBox.CaretBrush = new SolidColorBrush(theme.EditorCaretColor);
+        editor.EditorTextBox.FontWeight = theme.EditorFontWeight;
         editor.EditorSplitter.Background = new SolidColorBrush(theme.ThematicBreakColor);
 
         // Preview pane colors
-        editor.PreviewReader.Background = new SolidColorBrush(theme.BackgroundColor);
+        editor.PreviewViewer.Background = new SolidColorBrush(theme.BackgroundColor);
 
-        // Toolbar brushes — semi-transparent overlays adapt to both themes
+        // Toolbar theme brushes
         var isDark = theme.BackgroundColor.R < 128;
-        editor.Resources["PreviewToolbarForeground"] = new SolidColorBrush(
-            isDark ? Color.FromRgb(0xFF, 0xFF, 0xFF) : Color.FromRgb(0x61, 0x61, 0x61));
-        editor.Resources["PreviewToolbarHover"] = new SolidColorBrush(
-            isDark ? Color.FromArgb(0x32, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00));
-        editor.Resources["PreviewToolbarPressed"] = new SolidColorBrush(
-            isDark ? Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x28, 0x00, 0x00, 0x00));
-        editor.Resources["PreviewToolbarAccent"] = new SolidColorBrush(
-            isDark ? Color.FromRgb(0x60, 0xCD, 0xFF) : Color.FromRgb(0x00, 0x5F, 0xB8));
+        editor.Resources["ToolbarBackground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x16, 0x1b, 0x22) : Color.FromRgb(0xf6, 0xf8, 0xfa));
+        editor.Resources["ToolbarBorder"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
+        editor.Resources["ToolbarForeground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0xe6, 0xed, 0xf3) : Color.FromRgb(0x24, 0x29, 0x2f));
+        editor.Resources["ToolbarHoverBackground"] = new SolidColorBrush(
+            isDark ? Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00));
+        editor.Resources["ToolbarPressedBackground"] = new SolidColorBrush(
+            isDark ? Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x28, 0x00, 0x00, 0x00));
+        editor.Resources["ToolbarAccent"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x58, 0xa6, 0xff) : Color.FromRgb(0x09, 0x69, 0xda));
+
+        // Toolbar border & separator
+        editor.PreviewToolbarBorder.BorderBrush = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
+        editor.PreviewToolbarBorder.Background = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x16, 0x1b, 0x22) : Color.FromRgb(0xf6, 0xf8, 0xfa));
+        editor.ToolBarSeparator.Background = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
+        editor.ZoomText.Foreground = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x8b, 0x94, 0x9e) : Color.FromRgb(0x65, 0x6d, 0x76));
     }
 
     private void UpdateRenderer()
@@ -282,7 +298,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
             // Final version check before UI update
             if (version != Volatile.Read(ref _renderVersion)) return;
 
-            PreviewReader.Document = document;
+            PreviewViewer.Document = document;
         }
         catch (OperationCanceledException)
         {
@@ -298,6 +314,42 @@ public partial class MarkdownEditor : UserControl, IDisposable
         var newCts = new CancellationTokenSource();
         return Interlocked.Exchange(ref _cts, newCts);
     }
+
+    #region Zoom Controls
+
+    private void OnZoomOut(object sender, RoutedEventArgs e)
+    {
+        PreviewViewer.DecreaseZoom();
+        SyncZoomUI();
+    }
+
+    private void OnZoomIn(object sender, RoutedEventArgs e)
+    {
+        PreviewViewer.IncreaseZoom();
+        SyncZoomUI();
+    }
+
+    private void OnZoomReset(object sender, RoutedEventArgs e)
+    {
+        PreviewViewer.Zoom = 100;
+        SyncZoomUI();
+    }
+
+    private void OnZoomSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (PreviewViewer == null || ZoomText == null) return;
+        PreviewViewer.Zoom = e.NewValue;
+        ZoomText.Text = $"{(int)e.NewValue}%";
+    }
+
+    private void SyncZoomUI()
+    {
+        var zoom = PreviewViewer.Zoom;
+        ZoomSlider.Value = zoom;
+        ZoomText.Text = $"{(int)zoom}%";
+    }
+
+    #endregion
 
     #region Smart List Editing
 

@@ -1,0 +1,185 @@
+# WPF Markdown 编辑器
+
+一个基于 .NET 8 的现代化、零依赖的 WPF Markdown 编辑器控件，支持实时预览。
+
+[English](README.md)
+
+## 功能特性
+
+- **实时预览** — 左右分栏编辑，防抖渲染（~100ms）
+- **6 套内置主题** — GitHub、GitHub Dark、Claude、Claude Dark、Light、Dark
+- **智能编辑** — 列表自动续行、前缀切换、选区包裹
+- **格式化工具栏** — 标题、加粗、斜体、代码、链接、表格等
+- **侧边栏** — 文件历史记录 & 文档大纲（TOC），支持动画切换
+- **语法高亮** — 代码块支持 C#、JavaScript、Python
+- **零外部依赖** — 纯 WPF 实现，无需任何 NuGet 包
+
+## 截图
+
+> 敬请期待
+
+## 快速开始
+
+### 环境要求
+
+- .NET 8.0 SDK
+- Windows 10/11
+
+### 安装
+
+在你的 WPF 项目中添加 NuGet 包：
+
+```xml
+<ItemGroup>
+  <PackageReference Include="WpfMarkdownEditor.Core" Version="0.1.0" />
+  <PackageReference Include="WpfMarkdownEditor.Wpf" Version="0.1.0" />
+</ItemGroup>
+```
+
+或直接引用项目：
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path\to\WpfMarkdownEditor.Core\WpfMarkdownEditor.Core.csproj" />
+  <ProjectReference Include="path\to\WpfMarkdownEditor.Wpf\WpfMarkdownEditor.Wpf.csproj" />
+</ItemGroup>
+```
+
+### 快速上手
+
+```xml
+<Window xmlns:ctrl="clr-namespace:WpfMarkdownEditor.Wpf.Controls;assembly=WpfMarkdownEditor.Wpf">
+    <ctrl:MarkdownEditor x:Name="Editor"
+                         Markdown="# 你好 Markdown"
+                         ShowPreview="True" />
+</Window>
+```
+
+```csharp
+// 加载文件
+Editor.LoadFile("README.md");
+
+// 应用主题
+Editor.ApplyTheme(EditorTheme.GitHub);
+
+// 监听内容变化
+Editor.MarkdownChanged += (s, e) =>
+{
+    Console.WriteLine($"内容已变化（{e.NewMarkdown.Length} 字符）");
+};
+```
+
+## API 参考
+
+### 依赖属性
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `Markdown` | `string` | `""` | Markdown 内容（双向绑定） |
+| `Theme` | `EditorTheme` | `Light` | 当前编辑器主题 |
+| `ShowPreview` | `bool` | `true` | 显示/隐藏预览面板 |
+| `PreviewWidth` | `GridLength` | `1*` | 预览面板宽度 |
+
+### 方法
+
+| 方法 | 说明 |
+|------|------|
+| `LoadFile(string path)` | 从文件加载 Markdown |
+| `SaveFileAsync(string path)` | 保存 Markdown 到文件 |
+| `ApplyTheme(EditorTheme theme)` | 应用主题 |
+| `FocusEditor()` | 聚焦编辑器 |
+| `WrapSelection(string before, string after)` | 用标记包裹选中文本 |
+| `InsertText(string text)` | 在光标处插入文本 |
+| `ToggleLinePrefix(string prefix)` | 切换标题/引用/列表前缀 |
+
+### 事件
+
+| 事件 | 说明 |
+|------|------|
+| `MarkdownChanged` | Markdown 内容变化时触发 |
+
+## 主题
+
+六套内置主题，全部可自定义：
+
+```csharp
+// 内置主题
+Editor.ApplyTheme(EditorTheme.GitHub);
+Editor.ApplyTheme(EditorTheme.GitHubDark);
+Editor.ApplyTheme(EditorTheme.Claude);
+Editor.ApplyTheme(EditorTheme.ClaudeDark);
+Editor.ApplyTheme(EditorTheme.Light);
+Editor.ApplyTheme(EditorTheme.Dark);
+
+// 自定义主题
+var custom = new EditorTheme
+{
+    Name = "我的主题",
+    BackgroundColor = Colors.White,
+    ForegroundColor = Colors.Black,
+    LinkColor = Colors.Blue,
+    // ... 查看 EditorTheme 了解所有属性
+};
+Editor.ApplyTheme(custom);
+```
+
+## 智能编辑
+
+编辑器提供智能 Markdown 编辑功能：
+
+- **列表自动续行** — 在列表中按 Enter 自动插入下一个标记
+- **有序列表递增** — `1.` → `2.` → `3.` 自动编号
+- **Tab / Shift+Tab** — 列表项缩进/反缩进
+- **空列表清理** — 在空列表项上按 Enter 删除标记
+
+## 格式化工具栏
+
+示例应用包含完整的工具栏：
+
+| 分类 | 操作 |
+|------|------|
+| 文件 | 打开、保存 |
+| 标题 | H1、H2、H3 |
+| 格式 | 加粗、斜体、删除线、行内代码 |
+| 插入 | 链接、引用、无序列表、有序列表、代码块、表格、分隔线 |
+| 主题 | 下拉选择器，包含全部 6 套主题 |
+| 侧边栏 | 切换动画侧边栏 |
+
+## 侧边栏
+
+侧边栏提供两个标签页，支持动画显示/隐藏：
+
+- **历史记录** — 最近打开的文件列表，显示时间戳，点击可重新打开
+- **文档大纲** — 从当前 Markdown 提取的标题树结构
+
+## 项目结构
+
+```
+src/
+  WpfMarkdownEditor.Core/       — Markdown 解析器 & AST 模型
+  WpfMarkdownEditor.Wpf/        — WPF 编辑器控件 & 渲染
+samples/
+  WpfMarkdownEditor.Sample/     — 示例应用
+tests/
+  WpfMarkdownEditor.Core.Tests/ — 145 个单元测试
+  WpfMarkdownEditor.Wpf.Tests/  — WPF 测试项目
+```
+
+## 构建
+
+```bash
+git clone https://github.com/WenElevating/wpf-markdown-viewer.git
+cd wpf-markdown-viewer
+dotnet build
+dotnet run --project samples/WpfMarkdownEditor.Sample
+```
+
+## 运行测试
+
+```bash
+dotnet test
+```
+
+## 许可证
+
+MIT
