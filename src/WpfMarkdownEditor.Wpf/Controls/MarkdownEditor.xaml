@@ -5,6 +5,85 @@
     <UserControl.Resources>
         <c:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
+        <!-- Context Menu Brushes -->
+        <SolidColorBrush x:Key="MenuBackground" Color="#ffffff"/>
+        <SolidColorBrush x:Key="MenuBorder" Color="#e5e5e5"/>
+        <SolidColorBrush x:Key="MenuForeground" Color="#1a1a1a"/>
+        <SolidColorBrush x:Key="MenuHoverBackground" Color="#f5f5f5"/>
+        <SolidColorBrush x:Key="MenuSeparator" Color="#e5e5e5"/>
+        <SolidColorBrush x:Key="MenuDisabledForeground" Color="#b0b0b0"/>
+
+        <!-- Context Menu -->
+        <Style x:Key="EditorContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="Background" Value="{DynamicResource MenuBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource MenuBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="HasDropShadow" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <StackPanel IsItemsHost="True"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Menu Item -->
+        <Style x:Key="EditorMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource MenuForeground}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter Grid.Column="0" Content="{TemplateBinding Icon}"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                                  VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}"
+                                           FontSize="11" Opacity="0.5" VerticalAlignment="Center"
+                                           Margin="20,0,0,0"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MenuHoverBackground}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource MenuDisabledForeground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Menu Separator -->
+        <Style x:Key="EditorMenuSeparatorStyle" TargetType="Separator">
+            <Setter Property="Background" Value="{DynamicResource MenuSeparator}"/>
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="4,4"/>
+        </Style>
+
         <!-- Theme-aware toolbar brushes (updated in code-behind) -->
         <SolidColorBrush x:Key="ToolbarBackground" Color="#f6f8fa"/>
         <SolidColorBrush x:Key="ToolbarBorder" Color="#d0d7de"/>
@@ -100,10 +179,34 @@
                  HorizontalScrollBarVisibility="Auto"
                  Text="{Binding Markdown, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  TextChanged="OnEditorTextChanged"
-                 FontFamily="Cascadia Code, Consolas"
+                 FontFamily="Cascadia Code, Consolas, Liberation Mono"
                  FontSize="14"
                  BorderThickness="0"
-                 Padding="16,12" />
+                 Padding="12,8">
+	            <TextBox.ContextMenu>
+	                <ContextMenu x:Name="EditorContextMenu"
+	                             Style="{StaticResource EditorContextMenuStyle}">
+	                    <MenuItem Command="ApplicationCommands.Undo" Style="{StaticResource EditorMenuItemStyle}" Header="Undo">
+	                        <MenuItem.Icon><TextBlock Text="&#xE7A7;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
+	                    </MenuItem>
+	                    <MenuItem Command="ApplicationCommands.Redo" Style="{StaticResource EditorMenuItemStyle}" Header="Redo">
+	                        <MenuItem.Icon><TextBlock Text="&#xE7A6;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
+	                    </MenuItem>
+	                    <Separator Style="{StaticResource EditorMenuSeparatorStyle}"/>
+	                    <MenuItem Command="ApplicationCommands.Cut" Style="{StaticResource EditorMenuItemStyle}" Header="Cut">
+	                        <MenuItem.Icon><TextBlock Text="&#xE8C6;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
+	                    </MenuItem>
+	                    <MenuItem Command="ApplicationCommands.Copy" Style="{StaticResource EditorMenuItemStyle}" Header="Copy">
+	                        <MenuItem.Icon><TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
+	                    </MenuItem>
+	                    <MenuItem Command="ApplicationCommands.Paste" Style="{StaticResource EditorMenuItemStyle}" Header="Paste">
+	                        <MenuItem.Icon><TextBlock Text="&#xE77F;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
+	                    </MenuItem>
+	                    <Separator Style="{StaticResource EditorMenuSeparatorStyle}"/>
+	                    <MenuItem Command="ApplicationCommands.SelectAll" Style="{StaticResource EditorMenuItemStyle}" Header="Select All"/>
+	                </ContextMenu>
+	            </TextBox.ContextMenu>
+	        </TextBox>
 
         <!-- Splitter -->
         <GridSplitter x:Name="EditorSplitter" Grid.Column="1"

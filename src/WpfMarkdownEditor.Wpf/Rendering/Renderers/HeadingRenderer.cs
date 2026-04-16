@@ -1,14 +1,15 @@
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
+using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
 using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Wpf.Rendering.Renderers;
 
-public sealed class HeadingRenderer(EditorTheme theme) : IBlockRenderer
+public sealed class HeadingRenderer(EditorTheme theme, IImageResolver? imageResolver = null) : IBlockRenderer
 {
-    private readonly InlineRenderer _inlineRenderer = new(theme);
+    private readonly InlineRenderer _inlineRenderer = new(theme, imageResolver);
 
     public System.Windows.Documents.Block Render(Core.Parsing.Block block)
     {

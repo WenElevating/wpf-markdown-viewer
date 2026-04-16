@@ -1,6 +1,11 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 using WpfMarkdownEditor.Wpf.Theming;
 using CoreInline = WpfMarkdownEditor.Core.Parsing.Inline;
@@ -13,10 +18,12 @@ namespace WpfMarkdownEditor.Wpf.Rendering;
 public sealed class InlineRenderer
 {
     private readonly EditorTheme _theme;
+    private readonly IImageResolver? _imageResolver;
 
-    public InlineRenderer(EditorTheme theme)
+    public InlineRenderer(EditorTheme theme, IImageResolver? imageResolver = null)
     {
         _theme = theme;
+        _imageResolver = imageResolver;
     }
 
     public void RenderInlines(Paragraph paragraph, List<CoreInline> inlines)
@@ -78,10 +85,7 @@ public sealed class InlineRenderer
             Foreground = new SolidColorBrush(_theme.InlineCodeForeground),
         },
         LinkInline l => CreateHyperlink(l),
-        ImageInline img => new Run($"[{img.Alt ?? img.Url}]")
-        {
-            Foreground = new SolidColorBrush(_theme.LinkColor),
-        },
+        ImageInline img => RenderImageInline(img),
         StrikethroughInline s => CreateStrikethrough(s.Children),
         LineBreakInline => new LineBreak(),
         _ => new Run(string.Empty),
@@ -120,6 +124,61 @@ public sealed class InlineRenderer
         return span;
     }
 
+    private System.Windows.Documents.Inline RenderImageInline(ImageInline img)
+    {
+        if (_imageResolver is not null)
+        {
+            try
+            {
+                var imageData = _imageResolver.ResolveImageAsync(img.Url, CancellationToken.None).GetAwaiter().GetResult();
+                if (imageData is not null)
+                {
+                    var bitmap = CreateBitmap(imageData);
+                    if (bitmap is not null)
+                    {
+                        var imageControl = new System.Windows.Controls.Image
+                        {
+                            Source = bitmap,
+                            MaxHeight = 300,
+                            Stretch = Stretch.Uniform,
+                            StretchDirection = StretchDirection.DownOnly,
+                        };
+                        if (img.Alt is not null)
+                            imageControl.ToolTip = img.Alt;
+                        return new InlineUIContainer(imageControl) { BaselineAlignment = BaselineAlignment.Bottom };
+                    }
+                }
+            }
+            catch { /* fall through to placeholder */ }
+        }
+
+        return new Run($"[{img.Alt ?? img.Url}]")
+        {
+            Foreground = new SolidColorBrush(_theme.LinkColor),
+        };
+    }
+
+    private static BitmapImage? CreateBitmap(ImageData imageData)
+    {
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            using (var stream = new MemoryStream(imageData.Data))
+            {
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+            }
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private Hyperlink CreateHyperlink(LinkInline link)
     {
         var span = new Span();
@@ -133,7 +192,14 @@ public sealed class InlineRenderer
         };
 
         if (Uri.TryCreate(link.Url, UriKind.Absolute, out var uri))
+        {
             hyperlink.NavigateUri = uri;
+            hyperlink.RequestNavigate += (s, e) =>
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.ToString()) { UseShellExecute = true });
+                e.Handled = true;
+            };
+        }
 
         return hyperlink;
     }

@@ -27,11 +27,11 @@ public sealed class FlowDocumentRenderer
         _theme = theme;
         _renderers = new()
         {
-            [typeof(HeadingBlock)] = new HeadingRenderer(theme),
-            [typeof(ParagraphBlock)] = new ParagraphRenderer(theme),
+            [typeof(HeadingBlock)] = new HeadingRenderer(theme, imageResolver),
+            [typeof(ParagraphBlock)] = new ParagraphRenderer(theme, imageResolver),
             [typeof(CodeBlock)] = new CodeBlockRenderer(theme, highlighter),
             [typeof(TableBlock)] = new TableRenderer(theme),
-            [typeof(ListBlock)] = new ListRenderer(theme),
+            [typeof(ListBlock)] = new ListRenderer(theme, imageResolver),
             [typeof(ThematicBreakBlock)] = new ThematicBreakRenderer(theme),
             [typeof(ImageBlock)] = new ImageRenderer(theme, imageResolver),
         };

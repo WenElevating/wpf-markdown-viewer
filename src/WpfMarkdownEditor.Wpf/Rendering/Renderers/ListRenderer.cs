@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
+using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
 using WpfMarkdownEditor.Wpf.Theming;
 
@@ -10,9 +11,9 @@ namespace WpfMarkdownEditor.Wpf.Rendering.Renderers;
 /// Renders ListBlock with recursive nesting support and Typora-style marker rotation:
 /// Level 1: ● Disc, Level 2: ○ Circle, Level 3: ■ Square, then repeats.
 /// </summary>
-public sealed class ListRenderer(EditorTheme theme) : IBlockRenderer
+public sealed class ListRenderer(EditorTheme theme, IImageResolver? imageResolver = null) : IBlockRenderer
 {
-    private readonly InlineRenderer _inlineRenderer = new(theme);
+    private readonly InlineRenderer _inlineRenderer = new(theme, imageResolver);
 
     public System.Windows.Documents.Block Render(Core.Parsing.Block block)
     {
