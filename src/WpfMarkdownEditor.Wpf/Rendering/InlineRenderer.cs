@@ -70,11 +70,12 @@ public sealed class InlineRenderer
         BoldInline b => CreateBold(b.Children),
         ItalicInline i => CreateItalic(i.Children),
         BoldItalicInline bi => CreateItalicBold(bi.Children),
-        CodeInline c => new Run(c.Code)
+        CodeInline c => new Span(new Run(c.Code))
         {
             FontFamily = _theme.CodeFont,
-            Background = new SolidColorBrush(_theme.CodeBackground),
-            Foreground = new SolidColorBrush(_theme.CodeForeground),
+            FontSize = 13,
+            Background = new SolidColorBrush(_theme.InlineCodeBackground),
+            Foreground = new SolidColorBrush(_theme.InlineCodeForeground),
         },
         LinkInline l => CreateHyperlink(l),
         ImageInline img => new Run($"[{img.Alt ?? img.Url}]")

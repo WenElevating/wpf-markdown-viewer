@@ -23,10 +23,9 @@ public sealed class CodeBlockRenderer(EditorTheme theme, SyntaxHighlighter? high
         {
             FontFamily = theme.CodeFont,
             FontSize = 13,
-            Background = new SolidColorBrush(theme.CodeBackground),
             Foreground = new SolidColorBrush(theme.CodeForeground),
-            Padding = new Thickness(12),
-            Margin = new Thickness(0, 8, 0, 8),
+            Padding = new Thickness(16, 12, 16, 12),
+            Margin = new Thickness(0),
         };
 
         // Apply syntax highlighting when language hint is available
@@ -47,7 +46,17 @@ public sealed class CodeBlockRenderer(EditorTheme theme, SyntaxHighlighter? high
             paragraph.Inlines.Add(new Run(code.Code));
         }
 
-        return paragraph;
+        // Wrap in Section for background + border (GitHub-style)
+        var section = new Section
+        {
+            Background = new SolidColorBrush(theme.CodeBackground),
+            BorderBrush = new SolidColorBrush(theme.CodeBlockBorderColor),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 8, 0, 8),
+        };
+        section.Blocks.Add(paragraph);
+        return section;
     }
 
     private Brush GetTokenBrush(TokenType type) => type switch

@@ -29,6 +29,14 @@ public sealed class EditorTheme
     public Color TableBorderColor { get; init; } = Color.FromRgb(0xdd, 0xdd, 0xdd);
     public Color ThematicBreakColor { get; init; } = Color.FromRgb(0xee, 0xee, 0xee);
 
+    // GitHub-style rendering
+    public Color HeadingBorderColor { get; init; } = Color.FromRgb(0xd8, 0xde, 0xe4);
+    public bool ShowHeadingBorders { get; init; } = false;
+    public Color InlineCodeBackground { get; init; } = Color.FromRgb(0xef, 0xf1, 0xf3);
+    public Color InlineCodeForeground { get; init; } = Color.FromRgb(0x24, 0x24, 0x24);
+    public Color CodeBlockBorderColor { get; init; } = Color.FromRgb(0xd0, 0xd7, 0xde);
+    public Color TableAltRowBackground { get; init; } = Color.FromRgb(0xf6, 0xf8, 0xfa);
+
     // Spacing
     public double ParagraphSpacing { get; init; } = 12;
     public double HeadingMarginTop { get; init; } = 24;
@@ -53,5 +61,71 @@ public sealed class EditorTheme
         TableHeaderBackground = Color.FromRgb(0x2d, 0x2d, 0x2d),
         TableBorderColor = Color.FromRgb(0x55, 0x55, 0x55),
         ThematicBreakColor = Color.FromRgb(0x55, 0x55, 0x55),
+        InlineCodeBackground = Color.FromRgb(0x2d, 0x2d, 0x2d),
+        InlineCodeForeground = Color.FromRgb(0xd4, 0xd4, 0xd4),
+        CodeBlockBorderColor = Color.FromRgb(0x55, 0x55, 0x55),
+        TableAltRowBackground = Color.FromRgb(0x28, 0x28, 0x28),
+    };
+
+    /// <summary>Typora-inspired GitHub Light theme matching github.com markdown rendering.</summary>
+    public static EditorTheme GitHub { get; } = new()
+    {
+        Name = "GitHub",
+        BackgroundColor = Color.FromRgb(0xff, 0xff, 0xff),
+        ForegroundColor = Color.FromRgb(0x24, 0x29, 0x2f),
+        BodyFont = new("Segoe UI"),
+        HeadingFont = new("Segoe UI Semibold"),
+        CodeFont = new("Consolas"),
+        HeadingColor = Color.FromRgb(0x1f, 0x23, 0x28),
+        CodeBackground = Color.FromRgb(0xf6, 0xf8, 0xfa),
+        CodeForeground = Color.FromRgb(0x24, 0x29, 0x2f),
+        BlockquoteBorder = Color.FromRgb(0xd0, 0xd7, 0xde),
+        BlockquoteBackground = Color.FromRgb(0xf6, 0xf8, 0xfa),
+        LinkColor = Color.FromRgb(0x09, 0x69, 0xda),
+        TableHeaderBackground = Color.FromRgb(0xf6, 0xf8, 0xfa),
+        TableBorderColor = Color.FromRgb(0xd0, 0xd7, 0xde),
+        ThematicBreakColor = Color.FromRgb(0xd8, 0xde, 0xe4),
+        HeadingBorderColor = Color.FromRgb(0xd8, 0xde, 0xe4),
+        ShowHeadingBorders = true,
+        InlineCodeBackground = Color.FromRgb(0xef, 0xf1, 0xf3),
+        InlineCodeForeground = Color.FromRgb(0x24, 0x29, 0x2f),
+        CodeBlockBorderColor = Color.FromRgb(0xd0, 0xd7, 0xde),
+        TableAltRowBackground = Color.FromRgb(0xf6, 0xf8, 0xfa),
+        ParagraphSpacing = 16,
+        HeadingMarginTop = 24,
+        HeadingMarginBottom = 12,
+        BlockquotePaddingLeft = 16,
+        BlockquoteBorderWidth = 4,
+    };
+
+    /// <summary>Typora-inspired GitHub Dark theme.</summary>
+    public static EditorTheme GitHubDark { get; } = new()
+    {
+        Name = "GitHub Dark",
+        BackgroundColor = Color.FromRgb(0x0d, 0x11, 0x17),
+        ForegroundColor = Color.FromRgb(0xe6, 0xed, 0xf3),
+        BodyFont = new("Segoe UI"),
+        HeadingFont = new("Segoe UI Semibold"),
+        CodeFont = new("Consolas"),
+        HeadingColor = Color.FromRgb(0xf0, 0xf6, 0xfc),
+        CodeBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        CodeForeground = Color.FromRgb(0xe6, 0xed, 0xf3),
+        BlockquoteBorder = Color.FromRgb(0x3b, 0x43, 0x4b),
+        BlockquoteBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        LinkColor = Color.FromRgb(0x58, 0xa6, 0xff),
+        TableHeaderBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        TableBorderColor = Color.FromRgb(0x30, 0x36, 0x3d),
+        ThematicBreakColor = Color.FromRgb(0x21, 0x26, 0x2d),
+        HeadingBorderColor = Color.FromRgb(0x21, 0x26, 0x2d),
+        ShowHeadingBorders = true,
+        InlineCodeBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        InlineCodeForeground = Color.FromRgb(0xe6, 0xed, 0xf3),
+        CodeBlockBorderColor = Color.FromRgb(0x30, 0x36, 0x3d),
+        TableAltRowBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        ParagraphSpacing = 16,
+        HeadingMarginTop = 24,
+        HeadingMarginBottom = 12,
+        BlockquotePaddingLeft = 16,
+        BlockquoteBorderWidth = 4,
     };
 }

@@ -23,17 +23,31 @@ public sealed class HeadingRenderer(EditorTheme theme) : IBlockRenderer
         };
 
         _inlineRenderer.RenderInlines(paragraph, heading.Inlines);
+
+        // GitHub-style: add bottom border for h1 and h2
+        if (theme.ShowHeadingBorders && heading.Level <= 2)
+        {
+            var section = new Section
+            {
+                BorderBrush = new SolidColorBrush(theme.HeadingBorderColor),
+                BorderThickness = new Thickness(0, 0, 0, heading.Level == 1 ? 1 : 1),
+                Padding = new Thickness(0, 0, 0, 8),
+            };
+            section.Blocks.Add(paragraph);
+            return section;
+        }
+
         return paragraph;
     }
 
     private static double GetFontSize(int level) => level switch
     {
-        1 => 28,
+        1 => 32,
         2 => 24,
         3 => 20,
-        4 => 18,
-        5 => 16,
-        6 => 14,
+        4 => 16,
+        5 => 14,
+        6 => 13,
         _ => 14,
     };
 }

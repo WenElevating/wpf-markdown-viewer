@@ -331,6 +331,7 @@ internal sealed class BlockParser
         var items = new List<ListItem>();
         var startLine = 0;
         var endLine = 0;
+        var baseIndent = -1;
 
         while (reader.HasMore)
         {
@@ -338,8 +339,18 @@ internal sealed class BlockParser
             if (peeked is null) break;
             if (string.IsNullOrWhiteSpace(peeked.Content)) break;
 
-            var stripped = peeked.Content.TrimStart();
+            var content = peeked.Content;
+            var stripped = content.TrimStart();
+            var indent = content.Length - stripped.Length;
+
             if (stripped.Length < 2 || stripped[0] is not ('-' or '*' or '+') || stripped[1] != ' ')
+                break;
+
+            if (baseIndent < 0)
+                baseIndent = indent;
+
+            // Only accept items at the base indent level
+            if (indent != baseIndent)
                 break;
 
             if (startLine == 0) startLine = peeked.LineNumber;
@@ -348,28 +359,76 @@ internal sealed class BlockParser
             reader.ReadLine();
             endLine = peeked.LineNumber;
 
-            // Collect continuation lines
+            // Collect nested content (continuation text + nested lists)
+            var itemBlocks = new List<Block>();
             while (reader.HasMore)
             {
                 var cont = reader.PeekLine();
                 if (cont is null || string.IsNullOrWhiteSpace(cont.Content)) break;
-                var contStripped = cont.Content.TrimStart();
-                if (contStripped.Length > 0 && (contStripped[0] is '-' or '*' or '+') && contStripped.Length > 1 && contStripped[1] == ' ')
+
+                var contContent = cont.Content;
+                var contStripped = contContent.TrimStart();
+                var contIndent = contContent.Length - contStripped.Length;
+
+                // Same or less indent → sibling or end of list
+                if (contIndent <= baseIndent)
                     break;
+
+                // Nested unordered list?
+                if (contStripped.Length >= 2 && contStripped[0] is ('-' or '*' or '+') && contStripped[1] == ' ')
+                {
+                    // Flush paragraph before adding nested list
+                    if (itemText.Length > 0)
+                    {
+                        itemBlocks.Add(new ParagraphBlock
+                        {
+                            Inlines = _inlineParser.ParseInlines(itemText),
+                            LineStart = peeked.LineNumber,
+                            LineEnd = endLine
+                        });
+                        itemText = "";
+                    }
+                    var nestedList = ParseUnorderedList(reader, state);
+                    itemBlocks.Add(nestedList);
+                    endLine = ((ListBlock)nestedList).LineEnd;
+                    continue;
+                }
+
+                // Nested ordered list?
+                if (TryParseOrderedListStart(contStripped, out var nestedNum))
+                {
+                    if (itemText.Length > 0)
+                    {
+                        itemBlocks.Add(new ParagraphBlock
+                        {
+                            Inlines = _inlineParser.ParseInlines(itemText),
+                            LineStart = peeked.LineNumber,
+                            LineEnd = endLine
+                        });
+                        itemText = "";
+                    }
+                    var nestedList = ParseOrderedList(reader, state, nestedNum);
+                    itemBlocks.Add(nestedList);
+                    endLine = ((ListBlock)nestedList).LineEnd;
+                    continue;
+                }
+
+                // Regular continuation text
                 itemText += "\n" + cont.Content.Trim();
                 reader.ReadLine();
                 endLine = cont.LineNumber;
             }
 
-            var itemBlocks = new List<Block>
+            // Flush remaining item text as paragraph
+            if (itemText.Length > 0)
             {
-                new ParagraphBlock
+                itemBlocks.Insert(0, new ParagraphBlock
                 {
                     Inlines = _inlineParser.ParseInlines(itemText),
                     LineStart = peeked.LineNumber,
                     LineEnd = endLine
-                }
-            };
+                });
+            }
 
             items.Add(new ListItem { Blocks = itemBlocks });
         }
@@ -388,6 +447,7 @@ internal sealed class BlockParser
         var items = new List<ListItem>();
         var startLine = 0;
         var endLine = 0;
+        var baseIndent = -1;
 
         while (reader.HasMore)
         {
@@ -395,41 +455,92 @@ internal sealed class BlockParser
             if (peeked is null) break;
             if (string.IsNullOrWhiteSpace(peeked.Content)) break;
 
-            var stripped = peeked.Content.TrimStart();
+            var content = peeked.Content;
+            var stripped = content.TrimStart();
+            var indent = content.Length - stripped.Length;
+
             if (!TryParseOrderedListStart(stripped, out _))
+                break;
+
+            if (baseIndent < 0)
+                baseIndent = indent;
+
+            if (indent != baseIndent)
                 break;
 
             if (startLine == 0) startLine = peeked.LineNumber;
 
-            // Find end of number + delimiter + space
             var afterNum = 0;
             while (afterNum < stripped.Length && char.IsDigit(stripped[afterNum])) afterNum++;
-            if (afterNum < stripped.Length) afterNum++; // skip . or )
+            if (afterNum < stripped.Length) afterNum++;
             var itemText = afterNum < stripped.Length ? stripped[afterNum..].TrimStart() : "";
 
             reader.ReadLine();
             endLine = peeked.LineNumber;
 
-            // Collect continuation lines
+            var itemBlocks = new List<Block>();
             while (reader.HasMore)
             {
                 var cont = reader.PeekLine();
                 if (cont is null || string.IsNullOrWhiteSpace(cont.Content)) break;
-                if (TryParseOrderedListStart(cont.Content.TrimStart(), out _)) break;
+
+                var contContent = cont.Content;
+                var contStripped = contContent.TrimStart();
+                var contIndent = contContent.Length - contStripped.Length;
+
+                if (contIndent <= baseIndent)
+                    break;
+
+                if (contStripped.Length >= 2 && contStripped[0] is ('-' or '*' or '+') && contStripped[1] == ' ')
+                {
+                    if (itemText.Length > 0)
+                    {
+                        itemBlocks.Add(new ParagraphBlock
+                        {
+                            Inlines = _inlineParser.ParseInlines(itemText),
+                            LineStart = peeked.LineNumber,
+                            LineEnd = endLine
+                        });
+                        itemText = "";
+                    }
+                    var nestedList = ParseUnorderedList(reader, state);
+                    itemBlocks.Add(nestedList);
+                    endLine = ((ListBlock)nestedList).LineEnd;
+                    continue;
+                }
+
+                if (TryParseOrderedListStart(contStripped, out var nestedNum))
+                {
+                    if (itemText.Length > 0)
+                    {
+                        itemBlocks.Add(new ParagraphBlock
+                        {
+                            Inlines = _inlineParser.ParseInlines(itemText),
+                            LineStart = peeked.LineNumber,
+                            LineEnd = endLine
+                        });
+                        itemText = "";
+                    }
+                    var nestedList = ParseOrderedList(reader, state, nestedNum);
+                    itemBlocks.Add(nestedList);
+                    endLine = ((ListBlock)nestedList).LineEnd;
+                    continue;
+                }
+
                 itemText += "\n" + cont.Content.Trim();
                 reader.ReadLine();
                 endLine = cont.LineNumber;
             }
 
-            var itemBlocks = new List<Block>
+            if (itemText.Length > 0)
             {
-                new ParagraphBlock
+                itemBlocks.Insert(0, new ParagraphBlock
                 {
                     Inlines = _inlineParser.ParseInlines(itemText),
                     LineStart = peeked.LineNumber,
                     LineEnd = endLine
-                }
-            };
+                });
+            }
 
             items.Add(new ListItem { Blocks = itemBlocks });
         }

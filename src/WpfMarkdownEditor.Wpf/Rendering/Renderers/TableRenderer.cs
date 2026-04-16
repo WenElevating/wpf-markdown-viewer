@@ -16,6 +16,7 @@ public sealed class TableRenderer(EditorTheme theme) : IBlockRenderer
             Margin = new Thickness(0, 8, 0, 8),
             BorderBrush = new SolidColorBrush(theme.TableBorderColor),
             BorderThickness = new Thickness(1),
+            CellSpacing = 0,
         };
 
         var columns = Math.Max(table.Headers.Count,
@@ -34,24 +35,36 @@ public sealed class TableRenderer(EditorTheme theme) : IBlockRenderer
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run(text))
             {
                 FontWeight = FontWeights.Bold,
-                Padding = new Thickness(8, 4, 8, 4),
+                Padding = new Thickness(13, 6, 13, 6),
+                BorderBrush = new SolidColorBrush(theme.TableBorderColor),
+                BorderThickness = new Thickness(0, 0, 1, 1),
             }));
         }
         rg.Rows.Add(headerRow);
 
-        // Data rows
+        // Data rows with alternating backgrounds
+        var rowIndex = 0;
         foreach (var row in table.Rows)
         {
-            var dataRow = new TableRow();
+            var isAltRow = rowIndex % 2 == 1;
+            var dataRow = new TableRow
+            {
+                Background = isAltRow
+                    ? new SolidColorBrush(theme.TableAltRowBackground)
+                    : Brushes.Transparent,
+            };
             for (var i = 0; i < columns; i++)
             {
                 var text = i < row.Count ? row[i] : "";
                 dataRow.Cells.Add(new TableCell(new Paragraph(new Run(text))
                 {
-                    Padding = new Thickness(8, 4, 8, 4),
+                    Padding = new Thickness(13, 6, 13, 6),
+                    BorderBrush = new SolidColorBrush(theme.TableBorderColor),
+                    BorderThickness = new Thickness(0, 0, 1, 0),
                 }));
             }
             rg.Rows.Add(dataRow);
+            rowIndex++;
         }
 
         tableEl.RowGroups.Add(rg);

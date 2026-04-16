@@ -1,6 +1,8 @@
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Core.Parsing;
@@ -111,6 +113,91 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     public void FocusEditor() => EditorTextBox.Focus();
 
+    /// <summary>
+    /// Wrap the selected text with before/after markers, or insert a placeholder.
+    /// </summary>
+    public void WrapSelection(string before, string after)
+    {
+        var textBox = EditorTextBox;
+        var selectedText = textBox.SelectedText;
+
+        if (string.IsNullOrEmpty(selectedText))
+        {
+            var placeholder = "text";
+            textBox.SelectedText = before + placeholder + after;
+            var start = textBox.CaretIndex - before.Length - placeholder.Length - after.Length + before.Length;
+            textBox.Select(start, placeholder.Length);
+        }
+        else
+        {
+            textBox.SelectedText = before + selectedText + after;
+        }
+
+        textBox.Focus();
+    }
+
+    /// <summary>
+    /// Insert text at the cursor position.
+    /// </summary>
+    public void InsertText(string text)
+    {
+        var textBox = EditorTextBox;
+        textBox.SelectedText = text;
+        textBox.CaretIndex += 0; // Keep cursor after insertion
+        textBox.Focus();
+    }
+
+    /// <summary>
+    /// Toggle a line prefix (heading, quote, list marker) on the current line.
+    /// If the line already has the prefix, it is removed. Otherwise it is added
+    /// (replacing any existing heading prefix first).
+    /// </summary>
+    public void ToggleLinePrefix(string prefix)
+    {
+        var textBox = EditorTextBox;
+        var text = textBox.Text;
+        var caretIndex = textBox.CaretIndex;
+
+        var lineStart = text.LastIndexOf('\n', Math.Max(0, caretIndex - 1)) + 1;
+        var lineEnd = text.IndexOf('\n', caretIndex);
+        if (lineEnd < 0) lineEnd = text.Length;
+        var lineText = text.Substring(lineStart, lineEnd - lineStart).TrimEnd('\r');
+
+        // Detect existing heading or block prefix
+        var existingMatch = System.Text.RegularExpressions.Regex.Match(lineText, @"^(#{1,6}|>|-|\d+\.)\s");
+
+        if (existingMatch.Success && existingMatch.Groups[1].Value == prefix.TrimEnd())
+        {
+            // Same prefix — remove it
+            var removeLen = existingMatch.Value.Length;
+            textBox.Select(lineStart, removeLen);
+            textBox.SelectedText = "";
+            textBox.CaretIndex = caretIndex > lineStart + removeLen
+                ? caretIndex - removeLen
+                : lineStart;
+        }
+        else
+        {
+            // Remove existing prefix if present, then insert new one
+            var removeLen = existingMatch.Success ? existingMatch.Value.Length : 0;
+            var replacement = prefix + " ";
+            if (removeLen > 0)
+            {
+                textBox.Select(lineStart, removeLen);
+                textBox.SelectedText = replacement;
+                textBox.CaretIndex = caretIndex - removeLen + replacement.Length;
+            }
+            else
+            {
+                textBox.Select(lineStart, 0);
+                textBox.SelectedText = replacement;
+                textBox.CaretIndex = caretIndex + replacement.Length;
+            }
+        }
+
+        textBox.Focus();
+    }
+
     #endregion
 
     #region Private Implementation
@@ -211,6 +298,116 @@ public partial class MarkdownEditor : UserControl, IDisposable
         var newCts = new CancellationTokenSource();
         return Interlocked.Exchange(ref _cts, newCts);
     }
+
+    #region Smart List Editing
+
+    private static readonly Regex ListMarkerRegex = new(@"^(\s*)([-*+]|\d+\.)\s", RegexOptions.Compiled);
+    private const int IndentSize = 2;
+
+    private void OnEditorPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+            HandleSmartEnter(e);
+        else if (e.Key == Key.Tab)
+            HandleSmartTab(e);
+    }
+
+    private void HandleSmartEnter(KeyEventArgs e)
+    {
+        var textBox = EditorTextBox;
+        var caretIndex = textBox.CaretIndex;
+        var text = textBox.Text;
+
+        var lineStart = text.LastIndexOf('\n', Math.Max(0, caretIndex - 1)) + 1;
+        var lineEnd = text.IndexOf('\n', caretIndex);
+        if (lineEnd < 0) lineEnd = text.Length;
+        var lineText = text.Substring(lineStart, lineEnd - lineStart).TrimEnd('\r');
+
+        var match = ListMarkerRegex.Match(lineText);
+        if (!match.Success)
+            return; // Not a list item — let default Enter handle it
+
+        var indent = match.Groups[1].Value;
+        var marker = match.Groups[2].Value;
+        var markerEnd = match.Index + match.Length;
+
+        // Only auto-continue if cursor is after the marker
+        if (caretIndex < lineStart + markerEnd)
+            return;
+
+        e.Handled = true;
+
+        var contentAfterMarker = lineText.Substring(markerEnd);
+        if (string.IsNullOrWhiteSpace(contentAfterMarker))
+        {
+            // Empty list item — clear marker, insert plain newline
+            textBox.Select(lineStart + indent.Length, lineText.Length - indent.Length);
+            textBox.SelectedText = "";
+            var insertPos = lineStart + indent.Length;
+            textBox.Select(insertPos, 0);
+            textBox.SelectedText = Environment.NewLine;
+            textBox.CaretIndex = insertPos + Environment.NewLine.Length;
+        }
+        else
+        {
+            // Non-empty — insert newline with list marker at cursor
+            var nextMarker = GetNextMarker(marker);
+            var insertion = Environment.NewLine + indent + nextMarker + " ";
+            textBox.Select(caretIndex, 0);
+            textBox.SelectedText = insertion;
+            textBox.CaretIndex = caretIndex + insertion.Length;
+        }
+    }
+
+    private void HandleSmartTab(KeyEventArgs e)
+    {
+        var textBox = EditorTextBox;
+        var text = textBox.Text;
+        var caretIndex = textBox.CaretIndex;
+
+        var lineStart = text.LastIndexOf('\n', Math.Max(0, caretIndex - 1)) + 1;
+        var lineEnd = text.IndexOf('\n', caretIndex);
+        if (lineEnd < 0) lineEnd = text.Length;
+        var lineText = text.Substring(lineStart, lineEnd - lineStart).TrimEnd('\r');
+
+        // Only intercept Tab for list item lines
+        if (!ListMarkerRegex.IsMatch(lineText))
+            return; // Let default Tab behavior (AcceptsTab handles it)
+
+        e.Handled = true;
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            // Outdent: remove up to IndentSize spaces from line start
+            var leadingSpaces = lineText.Length - lineText.TrimStart(' ').Length;
+            var spacesToRemove = Math.Min(IndentSize, leadingSpaces);
+            if (spacesToRemove > 0)
+            {
+                textBox.Select(lineStart, spacesToRemove);
+                textBox.SelectedText = "";
+                textBox.CaretIndex = caretIndex > lineStart + spacesToRemove
+                    ? caretIndex - spacesToRemove
+                    : lineStart;
+            }
+        }
+        else
+        {
+            // Indent: insert spaces at line start
+            var spaces = new string(' ', IndentSize);
+            textBox.Select(lineStart, 0);
+            textBox.SelectedText = spaces;
+            textBox.CaretIndex = caretIndex + IndentSize;
+        }
+    }
+
+    private static string GetNextMarker(string currentMarker)
+    {
+        if (int.TryParse(currentMarker.TrimEnd('.'), out var number))
+            return $"{number + 1}.";
+        return currentMarker; // Unordered: keep same marker (-, *, +)
+    }
+
+    #endregion
 
     public void Dispose()
     {

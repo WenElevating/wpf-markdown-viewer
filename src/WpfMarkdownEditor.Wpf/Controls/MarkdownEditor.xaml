@@ -24,6 +24,7 @@
                  Grid.Column="0"
                  AcceptsReturn="True"
                  AcceptsTab="True"
+                 PreviewKeyDown="OnEditorPreviewKeyDown"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  Text="{Binding Markdown, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
