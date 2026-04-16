@@ -327,9 +327,8 @@ internal sealed class InlineParser
 
         for (var i = 0; i < inlines.Count; i++)
         {
-            if (consumed.Contains(i)) continue;
-
-            // Check if any emphasis result should be inserted here
+            // Insert emphasis results at their opening marker position
+            // (must happen before the consumed check, since the marker is consumed)
             for (var r = 0; r < results.Count; r++)
             {
                 if (!consumedResultIndices.Contains(r) && results[r].position == i)
@@ -338,6 +337,8 @@ internal sealed class InlineParser
                     consumedResultIndices.Add(r);
                 }
             }
+
+            if (consumed.Contains(i)) continue;
 
             output.Add(inlines[i]);
         }
@@ -418,7 +419,6 @@ internal sealed class InlineParser
 
     private static string ExtractUrl(string urlAndTitle)
     {
-        // URL can't contain spaces unless in angle brackets
         if (urlAndTitle.Length == 0) return "";
 
         if (urlAndTitle[0] == '<')
@@ -427,25 +427,58 @@ internal sealed class InlineParser
             if (close >= 0) return urlAndTitle[1..close];
         }
 
-        var spaceIdx = urlAndTitle.IndexOf(' ');
-        return spaceIdx < 0 ? urlAndTitle : urlAndTitle[..spaceIdx];
+        var titleStart = FindQuotedTitleStart(urlAndTitle);
+        return titleStart < 0 ? urlAndTitle : urlAndTitle[..titleStart].TrimEnd();
     }
 
     private static string? ExtractTitle(string urlAndTitle)
     {
-        var spaceIdx = urlAndTitle.IndexOf(' ');
-        if (spaceIdx < 0) return null;
+        if (urlAndTitle.Length == 0) return null;
 
-        var rest = urlAndTitle[(spaceIdx + 1)..].Trim();
-        if (rest.Length < 2) return null;
+        if (urlAndTitle[0] == '<')
+        {
+            var close = urlAndTitle.IndexOf('>');
+            if (close < 0) return null;
 
-        var quoteChar = rest[0];
-        if (quoteChar is not ('"' or '\'')) return null;
+            var rest = urlAndTitle[(close + 1)..].Trim();
+            return TryParseQuotedTitle(rest, out var angleTitle) ? angleTitle : null;
+        }
 
-        var closeIdx = rest.LastIndexOf(quoteChar);
-        if (closeIdx <= 0) return null;
+        var titleStart = FindQuotedTitleStart(urlAndTitle);
+        if (titleStart < 0) return null;
 
-        return rest[1..closeIdx];
+        var titleText = urlAndTitle[titleStart..].Trim();
+        return TryParseQuotedTitle(titleText, out var title) ? title : null;
+    }
+
+    private static int FindQuotedTitleStart(string value)
+    {
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (!char.IsWhiteSpace(value[i])) continue;
+
+            var rest = value[(i + 1)..].TrimStart();
+            if (TryParseQuotedTitle(rest, out _))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static bool TryParseQuotedTitle(string value, out string? title)
+    {
+        title = null;
+        if (value.Length < 2) return false;
+
+        var quoteChar = value[0];
+        if (quoteChar is not ('"' or '\'')) return false;
+
+        var closeIdx = value.LastIndexOf(quoteChar);
+        if (closeIdx <= 0) return false;
+        if (value[(closeIdx + 1)..].Trim().Length > 0) return false;
+
+        title = value[1..closeIdx];
+        return true;
     }
 
     #endregion

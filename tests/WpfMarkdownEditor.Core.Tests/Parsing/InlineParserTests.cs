@@ -163,6 +163,24 @@ public class InlineParserTests
     }
 
     [Fact]
+    public void ParseInlines_Image_LocalPathWithSpaces_KeepsFullUrl()
+    {
+        var result = _parser.ParseInlines(@"![pasted](C:\Users\Test Folder\pasted image.png)");
+        var img = Assert.IsType<ImageInline>(Assert.Single(result));
+        Assert.Equal(@"C:\Users\Test Folder\pasted image.png", img.Url);
+        Assert.Null(img.Title);
+    }
+
+    [Fact]
+    public void ParseInlines_Image_LocalPathWithSpacesAndTitle_SplitsQuotedTitle()
+    {
+        var result = _parser.ParseInlines(@"![pasted](C:\Users\Test Folder\pasted image.png ""Preview"")");
+        var img = Assert.IsType<ImageInline>(Assert.Single(result));
+        Assert.Equal(@"C:\Users\Test Folder\pasted image.png", img.Url);
+        Assert.Equal("Preview", img.Title);
+    }
+
+    [Fact]
     public void ParseInlines_Image_NoCloseBracket_PlainText()
     {
         var result = _parser.ParseInlines("![no close");

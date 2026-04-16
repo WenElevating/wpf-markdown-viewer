@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Wpf.Rendering;
@@ -91,12 +92,21 @@ public partial class MarkdownEditor : UserControl, IDisposable
     public MarkdownEditor()
     {
         InitializeComponent();
-        _imageLoader = new ImageLoader();
+        _imageLoader = new ImageLoader(AppContext.BaseDirectory);
         _debounceTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(100),
         };
         _debounceTimer.Tick += OnDebounceTick;
+
+        // Bind standard editing commands to the TextBox
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo));
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo));
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Cut));
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy));
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste, OnPasteExecuted));
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll));
+
         UpdateRenderer();
     }
 
@@ -106,7 +116,8 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     public async Task SaveFileAsync(string path)
     {
-        await Task.Run(() => File.WriteAllText(path, Markdown));
+        var content = Markdown;
+        await Task.Run(() => File.WriteAllText(path, content));
     }
 
     public void ApplyTheme(EditorTheme theme) => Theme = theme;
@@ -253,6 +264,20 @@ public partial class MarkdownEditor : UserControl, IDisposable
             isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
         editor.ZoomText.Foreground = new SolidColorBrush(
             isDark ? Color.FromRgb(0x8b, 0x94, 0x9e) : Color.FromRgb(0x65, 0x6d, 0x76));
+
+        // Context menu theme
+        editor.Resources["MenuBackground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x2d, 0x2d, 0x2d) : Color.FromRgb(0xff, 0xff, 0xff));
+        editor.Resources["MenuBorder"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x3d, 0x3d, 0x3d) : Color.FromRgb(0xe5, 0xe5, 0xe5));
+        editor.Resources["MenuForeground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0xff, 0xff, 0xff) : Color.FromRgb(0x1a, 0x1a, 0x1a));
+        editor.Resources["MenuHoverBackground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x38, 0x38, 0x38) : Color.FromRgb(0xf5, 0xf5, 0xf5));
+        editor.Resources["MenuSeparator"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x3d, 0x3d, 0x3d) : Color.FromRgb(0xe5, 0xe5, 0xe5));
+        editor.Resources["MenuDisabledForeground"] = new SolidColorBrush(
+            isDark ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0xb0, 0xb0, 0xb0));
     }
 
     private void UpdateRenderer()
@@ -314,6 +339,109 @@ public partial class MarkdownEditor : UserControl, IDisposable
         var newCts = new CancellationTokenSource();
         return Interlocked.Exchange(ref _cts, newCts);
     }
+
+    #region Paste Image Path
+
+    private void OnPasteExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        var textBox = EditorTextBox;
+
+        // Priority 1: Clipboard image (screenshot, copied image)
+        if (Clipboard.ContainsImage())
+        {
+            var imageSource = Clipboard.GetImage();
+            if (imageSource != null)
+            {
+                var imagePath = SaveClipboardImage(imageSource);
+                if (imagePath != null)
+                {
+                    textBox.SelectedText = CreateImageMarkdown(imagePath);
+                    textBox.CaretIndex += 0;
+                    textBox.Focus();
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
+        // Priority 2: File drop list (copied image file from Explorer)
+        if (Clipboard.ContainsFileDropList())
+        {
+            var files = Clipboard.GetFileDropList();
+            foreach (string? file in files)
+            {
+                if (file == null) continue;
+                var ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
+                if (ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".webp" or ".svg")
+                {
+                    textBox.SelectedText = CreateImageMarkdown(file);
+                    textBox.CaretIndex += 0;
+                    textBox.Focus();
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
+        // Priority 3: Standard text paste
+        if (Clipboard.ContainsText())
+        {
+            textBox.SelectedText = Clipboard.GetText();
+            textBox.CaretIndex += 0;
+            textBox.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private static string CreateImageMarkdown(string imagePath)
+    {
+        var fileName = System.IO.Path.GetFileName(imagePath);
+        var altText = EscapeImageAltText(fileName);
+        var destination = FormatMarkdownImageDestination(imagePath);
+        return $"![{altText}]({destination})";
+    }
+
+    private static string EscapeImageAltText(string value) =>
+        value.Replace("\\", "\\\\")
+            .Replace("[", "\\[")
+            .Replace("]", "\\]");
+
+    private static string FormatMarkdownImageDestination(string imagePath)
+    {
+        var normalized = imagePath.Replace('\\', '/')
+            .Replace("<", "%3C")
+            .Replace(">", "%3E");
+
+        return normalized.Any(c => char.IsWhiteSpace(c) || c is '(' or ')')
+            ? $"<{normalized}>"
+            : normalized;
+    }
+
+    private static string? SaveClipboardImage(BitmapSource image)
+    {
+        try
+        {
+            var imagesDir = System.IO.Path.Combine(AppContext.BaseDirectory, "images");
+            Directory.CreateDirectory(imagesDir);
+
+            var fileName = $"clipboard_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+            var filePath = System.IO.Path.Combine(imagesDir, fileName);
+
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+
+            using var stream = System.IO.File.Create(filePath);
+            encoder.Save(stream);
+
+            return $"images/{fileName}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    #endregion
 
     #region Zoom Controls
 
