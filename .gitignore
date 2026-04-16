@@ -46,3 +46,9 @@ state/
 
 # Gemini
 GEMINI.md
+
+# Local agent/runtime artifacts
+.firecrawl/
+.omx/
+.worktrees/
+AGENTS.md

@@ -11,7 +11,7 @@
 - **智能编辑** — 列表自动续行、前缀切换、选区包裹
 - **格式化工具栏** — 标题、加粗、斜体、代码、链接、表格等
 - **侧边栏** — 文件历史记录 & 文档大纲（TOC），支持动画切换
-- **语法高亮** — 代码块支持 C#、JavaScript、Python
+- **语法高亮** — 代码块支持 C#、JavaScript/TypeScript、Python、JSON/JSONC、SQL、Bash
 - **零外部依赖** — 纯 WPF 实现，无需任何 NuGet 包
 
 ## 截图
@@ -138,6 +138,17 @@ Editor.ApplyTheme(custom);
 - **有序列表递增** — `1.` → `2.` → `3.` 自动编号
 - **Tab / Shift+Tab** — 列表项缩进/反缩进
 - **空列表清理** — 在空列表项上按 Enter 删除标记
+
+## 语法高亮支持
+
+当前内置语言覆盖：
+
+- **C#**：`csharp`、`cs`、`c#`
+- **JavaScript / TypeScript**：`javascript`、`js`、`node`、`typescript`、`ts`、`jsx`、`tsx`
+- **Python**：`python`、`py`、`py3`
+- **JSON**：`json`、`jsonc`
+- **SQL**：`sql`、`postgres`、`postgresql`、`mysql`、`sqlite`
+- **Shell**：`bash`、`sh`、`shell`、`zsh`
 
 ## 格式化工具栏
 

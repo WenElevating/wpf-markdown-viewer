@@ -11,7 +11,7 @@ A modern, zero-dependency Markdown editor control for WPF with real-time preview
 - **Smart Editing** — Auto-continuation for lists, prefix toggling, selection wrapping
 - **Formatting Toolbar** — Headings, bold, italic, code, links, tables, and more
 - **Sidebar** — File history & document outline (TOC) with animated toggle
-- **Syntax Highlighting** — Code blocks with C#, JavaScript, Python support
+- **Syntax Highlighting** — Code blocks with C#, JavaScript/TypeScript, Python, JSON/JSONC, SQL, Bash support
 - **Zero Dependencies** — Pure WPF, no NuGet packages required
 
 ## Screenshots
@@ -138,6 +138,17 @@ The editor provides intelligent Markdown editing:
 - **Numbered list increment** — `1.` → `2.` → `3.` automatically
 - **Tab/Shift+Tab** — Indent/outdent list items
 - **Empty list cleanup** — Press Enter on an empty item to remove the marker
+
+## Syntax Highlighting Support
+
+Current built-in language coverage:
+
+- **C#**: `csharp`, `cs`, `c#`
+- **JavaScript / TypeScript**: `javascript`, `js`, `node`, `typescript`, `ts`, `jsx`, `tsx`
+- **Python**: `python`, `py`, `py3`
+- **JSON**: `json`, `jsonc`
+- **SQL**: `sql`, `postgres`, `postgresql`, `mysql`, `sqlite`
+- **Shell**: `bash`, `sh`, `shell`, `zsh`
 
 ## Formatting Toolbar
 

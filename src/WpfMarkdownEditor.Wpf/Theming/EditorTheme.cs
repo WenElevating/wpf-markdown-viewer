@@ -15,9 +15,9 @@ public sealed class EditorTheme
     public Color ForegroundColor { get; init; } = Colors.Black;
 
     // Editor-specific styling (thinner, softer for readability)
-    public Color EditorForegroundColor { get; init; } = Color.FromRgb(0x24, 0x29, 0x2f);
-    public Color EditorCaretColor { get; init; } = Color.FromRgb(0x24, 0x29, 0x2f);
-    public FontWeight EditorFontWeight { get; init; } = FontWeights.Light;
+    public Color EditorForegroundColor { get; init; } = Color.FromRgb(0x1f, 0x23, 0x28);
+    public Color EditorCaretColor { get; init; } = Color.FromRgb(0x1f, 0x23, 0x28);
+    public FontWeight EditorFontWeight { get; init; } = FontWeights.Normal;
 
     // Typography
     public FontFamily BodyFont { get; init; } = new("Segoe UI");
@@ -42,6 +42,11 @@ public sealed class EditorTheme
     public Color InlineCodeForeground { get; init; } = Color.FromRgb(0x24, 0x24, 0x24);
     public Color CodeBlockBorderColor { get; init; } = Color.FromRgb(0xd0, 0xd7, 0xde);
     public Color TableAltRowBackground { get; init; } = Color.FromRgb(0xf6, 0xf8, 0xfa);
+    public Color SyntaxKeywordColor { get; init; } = Color.FromRgb(0x56, 0x9c, 0xd6);
+    public Color SyntaxCommentColor { get; init; } = Color.FromRgb(0x6a, 0x99, 0x55);
+    public Color SyntaxStringColor { get; init; } = Color.FromRgb(0xce, 0x91, 0x78);
+    public Color SyntaxNumberColor { get; init; } = Color.FromRgb(0xb5, 0xce, 0xa8);
+    public Color SyntaxTypeColor { get; init; } = Color.FromRgb(0x4e, 0xc9, 0xb0);
 
     // Spacing
     public double ParagraphSpacing { get; init; } = 12;
@@ -72,6 +77,11 @@ public sealed class EditorTheme
         InlineCodeForeground = Color.FromRgb(0xd4, 0xd4, 0xd4),
         CodeBlockBorderColor = Color.FromRgb(0x55, 0x55, 0x55),
         TableAltRowBackground = Color.FromRgb(0x28, 0x28, 0x28),
+        SyntaxKeywordColor = Color.FromRgb(0x56, 0x9c, 0xd6),
+        SyntaxCommentColor = Color.FromRgb(0x6a, 0x99, 0x55),
+        SyntaxStringColor = Color.FromRgb(0xce, 0x91, 0x78),
+        SyntaxNumberColor = Color.FromRgb(0xb5, 0xce, 0xa8),
+        SyntaxTypeColor = Color.FromRgb(0x4e, 0xc9, 0xb0),
     };
 
     /// <summary>Typora-inspired GitHub Light theme matching github.com markdown rendering.</summary>
@@ -99,6 +109,11 @@ public sealed class EditorTheme
         InlineCodeForeground = Color.FromRgb(0x24, 0x29, 0x2f),
         CodeBlockBorderColor = Color.FromRgb(0xd0, 0xd7, 0xde),
         TableAltRowBackground = Color.FromRgb(0xf6, 0xf8, 0xfa),
+        SyntaxKeywordColor = Color.FromRgb(0xcf, 0x22, 0x5e),
+        SyntaxCommentColor = Color.FromRgb(0x6e, 0x77, 0x81),
+        SyntaxStringColor = Color.FromRgb(0x0a, 0x30, 0x61),
+        SyntaxNumberColor = Color.FromRgb(0x05, 0x5f, 0xa2),
+        SyntaxTypeColor = Color.FromRgb(0x95, 0x38, 0x00),
         ParagraphSpacing = 16,
         HeadingMarginTop = 24,
         HeadingMarginBottom = 12,
@@ -132,6 +147,11 @@ public sealed class EditorTheme
         InlineCodeForeground = Color.FromRgb(0xe6, 0xed, 0xf3),
         CodeBlockBorderColor = Color.FromRgb(0x30, 0x36, 0x3d),
         TableAltRowBackground = Color.FromRgb(0x16, 0x1b, 0x22),
+        SyntaxKeywordColor = Color.FromRgb(0xff, 0x7b, 0x72),
+        SyntaxCommentColor = Color.FromRgb(0x8b, 0x94, 0x9e),
+        SyntaxStringColor = Color.FromRgb(0xa5, 0xd6, 0xff),
+        SyntaxNumberColor = Color.FromRgb(0x79, 0xc0, 0xff),
+        SyntaxTypeColor = Color.FromRgb(0x7e, 0xd3, 0x87),
         ParagraphSpacing = 16,
         HeadingMarginTop = 24,
         HeadingMarginBottom = 12,
@@ -165,6 +185,11 @@ public sealed class EditorTheme
         InlineCodeForeground = Color.FromRgb(0x2d, 0x2d, 0x2d),
         CodeBlockBorderColor = Color.FromRgb(0xe0, 0xd9, 0xd0),
         TableAltRowBackground = Color.FromRgb(0xf5, 0xf0, 0xeb),
+        SyntaxKeywordColor = Color.FromRgb(0xb3, 0x4d, 0x2d),
+        SyntaxCommentColor = Color.FromRgb(0x8a, 0x7f, 0x75),
+        SyntaxStringColor = Color.FromRgb(0x3f, 0x6b, 0x3f),
+        SyntaxNumberColor = Color.FromRgb(0x0f, 0x76, 0x6e),
+        SyntaxTypeColor = Color.FromRgb(0x6b, 0x46, 0xc1),
         ParagraphSpacing = 16,
         HeadingMarginTop = 24,
         HeadingMarginBottom = 12,
@@ -198,6 +223,11 @@ public sealed class EditorTheme
         InlineCodeForeground = Color.FromRgb(0xe8, 0xe2, 0xd9),
         CodeBlockBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
         TableAltRowBackground = Color.FromRgb(0x24, 0x22, 0x20),
+        SyntaxKeywordColor = Color.FromRgb(0xf0, 0x95, 0x6b),
+        SyntaxCommentColor = Color.FromRgb(0x8e, 0x84, 0x7c),
+        SyntaxStringColor = Color.FromRgb(0xa3, 0xd9, 0xa5),
+        SyntaxNumberColor = Color.FromRgb(0x7d, 0xdc, 0xd0),
+        SyntaxTypeColor = Color.FromRgb(0xd4, 0xb4, 0xff),
         ParagraphSpacing = 16,
         HeadingMarginTop = 24,
         HeadingMarginBottom = 12,
