@@ -16,7 +16,14 @@
 
 ## 截图
 
-> 敬请期待
+### GitHub Light
+![GitHub Light 主题](sources/github_light_theme.png)
+
+### GitHub Dark
+![GitHub Dark 主题](sources/github_dark_theme.png)
+
+### Claude
+![Claude Light 主题](sources/claude_light_theme.png)
 
 ## 快速开始
 

@@ -16,7 +16,14 @@ A modern, zero-dependency Markdown editor control for WPF with real-time preview
 
 ## Screenshots
 
-> Coming soon
+### GitHub Light
+![GitHub Light Theme](sources/github_light_theme.png)
+
+### GitHub Dark
+![GitHub Dark Theme](sources/github_dark_theme.png)
+
+### Claude
+![Claude Light Theme](sources/claude_light_theme.png)
 
 ## Getting Started
 
