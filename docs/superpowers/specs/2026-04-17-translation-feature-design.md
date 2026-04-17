@@ -6,25 +6,27 @@ Add a multi-engine translation feature to the WPF Markdown Editor that translate
 
 ## Requirements
 
-- **Language pairs**: Chinese <-> English, Chinese <-> Japanese, Chinese <-> Korean (source auto-detected)
+- **Target languages**: English, Chinese, Japanese, Korean (fixed app-level list; source auto-detected)
 - **Translation scope**: Entire document
 - **Translation engines**: Multi-provider pluggable architecture
 - **Initial providers**: Baidu Translate, OpenAI-compatible (covers Tongyi Qwen, Zhipu GLM, DeepSeek, OpenAI, etc.)
 - **API Key management**: User-provided keys, stored encrypted via Windows DPAPI
-- **UI entry**: Toolbar dropdown button
+- **UI entry**: Toolbar dropdown button in `MainWindow.xaml` (sample app)
 - **First-run experience**: Forced engine selection + configuration, then translate immediately
-- **Undo**: Leverage WPF TextBox native Undo (Ctrl+Z restores original text)
+- **Undo**: Ctrl+Z restores original text via BeginChange/EndChange grouping
 
 ## Architecture
 
-### Core Interface
+### Core Interface (in Core project)
+
+The Core project defines only the abstraction — no network or HTTP concerns.
 
 ```csharp
+// src/WpfMarkdownEditor.Core/Translation/ITranslationProvider.cs
 public interface ITranslationProvider
 {
     string Name { get; }
     bool IsConfigured { get; }
-    IReadOnlyList<string> SupportedTargetLanguages { get; }
 
     Task<TranslationResult> TranslateAsync(
         string text,
@@ -32,25 +34,28 @@ public interface ITranslationProvider
         CancellationToken cancellationToken);
 }
 
+// src/WpfMarkdownEditor.Core/Translation/TranslationResult.cs
 public record TranslationResult(
     string TranslatedText,
-    string DetectedSourceLanguage,
-    int CharactersProcessed);
+    string DetectedSourceLanguage);
 ```
 
-### Service Layer
+Note: Target languages are a fixed app-level constant, not provider-specific. This avoids UI complexity when switching engines.
 
-```
-TranslationService
-├── Manages current provider selection
-├── Calls provider translation
-├── Reports progress (status bar)
-└── Handles errors + retry (max 3 retries)
+### Service & Provider Layer (in Wpf project)
 
-TranslationSettingsService
-├── Persists API keys encrypted (DPAPI)
-├── Stores current provider selection
-└── Validates configuration
+All HTTP/network logic lives in the Wpf project, following the same pattern as `IImageResolver` (Core) / `ImageLoader` (Wpf).
+
+```csharp
+// src/WpfMarkdownEditor.Wpf/Translation/TranslationService.cs
+// Orchestrates provider selection, retry, and returns result to caller.
+// Does NOT hold a reference to TextBox or any UI control.
+// Caller (MainWindow) receives TranslationResult and updates UI.
+public class TranslationService
+{
+    ITranslationProvider CurrentProvider { get; }
+    Task<TranslationResult> TranslateAsync(string text, string targetLanguage, CancellationToken ct);
+}
 ```
 
 ### File Layout
@@ -58,18 +63,24 @@ TranslationSettingsService
 ```
 src/WpfMarkdownEditor.Core/
 ├── Translation/
-│   ├── ITranslationProvider.cs
-│   ├── TranslationResult.cs
-│   ├── TranslationService.cs
+│   ├── ITranslationProvider.cs      # Interface only
+│   └── TranslationResult.cs         # Result record
+
+src/WpfMarkdownEditor.Wpf/
+├── Translation/
+│   ├── TranslationService.cs         # Orchestration (retry, provider selection)
 │   └── Providers/
 │       ├── BaiduTranslateProvider.cs
 │       └── OpenAICompatibleProvider.cs
-
-src/WpfMarkdownEditor.Wpf/
 ├── Services/
-│   └── TranslationSettingsService.cs
-├── Controls/
-│   └── TranslationConfigDialog.xaml (.cs)
+│   └── TranslationSettingsService.cs # DPAPI-encrypted config persistence
+├── Dialogs/
+│   ├── TranslationConfigDialog.xaml  # Modal Window for engine config
+│   └── TranslationConfigDialog.xaml.cs
+
+samples/WpfMarkdownEditor.Sample/
+├── MainWindow.xaml                   # Translation dropdown added to toolbar here
+└── MainWindow.xaml.cs                # Click handlers + translation coordination
 ```
 
 ## Provider Implementations
@@ -81,7 +92,10 @@ src/WpfMarkdownEditor.Wpf/
 - **Auth**: MD5 signature (`appid + query + salt + secretKey`)
 - **Rate limit**: 1 QPS (standard), 10 QPS (advanced)
 - **Max per request**: 6000 characters; longer documents split into segments
-- **Markdown handling**: Split by paragraphs, translate each, preserve markdown syntax markers (#, *, -, >), reassemble
+
+**Markdown handling strategy**: Send each paragraph as raw text (including markdown markers like #, *, -, >) directly to Baidu. The API will translate the natural language portions while generally preserving structural markers. Known limitation: inline markdown (bold, links, images) may not be perfectly preserved. For best markdown fidelity, users should prefer the OpenAI-compatible provider.
+
+**Segmentation for long documents**: Split at paragraph boundaries (double newlines). Send each segment sequentially with a 1.1-second delay between requests to respect the 1 QPS rate limit. Report progress per segment (e.g., "Translating... 3/10 segments").
 
 ### OpenAICompatibleProvider
 
@@ -110,7 +124,7 @@ No external NuGet packages required. Both providers use `HttpClient` for REST AP
 
 ### Toolbar Dropdown Button
 
-Positioned before the Theme Picker in the toolbar:
+Added to the toolbar in `samples/WpfMarkdownEditor.Sample/MainWindow.xaml`, positioned before the Theme Picker:
 
 ```
 [...formatting buttons] | [Translate v] | [Theme v]
@@ -144,7 +158,9 @@ Positioned before the Theme Picker in the toolbar:
    │  [Next]  [Cancel]                   │
    └─────────────────────────────────────┘
    ```
-3. User selects engine -> show config for that engine only:
+3. User selects engine -> show config for that engine only.
+
+   **Baidu Translate config:**
    ```
    ┌─ Configure Baidu Translate ─────────┐
    │                                     │
@@ -154,6 +170,26 @@ Positioned before the Theme Picker in the toolbar:
    │  [Save & Translate]  [Cancel]       │
    └─────────────────────────────────────┘
    ```
+
+   **OpenAI Compatible config:**
+   ```
+   ┌─ Configure OpenAI Compatible ───────┐
+   │                                     │
+   │  Service: [Tongyi Qwen  v]         │
+   │           (Tongyi Qwen / Zhipu GLM │
+   │            / DeepSeek / OpenAI /    │
+   │            Custom)                  │
+   │                                     │
+   │  API Address: [auto-filled by above]│
+   │  API Key:     [________________]    │
+   │  Model:       [auto-filled, editable]│
+   │                                     │
+   │  [Save & Translate]  [Cancel]       │
+   └─────────────────────────────────────┘
+   ```
+   Selecting a pre-configured service auto-fills API Address and Model.
+   Selecting "Custom" enables manual entry for all fields.
+
 4. Save configuration -> immediately start translation
 
 ### Subsequent Use Flow
@@ -170,6 +206,10 @@ Positioned before the Theme Picker in the toolbar:
 
 ## Translation Flow
 
+### Coordination (MainWindow.xaml.cs)
+
+`MainWindow.xaml.cs` orchestrates the flow. `TranslationService` is a pure service with no UI references. The flow:
+
 ```
 User clicks "-> Language"
     │
@@ -178,25 +218,51 @@ User clicks "-> Language"
     │<───────────────────────────────────────────────────────┘
     │ Yes
     ▼
-Show "Translating..." in status bar
-Toolbar button changes to "Cancel Translation"
+Update UI: status bar "Translating...", translate button becomes "Cancel"
+Store CancellationTokenSource for cancellation support
     │
     ▼
-Call ITranslationProvider.TranslateAsync(text, targetLanguage, cancellationToken)
+var result = await TranslationService.TranslateAsync(
+    editor.Markdown, targetLanguage, cancellationToken);
     │                                   │
     │ Success                           │ Failure
     ▼                                   ▼
-Replace editor text              Show error in status bar
-Show completion in status bar    Original text unchanged
-(includes detected source lang)
+Dispatcher.Invoke(() => {           Show error in status bar
+  textBox.BeginChange();            Original text unchanged
+  textBox.SelectAll();
+  textBox.SelectedText = result.TranslatedText;
+  textBox.EndChange();
+});
+Status bar: "Translated (detected: Chinese) -> English"
     │
     ▼
-User can Ctrl+Z to undo
+User can Ctrl+Z to undo (single undo unit via BeginChange/EndChange)
 ```
+
+### Cancel Button Behavior
+
+The translate toolbar button toggles between two states:
+- **Idle**: Shows "Translate v" dropdown with language options
+- **Translating**: Shows a "Cancel Translation" button (no dropdown). Clicking it calls `CancellationTokenSource.Cancel()`. When translation completes or is cancelled, the button reverts to the idle dropdown state.
+
+The `CancellationTokenSource` is held by `MainWindow` and disposed after each translation operation completes.
 
 ### Undo Support
 
-WPF TextBox has built-in undo. Before translation, `TextBox.Text` is in the undo stack. After replacing text via `SelectAll()` + `SelectedText`, the replacement becomes a single undo unit. User presses Ctrl+Z to restore original text.
+Use `TextBox.BeginChange()` / `EndChange()` to group the text replacement into a single undo unit:
+
+```csharp
+textBox.BeginChange();
+textBox.SelectAll();
+textBox.SelectedText = result.TranslatedText;
+textBox.EndChange();
+```
+
+This guarantees Ctrl+Z restores the entire original text in one step. No need to set `UndoLimit` as the pre-translation state is always the most recent undo entry.
+
+### Thread Marshaling
+
+All UI updates after the async translation completes are marshaled to the UI thread via `Dispatcher.Invoke()`. This follows the same pattern as `RenderPreview` in the existing codebase which uses `DispatcherTimer`.
 
 ## Error Handling
 
@@ -205,13 +271,13 @@ WPF TextBox has built-in undo. Before translation, `TextBox.Text` is in the undo
 | Network unreachable | Status bar: "Cannot connect to translation service" |
 | Invalid API Key | Status bar: "Invalid API Key, please check settings" |
 | Insufficient balance | Status bar: "Translation service balance insufficient" |
-| Rate limit exceeded | Auto-retry with backoff (max 3 retries) |
-| Document too long | Baidu: auto-segment; OpenAI: send full document |
-| User cancels | CancellationToken cancels, original text unchanged |
+| Rate limit exceeded | Auto-retry with backoff (max 3 retries, 2s/4s/8s) |
+| Document too long | Baidu: auto-segment with 1.1s inter-segment delay; OpenAI: send full document |
+| User cancels | CancellationTokenSource.Cancel(), original text unchanged |
 
 ## API Key Security
 
-- Stored in `%APPDATA%/WpfMarkdownEditor/translation.json`
+- Stored at `{AppContext.BaseDirectory}/translation.json` (consistent with existing file storage conventions)
 - Encrypted using Windows DPAPI (`System.Security.Cryptography.ProtectedData`)
 - Scope: `DataProtectionScope.CurrentUser` (only decryptable by same Windows user)
 - File format: JSON with encrypted values per provider
@@ -240,8 +306,9 @@ WPF TextBox has built-in undo. Before translation, `TextBox.Text` is in the undo
 - [ ] Baidu Translate: config save + translation execution
 - [ ] OpenAI Compatible: config save + translation execution
 - [ ] Engine switching: unconfigured engine triggers config dialog
-- [ ] After translation: Ctrl+Z restores original text
+- [ ] After translation: Ctrl+Z restores original text in one step
 - [ ] Network error: error message shown, text unchanged
 - [ ] Invalid API Key: error message shown
 - [ ] Cancel translation during progress
 - [ ] Toolbar UI works with all theme switches
+- [ ] Baidu Translate: long document segments correctly with progress
