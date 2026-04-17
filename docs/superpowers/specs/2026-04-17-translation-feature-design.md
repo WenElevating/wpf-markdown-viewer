@@ -22,6 +22,15 @@ Add a multi-engine translation feature to the WPF Markdown Editor that translate
 The Core project defines only the abstraction — no network or HTTP concerns.
 
 ```csharp
+// src/WpfMarkdownEditor.Core/Translation/TranslationLanguage.cs
+public enum TranslationLanguage
+{
+    English,
+    Chinese,
+    Japanese,
+    Korean
+}
+
 // src/WpfMarkdownEditor.Core/Translation/ITranslationProvider.cs
 public interface ITranslationProvider
 {
@@ -30,17 +39,17 @@ public interface ITranslationProvider
 
     Task<TranslationResult> TranslateAsync(
         string text,
-        string targetLanguage,
+        TranslationLanguage targetLanguage,
         CancellationToken cancellationToken);
 }
 
 // src/WpfMarkdownEditor.Core/Translation/TranslationResult.cs
 public record TranslationResult(
     string TranslatedText,
-    string DetectedSourceLanguage);
+    TranslationLanguage DetectedSourceLanguage);
 ```
 
-Note: Target languages are a fixed app-level constant, not provider-specific. This avoids UI complexity when switching engines.
+Note: Target languages are a fixed app-level enum, not provider-specific. This avoids UI complexity when switching engines and provides compile-time type safety.
 
 ### Service & Provider Layer (in Wpf project)
 
@@ -54,7 +63,7 @@ All HTTP/network logic lives in the Wpf project, following the same pattern as `
 public class TranslationService
 {
     ITranslationProvider CurrentProvider { get; }
-    Task<TranslationResult> TranslateAsync(string text, string targetLanguage, CancellationToken ct);
+    Task<TranslationResult> TranslateAsync(string text, TranslationLanguage targetLanguage, CancellationToken ct);
 }
 ```
 
@@ -63,6 +72,7 @@ public class TranslationService
 ```
 src/WpfMarkdownEditor.Core/
 ├── Translation/
+│   ├── TranslationLanguage.cs        # Language enum
 │   ├── ITranslationProvider.cs      # Interface only
 │   └── TranslationResult.cs         # Result record
 
@@ -102,7 +112,7 @@ samples/WpfMarkdownEditor.Sample/
 - **API**: OpenAI Chat Completions compatible format
 - **Auth**: Bearer token (API Key)
 - **Source language**: Auto-detected by the model
-- **Prompt**: "Translate the following text to {targetLanguage}. Preserve all Markdown formatting exactly as-is."
+- **Prompt**: "Translate the following text to {targetLanguage.DisplayName()}. Preserve all Markdown formatting exactly as-is." (enum converted to display name via helper method)
 - **Pre-configured endpoints**:
 
 | Service | Endpoint |
@@ -233,7 +243,7 @@ Dispatcher.Invoke(() => {           Show error in status bar
   textBox.SelectedText = result.TranslatedText;
   textBox.EndChange();
 });
-Status bar: "Translated (detected: Chinese) -> English"
+Status bar: "Translated (detected: {result.DetectedSourceLanguage}) -> {targetLanguage}"
     │
     ▼
 User can Ctrl+Z to undo (single undo unit via BeginChange/EndChange)
