@@ -7,6 +7,7 @@
 ## 功能特性
 
 - **实时预览** — 左右分栏编辑，防抖渲染（~100ms）
+- **多引擎翻译** — 通过百度或 OpenAI 兼容 API（通义千问、DeepSeek 等）翻译文档，仅预览模式保留原文
 - **6 套内置主题** — GitHub、GitHub Dark、Claude、Claude Dark、Light、Dark
 - **智能编辑** — 列表自动续行、前缀切换、选区包裹
 - **格式化工具栏** — 标题、加粗、斜体、代码、链接、表格等
@@ -98,12 +99,69 @@ Editor.MarkdownChanged += (s, e) =>
 | `WrapSelection(string before, string after)` | 用标记包裹选中文本 |
 | `InsertText(string text)` | 在光标处插入文本 |
 | `ToggleLinePrefix(string prefix)` | 切换标题/引用/列表前缀 |
+| `RenderTranslatedPreview(string md)` | 在预览面板显示翻译后的 Markdown |
+| `ClearTranslatedPreview()` | 恢复预览为编辑器内容 |
 
 ### 事件
 
 | 事件 | 说明 |
 |------|------|
 | `MarkdownChanged` | Markdown 内容变化时触发 |
+
+## 翻译
+
+翻译 Markdown 文档，同时保留所有格式（标题、列表、表格、代码块、内联标记）。翻译结果仅在**预览面板**中显示，编辑器内容保持不变。
+
+### 支持的翻译服务
+
+| 服务 | 说明 |
+|------|------|
+| **百度翻译** | 百度翻译 API |
+| **OpenAI 兼容** | 通义千问、DeepSeek、智谱、OpenAI 等兼容 Chat Completions API |
+
+### 支持的语言
+
+英语、中文（中文）、日语（日本語）、韩语（한국어）
+
+### 工作原理
+
+1. **模板提取** — 解析 Markdown，提取可翻译文本，用 ASCII 令牌替换内联标记
+2. **翻译** — 将纯文本发送到翻译 API
+3. **重建** — 用翻译文本恢复 Markdown 格式
+4. **预览** — 在预览面板渲染翻译内容，编辑器内容不变
+
+```csharp
+// 翻译并在预览中显示
+var service = new TranslationService(provider);
+var result = await service.TranslateMarkdownAsync(
+    Editor.Markdown, TranslationLanguage.Chinese, progress, ct);
+Editor.RenderTranslatedPreview(result.TranslatedText);
+
+// 清除翻译，恢复原文
+Editor.ClearTranslatedPreview();
+```
+
+## 转换器
+
+`WpfMarkdownEditor.Converters` 实现了 [markitdown-csharp](https://github.com/WenElevating/markitdown-csharp) 的 `IConverter` 接口，将 Markdown 转换为 WPF FlowDocument。
+
+```csharp
+using MarkItDown.Core;
+using WpfMarkdownEditor.Converters;
+using WpfMarkdownEditor.Wpf.Theming;
+
+// 创建转换器（可指定主题）
+var converter = new MarkdownToFlowDocumentConverter(EditorTheme.GitHub);
+
+// 直接输出 FlowDocument 对象
+var document = converter.ConvertToFlowDocument("# Hello World");
+
+// 输出 XAML 字符串（通过 IConverter 接口）
+var result = await converter.ConvertAsync(
+    new DocumentConversionRequest { FilePath = "README.md" });
+Console.WriteLine(result.Kind);     // "FlowDocument"
+Console.WriteLine(result.Markdown);  // XAML 字符串
+```
 
 ## 主题
 
@@ -174,13 +232,15 @@ Editor.ApplyTheme(custom);
 
 ```
 src/
-  WpfMarkdownEditor.Core/       — Markdown 解析器 & AST 模型
-  WpfMarkdownEditor.Wpf/        — WPF 编辑器控件 & 渲染
+  WpfMarkdownEditor.Core/         — Markdown 解析器 & AST 模型 & 翻译提取
+  WpfMarkdownEditor.Wpf/          — WPF 编辑器控件 & 渲染 & 翻译服务
+  WpfMarkdownEditor.Converters/   — MarkItDown IConverter：Markdown → FlowDocument
 samples/
-  WpfMarkdownEditor.Sample/     — 示例应用
+  WpfMarkdownEditor.Sample/       — 示例应用
 tests/
-  WpfMarkdownEditor.Core.Tests/ — 145 个单元测试
-  WpfMarkdownEditor.Wpf.Tests/  — WPF 测试项目
+  WpfMarkdownEditor.Core.Tests/     — Core 单元测试
+  WpfMarkdownEditor.Wpf.Tests/      — WPF 集成测试
+  WpfMarkdownEditor.Converters.Tests/ — 转换器测试（19 个测试）
 ```
 
 ## 构建
@@ -197,6 +257,11 @@ dotnet run --project samples/WpfMarkdownEditor.Sample
 ```bash
 dotnet test
 ```
+
+## 致谢
+
+- [markitdown](https://github.com/microsoft/markitdown) — Microsoft 的 Markdown 转换库
+- [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — Claude Code 增强插件
 
 ## 许可证
 

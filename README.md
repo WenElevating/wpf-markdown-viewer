@@ -185,17 +185,41 @@ Editor.ApplyTheme(custom);
 | SQL | `sql`, `postgres`, `mysql`, `sqlite` |
 | Shell | `bash`, `sh`, `shell`, `zsh` |
 
+## Converter
+
+`WpfMarkdownEditor.Converters` implements the [markitdown-csharp](https://github.com/WenElevating/markitdown-csharp) `IConverter` interface, converting Markdown to WPF FlowDocument.
+
+```csharp
+using MarkItDown.Core;
+using WpfMarkdownEditor.Converters;
+using WpfMarkdownEditor.Wpf.Theming;
+
+// Create converter with custom theme
+var converter = new MarkdownToFlowDocumentConverter(EditorTheme.GitHub);
+
+// Direct FlowDocument output (no serialization)
+var document = converter.ConvertToFlowDocument("# Hello World");
+
+// XAML string output (via IConverter interface)
+var result = await converter.ConvertAsync(
+    new DocumentConversionRequest { FilePath = "README.md" });
+Console.WriteLine(result.Kind);     // "FlowDocument"
+Console.WriteLine(result.Markdown);  // XAML string
+```
+
 ## Project Structure
 
 ```
 src/
-  WpfMarkdownEditor.Core/      — Markdown parser, AST, translation extraction
-  WpfMarkdownEditor.Wpf/       — WPF control library, rendering, themes, translation providers
+  WpfMarkdownEditor.Core/         — Markdown parser, AST, translation extraction
+  WpfMarkdownEditor.Wpf/          — WPF control library, rendering, themes, translation providers
+  WpfMarkdownEditor.Converters/   — MarkItDown IConverter: Markdown → FlowDocument
 samples/
-  WpfMarkdownEditor.Sample/    — Demo application
+  WpfMarkdownEditor.Sample/       — Demo application
 tests/
-  WpfMarkdownEditor.Core.Tests/  — Core unit tests
-  WpfMarkdownEditor.Wpf.Tests/   — WPF integration tests
+  WpfMarkdownEditor.Core.Tests/     — Core unit tests
+  WpfMarkdownEditor.Wpf.Tests/      — WPF integration tests
+  WpfMarkdownEditor.Converters.Tests/ — Converter unit tests (19 tests)
 ```
 
 ## Building
