@@ -55,3 +55,12 @@ AGENTS.md
 
 # Planning docs
 docs/superpowers/plans/
+
+# Installer output
+installer-output/
+
+# Publish profiles
+**/PublishProfiles/
+
+# Build tools
+tools/
