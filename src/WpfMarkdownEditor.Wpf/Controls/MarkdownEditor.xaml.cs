@@ -26,6 +26,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private FlowDocumentRenderer? _renderer;
     private CancellationTokenSource? _cts;
     private int _renderVersion;
+    private string? _translatedMarkdown;
 
     #region DependencyProperties
 
@@ -159,6 +160,35 @@ public partial class MarkdownEditor : UserControl, IDisposable
     }
 
     /// <summary>
+    /// Replace all text as a single undo unit. Used by translation feature.
+    /// </summary>
+    public void ReplaceAllText(string newText)
+    {
+        EditorTextBox.BeginChange();
+        EditorTextBox.SelectAll();
+        EditorTextBox.SelectedText = newText;
+        EditorTextBox.EndChange();
+    }
+
+    /// <summary>
+    /// Render translated markdown in the preview pane without changing editor text.
+    /// </summary>
+    public void RenderTranslatedPreview(string translatedMarkdown)
+    {
+        _translatedMarkdown = translatedMarkdown;
+        RenderPreview();
+    }
+
+    /// <summary>
+    /// Clear translated preview and revert to rendering the editor's content.
+    /// </summary>
+    public void ClearTranslatedPreview()
+    {
+        _translatedMarkdown = null;
+        RenderPreview();
+    }
+
+    /// <summary>
     /// Toggle a line prefix (heading, quote, list marker) on the current line.
     /// If the line already has the prefix, it is removed. Otherwise it is added
     /// (replacing any existing heading prefix first).
@@ -289,6 +319,10 @@ public partial class MarkdownEditor : UserControl, IDisposable
     {
         _debounceTimer.Stop();
         SwapCts()?.Cancel();
+
+        // Clear translated preview when user edits
+        _translatedMarkdown = null;
+
         _debounceTimer.Start();
     }
 
@@ -308,7 +342,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
         try
         {
-            var markdown = Markdown;
+            var markdown = _translatedMarkdown ?? Markdown;
             var renderer = _renderer;
             if (renderer is null) return;
 

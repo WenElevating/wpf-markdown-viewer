@@ -69,6 +69,120 @@
 
                 <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
 
+                <!-- Translate Dropdown -->
+                <Grid VerticalAlignment="Center" Margin="2,0">
+                    <ToggleButton x:Name="TranslateToggle"
+                                  Style="{StaticResource ThemePickerStyle}"
+                                  IsChecked="{Binding IsOpen, ElementName=TranslatePopup, Mode=TwoWay}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="Translate"
+                                       FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                                       VerticalAlignment="Center" Margin="6,0,4,0"/>
+                            <TextBlock Text="&#xE972;" FontFamily="Segoe MDL2 Assets" FontSize="8"
+                                       VerticalAlignment="Center" Opacity="0.5"/>
+                        </StackPanel>
+                    </ToggleButton>
+                    <Popup x:Name="TranslatePopup"
+                           PlacementTarget="{Binding ElementName=TranslateToggle}"
+                           Placement="Bottom"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           PopupAnimation="Slide"
+                           Opened="OnTranslatePopupOpened">
+                        <Border Background="{DynamicResource CardBackgroundBrush}"
+                                CornerRadius="8" Padding="4" Margin="0,4,0,0"
+                                BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
+                                Effect="{StaticResource PopupShadowEffect}">
+                            <StackPanel>
+                                <!-- Cancel button (shown during translation) -->
+                                <Button x:Name="CancelTranslateBtn"
+                                        Click="OnCancelTranslate"
+                                        Visibility="Collapsed">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Padding="12,8" CornerRadius="4" Cursor="Hand"
+                                                    Background="Transparent">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                               VerticalAlignment="Center" Margin="0,0,8,0"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    <TextBlock Text="Cancel Translation" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <!-- Idle content (engine + languages) -->
+                                <StackPanel x:Name="TranslateLanguagePanel">
+                                    <!-- Clear translation button (shown when preview is translated) -->
+                                    <Button x:Name="ClearTranslationBtn"
+                                            Click="OnClearTranslation"
+                                            Visibility="Collapsed">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd" Padding="12,8" CornerRadius="4" Cursor="Hand"
+                                                        Background="{DynamicResource HoverBackgroundBrush}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                                   VerticalAlignment="Center" Margin="0,0,8,0"
+                                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                                        <TextBlock Text="Clear Translation" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                                                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Opacity" Value="0.8"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <!-- Engine selection -->
+                                    <StackPanel Orientation="Horizontal" Margin="8,6">
+                                        <RadioButton x:Name="EngineBaiduRadio" GroupName="TranslationEngine" Content="Baidu" IsChecked="True"
+                                                     FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                                     Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0"
+                                                     Checked="OnEngineRadioChanged"/>
+                                        <RadioButton x:Name="EngineOpenAIRadio" GroupName="TranslationEngine" Content="OpenAI"
+                                                     FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                                     Checked="OnEngineRadioChanged"/>
+                                    </StackPanel>
+                                    <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                                    <!-- Language options -->
+                                    <Button Click="OnTranslateToEnglish">
+                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ English" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
+                                    </Button>
+                                    <Button Click="OnTranslateToChinese">
+                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ Chinese" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
+                                    </Button>
+                                    <Button Click="OnTranslateToJapanese">
+                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ Japanese" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
+                                    </Button>
+                                    <Button Click="OnTranslateToKorean">
+                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ Korean" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
+                                    </Button>
+                                    <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                                    <Button Click="OnTranslationSettings">
+                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="Translation Settings..." FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
+                </Grid>
+
+                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
+
                 <!-- Theme Picker Dropdown -->
                 <Grid VerticalAlignment="Center" Margin="2,0">
                     <ToggleButton x:Name="ThemeToggle"

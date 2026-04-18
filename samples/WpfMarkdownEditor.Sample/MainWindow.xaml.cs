@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -6,7 +7,13 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using Microsoft.Win32;
+using WpfMarkdownEditor.Core.Translation;
+using WpfMarkdownEditor.Wpf.Controls;
+using WpfMarkdownEditor.Wpf.Dialogs;
+using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.Theming;
+using WpfMarkdownEditor.Wpf.Translation;
+using WpfMarkdownEditor.Wpf.Translation.Providers;
 
 namespace WpfMarkdownEditor.Sample;
 
@@ -30,6 +37,12 @@ public partial class MainWindow : Window
     private string _currentThemeName = "GitHub";
     private bool _sidebarOpen;
     private readonly List<FileHistoryEntry> _fileHistory = [];
+    private TranslationService? _translationService;
+    private TranslationSettingsService? _translationSettings;
+    private CancellationTokenSource? _translationCts;
+    private TranslationProgressOverlay? _progressOverlay;
+    private bool _isTranslating;
+    private TranslationLanguage _lastTargetLanguage;
 
     private record FileHistoryEntry(string Path, DateTime OpenedAt);
 
@@ -424,6 +437,188 @@ public partial class MainWindow : Window
             };
             OutlineList.Children.Add(btn);
         }
+    }
+
+    #endregion
+
+    #region Translation
+
+    private TranslationSettingsService GetTranslationSettings()
+        => _translationSettings ??= new TranslationSettingsService(AppContext.BaseDirectory);
+
+    private void OnTranslatePopupOpened(object? sender, EventArgs e)
+    {
+        // First-run: if no provider is configured, auto-trigger config dialog
+        var settings = GetTranslationSettings();
+        var activeProvider = settings.GetActiveProvider();
+        if (activeProvider == null || settings.LoadConfig(activeProvider)?.IsComplete != true)
+        {
+            TranslatePopup.IsOpen = false;
+            var dialog = new TranslationConfigDialog(isFirstRun: true);
+            dialog.Owner = this;
+            if (dialog.ShowDialog() == true)
+            {
+                settings.SaveConfig(dialog.SavedConfig!);
+                activeProvider = dialog.SavedConfig!.ProviderName;
+                settings.SetActiveProvider(activeProvider);
+                EngineBaiduRadio.IsChecked = activeProvider == "Baidu";
+                EngineOpenAIRadio.IsChecked = activeProvider == "OpenAI";
+            }
+        }
+    }
+
+    private void OnEngineRadioChanged(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return; // Ignore events during XAML initialization
+
+        var settings = GetTranslationSettings();
+        var newEngine = EngineBaiduRadio.IsChecked == true ? "Baidu" : "OpenAI";
+        var config = settings.LoadConfig(newEngine);
+
+        if (config?.IsComplete != true)
+        {
+            TranslatePopup.IsOpen = false;
+            var dialog = new TranslationConfigDialog(isFirstRun: false, preselectedProvider: newEngine, existingConfig: config);
+            dialog.Owner = this;
+            if (dialog.ShowDialog() == true)
+            {
+                settings.SaveConfig(dialog.SavedConfig!);
+                settings.SetActiveProvider(dialog.SavedConfig!.ProviderName);
+            }
+        }
+        else
+        {
+            settings.SetActiveProvider(newEngine);
+        }
+    }
+
+    private void OnTranslationSettings(object sender, RoutedEventArgs e)
+    {
+        TranslatePopup.IsOpen = false;
+        var settings = GetTranslationSettings();
+        var activeProvider = settings.GetActiveProvider() ?? "Baidu";
+        var existingConfig = settings.LoadConfig(activeProvider);
+        var dialog = new TranslationConfigDialog(isFirstRun: false, preselectedProvider: activeProvider, existingConfig: existingConfig);
+        dialog.Owner = this;
+        if (dialog.ShowDialog() == true)
+        {
+            settings.SaveConfig(dialog.SavedConfig!);
+            settings.SetActiveProvider(dialog.SavedConfig!.ProviderName);
+        }
+    }
+
+    private async Task TranslateDocumentAsync(TranslationLanguage targetLanguage)
+    {
+        if (_isTranslating) return;
+        var settings = GetTranslationSettings();
+        _lastTargetLanguage = targetLanguage;
+
+        var activeProvider = settings.GetActiveProvider();
+        if (activeProvider == null || settings.LoadConfig(activeProvider)?.IsComplete != true)
+        {
+            TranslatePopup.IsOpen = false;
+            var dialog = new TranslationConfigDialog(isFirstRun: activeProvider == null, preselectedProvider: activeProvider, existingConfig: activeProvider != null ? settings.LoadConfig(activeProvider) : null);
+            dialog.Owner = this;
+            if (dialog.ShowDialog() != true) return;
+
+            settings.SaveConfig(dialog.SavedConfig!);
+            activeProvider = dialog.SavedConfig!.ProviderName;
+            settings.SetActiveProvider(activeProvider);
+
+            EngineBaiduRadio.IsChecked = activeProvider == "Baidu";
+            EngineOpenAIRadio.IsChecked = activeProvider == "OpenAI";
+        }
+
+        var config = settings.LoadConfig(activeProvider)!;
+        var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+        ITranslationProvider provider = activeProvider == "Baidu"
+            ? new BaiduTranslateProvider(config, httpClient)
+            : new OpenAICompatibleProvider(config, httpClient);
+
+        _translationService = new TranslationService(provider);
+        _isTranslating = true;
+        CancelTranslateBtn.Visibility = Visibility.Visible;
+        TranslateLanguagePanel.Visibility = Visibility.Collapsed;
+        TranslatePopup.IsOpen = false;
+
+        _progressOverlay = new TranslationProgressOverlay();
+        _progressOverlay.CancelRequested += OnOverlayCancel;
+        _progressOverlay.RetryRequested += OnOverlayRetry;
+        _progressOverlay.CloseRequested += OnOverlayClose;
+
+        var editorRootGrid = (Grid)Editor.Content;
+        Grid.SetColumnSpan(_progressOverlay, editorRootGrid.ColumnDefinitions.Count);
+        editorRootGrid.Children.Add(_progressOverlay);
+        _progressOverlay.Show();
+
+        var progress = new Progress<TranslationProgress>(p => _progressOverlay.UpdateProgress(p));
+        _translationCts = new CancellationTokenSource();
+
+        try
+        {
+            var result = await _translationService.TranslateMarkdownAsync(
+                Editor.Markdown, targetLanguage, progress, _translationCts.Token);
+
+            Editor.RenderTranslatedPreview(result.TranslatedText);
+
+            ClearTranslationBtn.Visibility = Visibility.Visible;
+            StatusText.Text = $"Preview: {result.DetectedSourceLanguage.DisplayName()} → {targetLanguage.DisplayName()}";
+            _progressOverlay.Hide();
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Translation cancelled";
+            _progressOverlay.Hide();
+        }
+        catch (TimeoutException ex)
+        {
+            _progressOverlay.ShowError(ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            _progressOverlay.ShowError($"Network error: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _progressOverlay.ShowError(ex.Message);
+        }
+        finally
+        {
+            _isTranslating = false;
+            CancelTranslateBtn.Visibility = Visibility.Collapsed;
+            TranslateLanguagePanel.Visibility = Visibility.Visible;
+            _translationCts?.Dispose();
+            _translationCts = null;
+            httpClient.Dispose();
+        }
+    }
+
+    private void OnTranslateToEnglish(object sender, RoutedEventArgs e) => _ = TranslateDocumentAsync(TranslationLanguage.English);
+    private void OnTranslateToChinese(object sender, RoutedEventArgs e) => _ = TranslateDocumentAsync(TranslationLanguage.Chinese);
+    private void OnTranslateToJapanese(object sender, RoutedEventArgs e) => _ = TranslateDocumentAsync(TranslationLanguage.Japanese);
+    private void OnTranslateToKorean(object sender, RoutedEventArgs e) => _ = TranslateDocumentAsync(TranslationLanguage.Korean);
+
+    private void OnCancelTranslate(object sender, RoutedEventArgs e)
+    {
+        _translationCts?.Cancel();
+        TranslatePopup.IsOpen = false;
+    }
+
+    private void OnClearTranslation(object sender, RoutedEventArgs e)
+    {
+        TranslatePopup.IsOpen = false;
+        Editor.ClearTranslatedPreview();
+        ClearTranslationBtn.Visibility = Visibility.Collapsed;
+        StatusText.Text = "Translation cleared";
+    }
+
+    private void OnOverlayCancel(object? sender, EventArgs e) => _translationCts?.Cancel();
+    private void OnOverlayRetry(object? sender, EventArgs e) => _ = TranslateDocumentAsync(_lastTargetLanguage);
+    private void OnOverlayClose(object? sender, EventArgs e)
+    {
+        _progressOverlay?.Hide();
+        if (_progressOverlay?.Parent is Panel panel)
+            panel.Children.Remove(_progressOverlay);
     }
 
     #endregion

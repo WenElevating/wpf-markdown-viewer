@@ -51,6 +51,23 @@ public record TranslationResult(
 
 Note: Target languages are a fixed app-level enum, not provider-specific. This avoids UI complexity when switching engines and provides compile-time type safety.
 
+```csharp
+// src/WpfMarkdownEditor.Core/Translation/TranslationProgress.cs
+public enum TranslationStage
+{
+    Connecting,    // Establishing connection to translation service
+    Translating,   // Translation in progress
+    Completed,     // Translation finished successfully
+    Failed         // Translation failed
+}
+
+public record TranslationProgress(
+    TranslationStage Stage,
+    int CurrentSegment,      // 0 for non-segmented translation
+    int TotalSegments,       // 0 for non-segmented translation
+    string Message);
+```
+
 ### Service & Provider Layer (in Wpf project)
 
 All HTTP/network logic lives in the Wpf project, following the same pattern as `IImageResolver` (Core) / `ImageLoader` (Wpf).
@@ -63,7 +80,11 @@ All HTTP/network logic lives in the Wpf project, following the same pattern as `
 public class TranslationService
 {
     ITranslationProvider CurrentProvider { get; }
-    Task<TranslationResult> TranslateAsync(string text, TranslationLanguage targetLanguage, CancellationToken ct);
+    Task<TranslationResult> TranslateAsync(
+        string text,
+        TranslationLanguage targetLanguage,
+        IProgress<TranslationProgress>? progress,
+        CancellationToken ct);
 }
 ```
 
@@ -73,6 +94,7 @@ public class TranslationService
 src/WpfMarkdownEditor.Core/
 ├── Translation/
 │   ├── TranslationLanguage.cs        # Language enum
+│   ├── TranslationProgress.cs        # Progress reporting types
 │   ├── ITranslationProvider.cs      # Interface only
 │   └── TranslationResult.cs         # Result record
 
@@ -87,6 +109,9 @@ src/WpfMarkdownEditor.Wpf/
 ├── Dialogs/
 │   ├── TranslationConfigDialog.xaml  # Modal Window for engine config
 │   └── TranslationConfigDialog.xaml.cs
+├── Controls/
+│   ├── TranslationProgressOverlay.xaml  # Editor overlay progress card
+│   └── TranslationProgressOverlay.xaml.cs
 
 samples/WpfMarkdownEditor.Sample/
 ├── MainWindow.xaml                   # Translation dropdown added to toolbar here
@@ -228,17 +253,22 @@ User clicks "-> Language"
     │<───────────────────────────────────────────────────────┘
     │ Yes
     ▼
-Update UI: status bar "Translating...", translate button becomes "Cancel"
-Store CancellationTokenSource for cancellation support
+Show TranslationProgressOverlay (fade-in animation)
+Update UI: translate button becomes "Cancel"
+Store CancellationTokenSource + start timeout timers
+    │
+    ▼
+Report: TranslationProgress(Connecting, 0, 0, "Connecting to Baidu...")
     │
     ▼
 var result = await TranslationService.TranslateAsync(
-    editor.Markdown, targetLanguage, cancellationToken);
+    editor.Markdown, targetLanguage, progress, cancellationToken);
     │                                   │
-    │ Success                           │ Failure
+    │ Success                           │ Failure / Timeout
     ▼                                   ▼
-Dispatcher.Invoke(() => {           Show error in status bar
-  textBox.BeginChange();            Original text unchanged
+Dispatcher.Invoke(() => {           Overlay shows error state
+  overlay.FadeOut();                with [Retry] / [Close] buttons
+  textBox.BeginChange();
   textBox.SelectAll();
   textBox.SelectedText = result.TranslatedText;
   textBox.EndChange();
@@ -256,6 +286,67 @@ The translate toolbar button toggles between two states:
 - **Translating**: Shows a "Cancel Translation" button (no dropdown). Clicking it calls `CancellationTokenSource.Cancel()`. When translation completes or is cancelled, the button reverts to the idle dropdown state.
 
 The `CancellationTokenSource` is held by `MainWindow` and disposed after each translation operation completes.
+
+### Progress Display (TranslationProgressOverlay)
+
+When translation starts, a themed overlay card appears over the editor area. The overlay uses a semi-transparent background matching the current theme, with a centered rounded card.
+
+```
+┌──────────────────────────────────────────────┐
+│  Editor (原文, dimmed)   │  Preview           │
+│                          │                    │
+│  ┌──────────────────────────────────────┐     │
+│  │  semi-transparent overlay            │     │
+│  │                                      │     │
+│  │   ┌────────────────────────────┐     │     │
+│  │   │  (spinning globe icon)     │     │     │
+│  │   │  Translating...            │     │     │
+│  │   │                            │     │     │
+│  │   │  Paragraph 3 of 10         │     │     │
+│  │   │                            │     │     │
+│  │   │  ▓▓▓▓▓▓▓▓░░░░░░░░  30%   │     │     │
+│  │   │  (theme accent gradient)   │     │     │
+│  │   │                            │     │     │
+│  │   │  12s elapsed               │     │     │
+│  │   │                            │     │     │
+│  │   │  [ Cancel ]                │     │     │
+│  │   └────────────────────────────┘     │     │
+│  └──────────────────────────────────────┘     │
+└──────────────────────────────────────────────┘
+```
+
+**Visual characteristics:**
+- Semi-transparent dim overlay on editor area (follows current theme: dark theme = dark overlay, light theme = light overlay)
+- Centered rounded card with shadow
+- Progress bar uses theme accent color gradient (e.g., Claude purple, GitHub blue)
+- Fade-in/fade-out animation on show/hide (0.2s opacity + scale transition)
+- Spinning globe icon animates during translation
+
+**Progress information by scenario:**
+
+| Scenario | Display |
+|----------|---------|
+| **Baidu segmented** | "Paragraph {n} of {total}" + percentage bar + elapsed time |
+| **Baidu single segment** | Indeterminate pulsing bar + "Translating..." + elapsed time |
+| **OpenAI compatible** | Indeterminate pulsing bar + "Waiting for response..." + elapsed time |
+| **Connecting** | Spinning icon + "Connecting to {provider name}..." |
+| **Timeout** | Card changes to error state: "Translation timed out. Please check your network." + [Retry] [Close] |
+
+**Timeout configuration:**
+- Connection timeout: 30 seconds
+- Per-segment/request timeout: 120 seconds (configurable in settings)
+- Total translation timeout: 300 seconds (5 minutes max)
+
+**Progress reporting mechanism:**
+```csharp
+// Provider implementations report progress via IProgress<TranslationProgress>
+// TranslationService passes this through to the UI layer
+var progress = new Progress<TranslationProgress>(p =>
+{
+    // Automatically marshaled to UI thread by Progress<T>
+    overlay.UpdateProgress(p);
+});
+```
 
 ### Undo Support
 
@@ -278,12 +369,15 @@ All UI updates after the async translation completes are marshaled to the UI thr
 
 | Scenario | Response |
 |----------|----------|
-| Network unreachable | Status bar: "Cannot connect to translation service" |
-| Invalid API Key | Status bar: "Invalid API Key, please check settings" |
-| Insufficient balance | Status bar: "Translation service balance insufficient" |
-| Rate limit exceeded | Auto-retry with backoff (max 3 retries, 2s/4s/8s) |
+| Network unreachable | Overlay: "Cannot connect to translation service" + [Retry] [Close] |
+| Invalid API Key | Overlay: "Invalid API Key, please check settings" + [Settings] [Close] |
+| Insufficient balance | Overlay: "Translation service balance insufficient" + [Close] |
+| Rate limit exceeded | Auto-retry with backoff (max 3 retries, 2s/4s/8s), overlay shows "Retrying..." |
 | Document too long | Baidu: auto-segment with 1.1s inter-segment delay; OpenAI: send full document |
-| User cancels | CancellationTokenSource.Cancel(), original text unchanged |
+| Connection timeout (30s) | Overlay: "Connection timed out. Please check your network." + [Retry] [Close] |
+| Request timeout (120s) | Overlay: "Translation timed out." + [Retry] [Close] |
+| Total timeout (300s) | Overlay: "Translation is taking too long. Please try a shorter document." + [Close] |
+| User cancels | CancellationTokenSource.Cancel(), overlay fades out, original text unchanged |
 
 ## API Key Security
 
