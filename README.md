@@ -213,8 +213,11 @@ dotnet run --project samples/WpfMarkdownEditor.Sample
 dotnet test
 ```
 
+## Acknowledgments
+
+- [markitdown](https://github.com/microsoft/markitdown) — Microsoft's markdown conversion library
+- [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — Claude Code enhancement plugin
+
 ## License
 
 MIT
-
-Co-Authored-By: Claude <noreply@anthropic.com>
