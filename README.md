@@ -1,17 +1,18 @@
-# WPF Markdown Editor
+# Markdown Viewer
 
-A modern, zero-dependency Markdown editor control for WPF with real-time preview, built on .NET 8.
+A modern, zero-dependency Markdown editor & viewer for WPF with real-time preview, multi-engine translation, and 6 built-in themes. Built on .NET 8.
 
 [中文文档](README.zh-CN.md)
 
 ## Features
 
 - **Real-time Preview** — Side-by-side editing with debounced rendering (~100ms)
+- **Multi-engine Translation** — Translate documents via Baidu or OpenAI-compatible APIs (Qwen, DeepSeek, etc.), preview-only mode preserves original content
 - **6 Built-in Themes** — GitHub, GitHub Dark, Claude, Claude Dark, Light, Dark
 - **Smart Editing** — Auto-continuation for lists, prefix toggling, selection wrapping
 - **Formatting Toolbar** — Headings, bold, italic, code, links, tables, and more
 - **Sidebar** — File history & document outline (TOC) with animated toggle
-- **Syntax Highlighting** — Code blocks with C#, JavaScript/TypeScript, Python, JSON/JSONC, SQL, Bash support
+- **Syntax Highlighting** — Code blocks with C#, JavaScript/TypeScript, Python, JSON, SQL, Bash support
 - **Zero Dependencies** — Pure WPF, no NuGet packages required
 
 ## Screenshots
@@ -76,6 +77,39 @@ Editor.MarkdownChanged += (s, e) =>
 };
 ```
 
+## Translation
+
+Translate markdown documents while preserving all formatting (headings, lists, tables, code blocks, inline markers). Translation renders in the **preview pane only** — the editor stays untouched.
+
+### Supported Providers
+
+| Provider | Service |
+|----------|---------|
+| **Baidu Translate** | 百度翻译 API |
+| **OpenAI Compatible** | Qwen, DeepSeek, Zhipu, OpenAI, any Chat Completions API |
+
+### Supported Languages
+
+English, Chinese (中文), Japanese (日本語), Korean (한국어)
+
+### How It Works
+
+1. **Template-based extraction** — Parses markdown into segments, extracts only translatable text, replaces inline markers (bold, italic, code, links) with ASCII tokens
+2. **Translate** — Sends clean plain text to the translation API
+3. **Reconstruct** — Rebuilds markdown from the template with translated text, restoring all formatting
+4. **Preview** — Renders translated content in the preview pane; original editor content unchanged
+
+```csharp
+// Translate and show in preview
+var service = new TranslationService(provider);
+var result = await service.TranslateMarkdownAsync(
+    Editor.Markdown, TranslationLanguage.Chinese, progress, ct);
+Editor.RenderTranslatedPreview(result.TranslatedText);
+
+// Clear translation, revert to original
+Editor.ClearTranslatedPreview();
+```
+
 ## API Reference
 
 ### Dependency Properties
@@ -98,6 +132,8 @@ Editor.MarkdownChanged += (s, e) =>
 | `WrapSelection(string before, string after)` | Wrap selected text with markers |
 | `InsertText(string text)` | Insert text at cursor position |
 | `ToggleLinePrefix(string prefix)` | Toggle heading/quote/list prefixes |
+| `RenderTranslatedPreview(string md)` | Show translated markdown in preview |
+| `ClearTranslatedPreview()` | Revert preview to editor content |
 
 ### Events
 
@@ -132,55 +168,34 @@ Editor.ApplyTheme(custom);
 
 ## Smart Editing
 
-The editor provides intelligent Markdown editing:
-
 - **List auto-continuation** — Press Enter in a list to auto-insert the next marker
 - **Numbered list increment** — `1.` → `2.` → `3.` automatically
 - **Tab/Shift+Tab** — Indent/outdent list items
 - **Empty list cleanup** — Press Enter on an empty item to remove the marker
+- **Paste image support** — Paste clipboard images or drag-drop files to insert markdown image syntax
 
-## Syntax Highlighting Support
+## Syntax Highlighting
 
-Current built-in language coverage:
-
-- **C#**: `csharp`, `cs`, `c#`
-- **JavaScript / TypeScript**: `javascript`, `js`, `node`, `typescript`, `ts`, `jsx`, `tsx`
-- **Python**: `python`, `py`, `py3`
-- **JSON**: `json`, `jsonc`
-- **SQL**: `sql`, `postgres`, `postgresql`, `mysql`, `sqlite`
-- **Shell**: `bash`, `sh`, `shell`, `zsh`
-
-## Formatting Toolbar
-
-The sample app includes a complete toolbar:
-
-| Category | Actions |
+| Language | Aliases |
 |----------|---------|
-| File | Open, Save |
-| Headings | H1, H2, H3 |
-| Formatting | Bold, Italic, Strikethrough, Inline Code |
-| Insert | Link, Blockquote, Bullet List, Numbered List, Code Block, Table, Horizontal Rule |
-| Theme | Dropdown picker with all 6 themes |
-| Sidebar | Toggle animated sidebar |
-
-## Sidebar
-
-The sidebar provides two tabs with animated show/hide:
-
-- **History** — Recently opened files with timestamps, click to reopen
-- **Outline** — Document heading tree extracted from the current markdown
+| C# | `csharp`, `cs` |
+| JavaScript / TypeScript | `javascript`, `js`, `typescript`, `ts`, `jsx`, `tsx` |
+| Python | `python`, `py` |
+| JSON | `json`, `jsonc` |
+| SQL | `sql`, `postgres`, `mysql`, `sqlite` |
+| Shell | `bash`, `sh`, `shell`, `zsh` |
 
 ## Project Structure
 
 ```
 src/
-  WpfMarkdownEditor.Core/    — Markdown parser & AST model
-  WpfMarkdownEditor.Wpf/     — WPF editor control & rendering
+  WpfMarkdownEditor.Core/      — Markdown parser, AST, translation extraction
+  WpfMarkdownEditor.Wpf/       — WPF control library, rendering, themes, translation providers
 samples/
-  WpfMarkdownEditor.Sample/  — Demo application
+  WpfMarkdownEditor.Sample/    — Demo application
 tests/
-  WpfMarkdownEditor.Core.Tests/  — 145 unit tests
-  WpfMarkdownEditor.Wpf.Tests/   — WPF test project
+  WpfMarkdownEditor.Core.Tests/  — Core unit tests
+  WpfMarkdownEditor.Wpf.Tests/   — WPF integration tests
 ```
 
 ## Building
@@ -201,3 +216,5 @@ dotnet test
 ## License
 
 MIT
+
+Co-Authored-By: Claude <noreply@anthropic.com>
