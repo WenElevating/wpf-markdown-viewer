@@ -176,7 +176,8 @@
                  AcceptsTab="True"
                  PreviewKeyDown="OnEditorPreviewKeyDown"
                  VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Disabled"
+                 TextWrapping="Wrap"
                  Text="{Binding Markdown, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  TextChanged="OnEditorTextChanged"
                  FontFamily="Cascadia Code, Consolas, Liberation Mono"
@@ -210,9 +211,10 @@
 
         <!-- Splitter -->
         <GridSplitter x:Name="EditorSplitter" Grid.Column="1"
-                      Width="1"
+                      Width="6"
                       HorizontalAlignment="Center"
-                      VerticalAlignment="Stretch" />
+                      VerticalAlignment="Stretch"
+                      Background="Transparent" />
 
         <!-- Preview Pane with modern toolbar -->
         <Grid Grid.Column="2"
