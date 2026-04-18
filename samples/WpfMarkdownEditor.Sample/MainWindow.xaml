@@ -6,6 +6,7 @@
         Width="1200" Height="800"
         MinWidth="600" MinHeight="400"
         WindowStartupLocation="CenterScreen"
+        Icon="app.ico"
         Background="{DynamicResource WindowBackgroundBrush}">
     <Grid>
         <Grid.RowDefinitions>
