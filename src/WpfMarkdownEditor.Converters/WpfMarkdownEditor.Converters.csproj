@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\markitdown-csharp\src\MarkItDown.Core\MarkItDown.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WpfMarkdownEditor.Core\WpfMarkdownEditor.Core.csproj" />
+    <ProjectReference Include="..\WpfMarkdownEditor.Wpf\WpfMarkdownEditor.Wpf.csproj" />
+  </ItemGroup>
+
+</Project>
