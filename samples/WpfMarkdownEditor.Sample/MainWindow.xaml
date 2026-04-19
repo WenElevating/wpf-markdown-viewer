@@ -31,11 +31,14 @@
                 <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
 
                 <!-- File -->
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnOpenFile" ToolTip="Open file">
-                    <TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center"/>
+                <Button Style="{StaticResource FormatButtonStyle}" Click="OnNewFile" ToolTip="New file (Ctrl+N)">
+                    <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center"/>
                 </Button>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnSaveFile" ToolTip="Save file">
-                    <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center"/>
+                <Button Style="{StaticResource FormatButtonStyle}" Click="OnOpenFile" ToolTip="Open file (Ctrl+O)">
+                    <TextBlock Text="&#xE8DA;" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center"/>
+                </Button>
+                <Button Style="{StaticResource FormatButtonStyle}" Click="OnSaveFile" ToolTip="Save file (Ctrl+S)">
+                    <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center"/>
                 </Button>
 
                 <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>

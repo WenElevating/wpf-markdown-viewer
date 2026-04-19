@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
@@ -43,10 +45,13 @@ public partial class MainWindow : Window
     private TranslationProgressOverlay? _progressOverlay;
     private bool _isTranslating;
     private TranslationLanguage _lastTargetLanguage;
+    private string? _currentFilePath;
+    private bool _isDirty;
+    private bool _loadingFile;
 
     private record FileHistoryEntry(string Path, DateTime OpenedAt);
 
-    public MainWindow()
+    public MainWindow(string? filePath = null)
     {
         InitializeComponent();
         BuildThemeList();
@@ -54,94 +59,245 @@ public partial class MainWindow : Window
 
         Editor.MarkdownChanged += OnMarkdownChanged;
 
-        Editor.Markdown = """
-            # Welcome to WPF Markdown Editor
+        if (filePath != null && File.Exists(filePath))
+        {
+            _loadingFile = true;
+            Editor.LoadFile(filePath);
+            _loadingFile = false;
+            _currentFilePath = filePath;
+            _isDirty = false;
+            AddToHistory(filePath);
+        }
+        else
+        {
+            _loadingFile = true;
+            Editor.Markdown = """
+                # Welcome to WPF Markdown Editor
 
-            ## Features
+                ## Features
 
-            - **Real-time preview** with less than 50ms latency
-            - *Italic* and **bold** text
-            - `Inline code` support
-            - [Links](https://example.com)
+                - **Real-time preview** with less than 50ms latency
+                - *Italic* and **bold** text
+                - `Inline code` support
+                - [Links](https://example.com)
 
-            ## Code Block
+                ## Code Block
 
-            ```csharp
-            public class HelloWorld
-            {
-                public static void Main()
+                ```csharp
+                public class HelloWorld
                 {
-                    Console.WriteLine("Hello, Markdown!");
+                    public static void Main()
+                    {
+                        Console.WriteLine("Hello, Markdown!");
+                    }
                 }
-            }
-            ```
+                ```
 
-            ## Table
+                ## Table
 
-            | Feature | Status |
-            | ------- | ------ |
-            | Parser | Done |
-            | Renderer | Done |
-            | Theme | Done |
+                | Feature | Status |
+                | ------- | ------ |
+                | Parser | Done |
+                | Renderer | Done |
+                | Theme | Done |
 
-            ## Blockquote
+                ## Blockquote
 
-            > This is a blockquote.
-            > It supports **inline formatting**.
+                > This is a blockquote.
+                > It supports **inline formatting**.
 
-            ---
+                ---
 
-            *Built with .NET 8 and WPF. Zero external dependencies.*
-            """;
+                *Built with .NET 8 and WPF. Zero external dependencies.*
+                """;
+            _loadingFile = false;
+            _isDirty = false;
+        }
+        UpdateTitle();
     }
 
     #region File Operations
 
-    private void OnOpenFile(object sender, RoutedEventArgs e)
+    private void OnNewFile(object sender, RoutedEventArgs e) => NewFile();
+
+    private void OnOpenFile(object sender, RoutedEventArgs e) => OpenFile();
+
+    private async void OnSaveFile(object sender, RoutedEventArgs e) => await SaveCurrentFileAsync();
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        if (Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            switch (e.Key)
+            {
+                case Key.N: e.Handled = true; NewFile(); break;
+                case Key.O: e.Handled = true; OpenFile(); break;
+                case Key.S: e.Handled = true; _ = SaveCurrentFileAsync(); break;
+            }
+        }
+        base.OnPreviewKeyDown(e);
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (_isDirty)
+        {
+            var fileName = _currentFilePath != null
+                ? System.IO.Path.GetFileName(_currentFilePath)
+                : "Untitled";
+            var result = MessageBox.Show(
+                $"Do you want to save changes to \"{fileName}\"?",
+                "Save Changes",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            switch (result)
+            {
+                case MessageBoxResult.Yes:
+                    if (!SaveCurrentFileSync()) e.Cancel = true;
+                    break;
+                case MessageBoxResult.Cancel:
+                    e.Cancel = true;
+                    break;
+            }
+        }
+        base.OnClosing(e);
+    }
+
+    private void NewFile()
+    {
+        if (!ConfirmSaveIfDirty()) return;
+        _loadingFile = true;
+        Editor.Markdown = string.Empty;
+        _loadingFile = false;
+        _currentFilePath = null;
+        _isDirty = false;
+        UpdateTitle();
+        StatusText.Text = "New file";
+    }
+
+    private void OpenFile()
+    {
+        if (!ConfirmSaveIfDirty()) return;
+
         var dialog = new OpenFileDialog
         {
             Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
             DefaultExt = ".md"
         };
+        if (dialog.ShowDialog() != true) return;
 
-        if (dialog.ShowDialog() == true)
+        try
         {
-            try
-            {
-                Editor.LoadFile(dialog.FileName);
-                AddToHistory(dialog.FileName);
-                StatusText.Text = $"Loaded: {dialog.FileName}";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to load file: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            _loadingFile = true;
+            Editor.LoadFile(dialog.FileName);
+            _loadingFile = false;
+            _currentFilePath = dialog.FileName;
+            _isDirty = false;
+            AddToHistory(dialog.FileName);
+            UpdateTitle();
+            StatusText.Text = $"Loaded: {dialog.FileName}";
+        }
+        catch (Exception ex)
+        {
+            _loadingFile = false;
+            MessageBox.Show($"Failed to load file: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private async void OnSaveFile(object sender, RoutedEventArgs e)
+    private async Task<bool> SaveCurrentFileAsync()
     {
-        var dialog = new SaveFileDialog
-        {
-            Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
-            DefaultExt = ".md"
-        };
+        string? targetPath = _currentFilePath;
 
-        if (dialog.ShowDialog() == true)
+        if (targetPath == null)
         {
-            try
+            var dialog = new SaveFileDialog
             {
-                await Editor.SaveFileAsync(dialog.FileName);
-                StatusText.Text = $"Saved: {dialog.FileName}";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to save file: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+                Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
+                DefaultExt = ".md"
+            };
+            if (dialog.ShowDialog() != true) return false;
+            targetPath = dialog.FileName;
         }
+
+        try
+        {
+            await Editor.SaveFileAsync(targetPath);
+            _currentFilePath = targetPath;
+            _isDirty = false;
+            AddToHistory(targetPath);
+            UpdateTitle();
+            StatusText.Text = $"Saved: {targetPath}";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to save file: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
+
+    private bool SaveCurrentFileSync()
+    {
+        string? targetPath = _currentFilePath;
+
+        if (targetPath == null)
+        {
+            var dialog = new SaveFileDialog
+            {
+                Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
+                DefaultExt = ".md"
+            };
+            if (dialog.ShowDialog() != true) return false;
+            targetPath = dialog.FileName;
+        }
+
+        try
+        {
+            File.WriteAllText(targetPath, Editor.Markdown);
+            _currentFilePath = targetPath;
+            _isDirty = false;
+            AddToHistory(targetPath);
+            UpdateTitle();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to save file: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
+
+    private bool ConfirmSaveIfDirty()
+    {
+        if (!_isDirty) return true;
+
+        var fileName = _currentFilePath != null
+            ? System.IO.Path.GetFileName(_currentFilePath)
+            : "Untitled";
+        var result = MessageBox.Show(
+            $"Do you want to save changes to \"{fileName}\"?",
+            "Save Changes",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        return result switch
+        {
+            MessageBoxResult.Yes => SaveCurrentFileSync(),
+            MessageBoxResult.No => true,
+            _ => false
+        };
+    }
+
+    private void UpdateTitle()
+    {
+        var fileName = _currentFilePath != null
+            ? System.IO.Path.GetFileName(_currentFilePath)
+            : "Untitled";
+        Title = $"{fileName}{(_isDirty ? " *" : "")} - Markdown Viewer";
     }
 
     #endregion
@@ -292,6 +448,11 @@ public partial class MainWindow : Window
 
     private void OnMarkdownChanged(object? sender, EventArgs e)
     {
+        if (!_loadingFile)
+        {
+            _isDirty = true;
+            UpdateTitle();
+        }
         if (OutlinePanel.Visibility == Visibility.Visible)
             UpdateOutline();
     }
@@ -368,13 +529,20 @@ public partial class MainWindow : Window
     private void OnHistoryItemClick(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not string path) return;
+        if (!ConfirmSaveIfDirty()) return;
         try
         {
+            _loadingFile = true;
             Editor.LoadFile(path);
+            _loadingFile = false;
+            _currentFilePath = path;
+            _isDirty = false;
+            UpdateTitle();
             StatusText.Text = $"Loaded: {path}";
         }
         catch (Exception ex)
         {
+            _loadingFile = false;
             MessageBox.Show($"Failed to load file: {ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }

@@ -41,7 +41,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "fileassoc"; Description: "Associate .md files with {#AppName}"; GroupDescription: "File Associations:"; Flags: unchecked
+Name: "fileassoc"; Description: "Associate .md files with {#AppName}"; GroupDescription: "File Associations:"
 
 [Files]
 Source: "samples\WpfMarkdownEditor.Sample\bin\Release\net8.0-windows\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
