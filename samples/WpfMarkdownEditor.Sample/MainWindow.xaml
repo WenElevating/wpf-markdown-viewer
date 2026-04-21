@@ -15,227 +15,211 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Formatting Toolbar -->
+        <!-- Menu Bar -->
         <Border Grid.Row="0"
                 Background="{DynamicResource SurfaceBackgroundBrush}"
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="8,4">
+                Padding="4,0">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <!-- Sidebar Toggle -->
-                <Button x:Name="SidebarToggleBtn" Style="{StaticResource FormatButtonStyle}"
-                        Click="OnToggleSidebar" ToolTip="Toggle Sidebar">
+                <Button Style="{StaticResource FormatButtonStyle}" Click="OnToggleSidebar" ToolTip="Toggle Sidebar">
                     <TextBlock Text="&#xE137;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center"/>
                 </Button>
-
-                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
+                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
 
                 <!-- File -->
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnNewFile" ToolTip="New file (Ctrl+N)">
-                    <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center"/>
-                </Button>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnOpenFile" ToolTip="Open file (Ctrl+O)">
-                    <TextBlock Text="&#xE8DA;" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center"/>
-                </Button>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnSaveFile" ToolTip="Save file (Ctrl+S)">
-                    <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center"/>
-                </Button>
+                <ToggleButton x:Name="FileMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="File"
+                              IsChecked="{Binding IsOpen, ElementName=FilePopup, Mode=TwoWay}"/>
+                <Popup x:Name="FilePopup" PlacementTarget="{Binding ElementName=FileMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="200">
+                            <Button Style="{StaticResource MenuItemStyle}" Content="New File" Tag="Ctrl+N" Click="OnNewFile"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Open File" Tag="Ctrl+O" Click="OnOpenFile"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Save File" Tag="Ctrl+S" Click="OnSaveFile"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
 
-                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
+                <!-- Edit -->
+                <ToggleButton x:Name="EditMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="Edit"
+                              IsChecked="{Binding IsOpen, ElementName=EditPopup, Mode=TwoWay}"/>
+                <Popup x:Name="EditPopup" PlacementTarget="{Binding ElementName=EditMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="200">
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Undo" Tag="Ctrl+Z" Click="OnUndo"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Redo" Tag="Ctrl+Y" Click="OnRedo"/>
+                            <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Find" Tag="Ctrl+F" Click="OnFind"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
 
-                <!-- Headings -->
-                <Button Style="{StaticResource FormatButtonStyle}" Content="H1" Click="OnHeading1" ToolTip="Heading 1" FontFamily="Segoe UI Variable, Segoe UI" FontSize="13" FontWeight="SemiBold"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Content="H2" Click="OnHeading2" ToolTip="Heading 2" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" FontWeight="SemiBold"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Content="H3" Click="OnHeading3" ToolTip="Heading 3" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" FontWeight="SemiBold"/>
+                <!-- Paragraph -->
+                <ToggleButton x:Name="ParagraphMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="Paragraph"
+                              IsChecked="{Binding IsOpen, ElementName=ParagraphPopup, Mode=TwoWay}"/>
+                <Popup x:Name="ParagraphPopup" PlacementTarget="{Binding ElementName=ParagraphMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="200">
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Heading 1" Click="OnHeading1"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Heading 2" Click="OnHeading2"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Heading 3" Click="OnHeading3"/>
+                            <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Blockquote" Click="OnQuote"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Ordered List" Click="OnOrderedList"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Bullet List" Click="OnUnorderedList"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
 
-                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
-
-                <!-- Text formatting -->
-                <Button Style="{StaticResource FormatButtonStyle}" Content="B" Click="OnBold" ToolTip="Bold (Ctrl+B)" FontWeight="Bold" FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Content="I" Click="OnItalic" ToolTip="Italic (Ctrl+I)" FontStyle="Italic" FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnStrikethrough" ToolTip="Strikethrough">
-                    <TextBlock Text="S" TextDecorations="Strikethrough" FontFamily="Segoe UI Variable, Segoe UI" FontSize="13" VerticalAlignment="Center"/>
-                </Button>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnInlineCode" ToolTip="Inline Code">
-                    <TextBlock Text="&lt;/&gt;" FontFamily="Cascadia Code, Consolas" FontSize="11" VerticalAlignment="Center"/>
-                </Button>
-
-                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
+                <!-- Format -->
+                <ToggleButton x:Name="FormatMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="Format"
+                              IsChecked="{Binding IsOpen, ElementName=FormatPopup, Mode=TwoWay}"/>
+                <Popup x:Name="FormatPopup" PlacementTarget="{Binding ElementName=FormatMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="200">
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Bold" Tag="Ctrl+B" Click="OnBold"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Italic" Tag="Ctrl+I" Click="OnItalic"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Strikethrough" Click="OnStrikethrough"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Inline Code" Click="OnInlineCode"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
 
                 <!-- Insert -->
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnLink" ToolTip="Insert Link" Content="&#xE71B;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnQuote" ToolTip="Blockquote" Content="&#xE8AF;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnUnorderedList" ToolTip="Bullet List" Content="&#xE8FD;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnOrderedList" ToolTip="Numbered List" Content="&#xE8FE;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnCodeBlock" ToolTip="Code Block" Content="&#xE943;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnTable" ToolTip="Insert Table" Content="&#xE7E3;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                <Button Style="{StaticResource FormatButtonStyle}" Click="OnHorizontalRule" ToolTip="Horizontal Rule" Content="&#xE5C3;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-
-                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
-
-                <!-- Translate Dropdown -->
-                <Grid VerticalAlignment="Center" Margin="2,0">
-                    <ToggleButton x:Name="TranslateToggle"
-                                  Style="{StaticResource ThemePickerStyle}"
-                                  IsChecked="{Binding IsOpen, ElementName=TranslatePopup, Mode=TwoWay}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Text="Translate"
-                                       FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
-                                       VerticalAlignment="Center" Margin="6,0,4,0"/>
-                            <TextBlock Text="&#xE972;" FontFamily="Segoe MDL2 Assets" FontSize="8"
-                                       VerticalAlignment="Center" Opacity="0.5"/>
+                <ToggleButton x:Name="InsertMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="Insert"
+                              IsChecked="{Binding IsOpen, ElementName=InsertPopup, Mode=TwoWay}"/>
+                <Popup x:Name="InsertPopup" PlacementTarget="{Binding ElementName=InsertMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="200">
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Link" Click="OnLink"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Code Block" Click="OnCodeBlock"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Table" Click="OnTable"/>
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Horizontal Rule" Click="OnHorizontalRule"/>
                         </StackPanel>
-                    </ToggleButton>
-                    <Popup x:Name="TranslatePopup"
-                           PlacementTarget="{Binding ElementName=TranslateToggle}"
-                           Placement="Bottom"
-                           StaysOpen="False"
-                           AllowsTransparency="True"
-                           PopupAnimation="Slide"
-                           Opened="OnTranslatePopupOpened">
-                        <Border Background="{DynamicResource CardBackgroundBrush}"
-                                CornerRadius="8" Padding="4" Margin="0,4,0,0"
-                                BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
-                                Effect="{StaticResource PopupShadowEffect}">
-                            <StackPanel>
-                                <!-- Cancel button (shown during translation) -->
-                                <Button x:Name="CancelTranslateBtn"
-                                        Click="OnCancelTranslate"
-                                        Visibility="Collapsed">
+                    </Border>
+                </Popup>
+
+                <!-- View -->
+                <ToggleButton x:Name="ViewMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="View"
+                              IsChecked="{Binding IsOpen, ElementName=ViewPopup, Mode=TwoWay}"/>
+                <Popup x:Name="ViewPopup" PlacementTarget="{Binding ElementName=ViewMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="200">
+                            <Button Style="{StaticResource MenuItemStyle}" Content="Toggle Sidebar" Click="OnToggleSidebarFromMenu"/>
+                            <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                            <TextBlock Text="Themes" FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Padding="16,7,16,4" FontWeight="SemiBold"/>
+                            <StackPanel x:Name="ThemeListPanel"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
+
+                <!-- Tools -->
+                <ToggleButton x:Name="ToolsMenuBtn" Style="{StaticResource MenuHeaderStyle}" Content="Tools"
+                              IsChecked="{Binding IsOpen, ElementName=ToolsPopup, Mode=TwoWay}"/>
+                <Popup x:Name="ToolsPopup" PlacementTarget="{Binding ElementName=ToolsMenuBtn}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide"
+                       Opened="OnTranslatePopupOpened">
+                    <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8" Padding="4" Margin="0,2,0,0"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Effect="{StaticResource PopupShadowEffect}">
+                        <StackPanel MinWidth="220">
+                            <!-- Cancel translation (shown during translation) -->
+                            <Button x:Name="CancelTranslateBtn" Click="OnCancelTranslate" Visibility="Collapsed">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bd" Padding="12,8" CornerRadius="4" Cursor="Hand" Background="Transparent">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                           VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="Cancel Translation" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <StackPanel x:Name="TranslateLanguagePanel">
+                                <!-- Clear translation -->
+                                <Button x:Name="ClearTranslationBtn" Click="OnClearTranslation" Visibility="Collapsed">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="Bd" Padding="12,8" CornerRadius="4" Cursor="Hand"
-                                                    Background="Transparent">
+                                                    Background="{DynamicResource HoverBackgroundBrush}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
                                                                VerticalAlignment="Center" Margin="0,0,8,0"
-                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                    <TextBlock Text="Cancel Translation" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
-                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                    <TextBlock Text="Clear Translation" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+                                                    <Setter TargetName="Bd" Property="Opacity" Value="0.8"/>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Button.Template>
                                 </Button>
-                                <!-- Idle content (engine + languages) -->
-                                <StackPanel x:Name="TranslateLanguagePanel">
-                                    <!-- Clear translation button (shown when preview is translated) -->
-                                    <Button x:Name="ClearTranslationBtn"
-                                            Click="OnClearTranslation"
-                                            Visibility="Collapsed">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bd" Padding="12,8" CornerRadius="4" Cursor="Hand"
-                                                        Background="{DynamicResource HoverBackgroundBrush}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
-                                                                   VerticalAlignment="Center" Margin="0,0,8,0"
-                                                                   Foreground="{DynamicResource AccentBrush}"/>
-                                                        <TextBlock Text="Clear Translation" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
-                                                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
-                                                    </StackPanel>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Bd" Property="Opacity" Value="0.8"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                    <!-- Engine selection -->
-                                    <StackPanel Orientation="Horizontal" Margin="8,6">
-                                        <RadioButton x:Name="EngineBaiduRadio" GroupName="TranslationEngine" Content="Baidu" IsChecked="True"
-                                                     FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
-                                                     Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0"
-                                                     Checked="OnEngineRadioChanged"/>
-                                        <RadioButton x:Name="EngineOpenAIRadio" GroupName="TranslationEngine" Content="OpenAI"
-                                                     FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
-                                                     Foreground="{DynamicResource TextSecondaryBrush}"
-                                                     Checked="OnEngineRadioChanged"/>
-                                    </StackPanel>
-                                    <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
-                                    <!-- Language options -->
-                                    <Button Click="OnTranslateToEnglish">
-                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ English" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
-                                    </Button>
-                                    <Button Click="OnTranslateToChinese">
-                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ Chinese" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
-                                    </Button>
-                                    <Button Click="OnTranslateToJapanese">
-                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ Japanese" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
-                                    </Button>
-                                    <Button Click="OnTranslateToKorean">
-                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="→ Korean" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
-                                    </Button>
-                                    <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
-                                    <Button Click="OnTranslationSettings">
-                                        <Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Bd" Padding="12,8" Cursor="Hand" Background="Transparent"><TextBlock Text="Translation Settings..." FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template>
-                                    </Button>
+                                <!-- Engine selection -->
+                                <StackPanel Orientation="Horizontal" Margin="12,6">
+                                    <RadioButton x:Name="EngineBaiduRadio" GroupName="TranslationEngine" Content="Baidu" IsChecked="True"
+                                                 FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0"
+                                                 Checked="OnEngineRadioChanged"/>
+                                    <RadioButton x:Name="EngineOpenAIRadio" GroupName="TranslationEngine" Content="OpenAI"
+                                                 FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                                 Checked="OnEngineRadioChanged"/>
                                 </StackPanel>
+                                <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                                <Button Style="{StaticResource MenuItemStyle}" Content="→ English" Click="OnTranslateToEnglish"/>
+                                <Button Style="{StaticResource MenuItemStyle}" Content="→ Chinese" Click="OnTranslateToChinese"/>
+                                <Button Style="{StaticResource MenuItemStyle}" Content="→ Japanese" Click="OnTranslateToJapanese"/>
+                                <Button Style="{StaticResource MenuItemStyle}" Content="→ Korean" Click="OnTranslateToKorean"/>
+                                <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="4,2"/>
+                                <Button Style="{StaticResource MenuItemStyle}" Content="Translation Settings..." Click="OnTranslationSettings"/>
                             </StackPanel>
-                        </Border>
-                    </Popup>
-                </Grid>
-
-                <Border Width="1" Height="18" Background="{DynamicResource DividerBrush}" Margin="6,2"/>
-
-                <!-- Theme Picker Dropdown -->
-                <Grid VerticalAlignment="Center" Margin="2,0">
-                    <ToggleButton x:Name="ThemeToggle"
-                                  Style="{StaticResource ThemePickerStyle}"
-                                  IsChecked="{Binding IsOpen, ElementName=ThemePopup, Mode=TwoWay}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE771;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                       VerticalAlignment="Center" Margin="0,0,0,0"/>
-                            <TextBlock x:Name="CurrentThemeName" Text="GitHub"
-                                       FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
-                                       VerticalAlignment="Center" Margin="6,0,4,0"/>
-                            <TextBlock Text="&#xE972;" FontFamily="Segoe MDL2 Assets" FontSize="8"
-                                       VerticalAlignment="Center" Opacity="0.5"/>
                         </StackPanel>
-                    </ToggleButton>
-                    <Popup x:Name="ThemePopup"
-                           PlacementTarget="{Binding ElementName=ThemeToggle}"
-                           Placement="Bottom"
-                           StaysOpen="False"
-                           AllowsTransparency="True"
-                           PopupAnimation="Slide">
-                        <Border Background="{DynamicResource CardBackgroundBrush}"
-                                CornerRadius="8" Padding="4" Margin="0,4,0,0"
-                                BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
-                                Effect="{StaticResource PopupShadowEffect}">
-                            <StackPanel x:Name="ThemeListPanel"/>
-                        </Border>
-                    </Popup>
-                </Grid>
+                    </Border>
+                </Popup>
             </StackPanel>
         </Border>
 
-        <!-- Sidebar + Editor -->
+        <!-- Editor Area -->
         <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+            <!-- Editor (full width, behind sidebar) -->
+            <ctrl:MarkdownEditor x:Name="Editor"/>
 
-            <!-- Sidebar -->
+            <!-- Sidebar (overlay on top of editor) -->
             <Border x:Name="SidebarPanel"
-                    Grid.Column="0"
                     Width="0"
                     Background="{DynamicResource SurfaceBackgroundBrush}"
                     BorderBrush="{DynamicResource DividerBrush}"
                     BorderThickness="0,0,1,0"
                     ClipToBounds="True"
-                    HorizontalAlignment="Left">
-                <Grid Width="260" Margin="0,0,0,0">
+                    HorizontalAlignment="Left"
+                    Panel.ZIndex="1">
+                <Grid Width="260">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -259,7 +243,6 @@
 
                     <!-- Tab Content -->
                     <Grid Grid.Row="1">
-                        <!-- History Panel -->
                         <ScrollViewer x:Name="HistoryPanel" VerticalScrollBarVisibility="Auto" Padding="8">
                             <StackPanel x:Name="HistoryList">
                                 <TextBlock Text="No files opened yet" Foreground="{DynamicResource TextSecondaryBrush}"
@@ -267,8 +250,6 @@
                                            HorizontalAlignment="Center" Margin="0,32,0,0"/>
                             </StackPanel>
                         </ScrollViewer>
-
-                        <!-- Outline Panel -->
                         <ScrollViewer x:Name="OutlinePanel" VerticalScrollBarVisibility="Auto"
                                       Padding="8" Visibility="Collapsed">
                             <StackPanel x:Name="OutlineList">
@@ -281,8 +262,43 @@
                 </Grid>
             </Border>
 
-            <!-- Editor -->
-            <ctrl:MarkdownEditor x:Name="Editor" Grid.Column="1"/>
+            <!-- Search Panel (overlay, top-right) -->
+            <Border x:Name="SearchPanel"
+                    Visibility="Collapsed"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource DividerBrush}"
+                    BorderThickness="1" CornerRadius="6"
+                    Padding="6,3" Margin="8,4,8,0"
+                    Panel.ZIndex="10"
+                    Effect="{StaticResource PopupShadowEffect}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource FormatButtonStyle}" Click="OnSearchClose"
+                            ToolTip="Close (Esc)" Padding="4,2">
+                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"/>
+                    </Button>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource FormatButtonStyle}" Click="OnSearchNext"
+                            ToolTip="Next (Enter)" Padding="4,2">
+                        <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                    </Button>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource FormatButtonStyle}" Click="OnSearchPrevious"
+                            ToolTip="Previous (Shift+Enter)" Padding="4,2">
+                        <TextBlock Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                    </Button>
+                    <TextBlock x:Name="SearchCount" DockPanel.Dock="Right" Text=""
+                               FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="6,0"/>
+                    <TextBox x:Name="SearchInput" Width="180"
+                             FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                             Background="Transparent" BorderThickness="0" Padding="4,0"
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             CaretBrush="{DynamicResource TextPrimaryBrush}"
+                             VerticalAlignment="Center" VerticalContentAlignment="Center"
+                             TextChanged="OnSearchInputTextChanged"
+                             PreviewKeyDown="OnSearchInputKeyDown"/>
+                </DockPanel>
+            </Border>
         </Grid>
 
         <!-- Status Bar -->

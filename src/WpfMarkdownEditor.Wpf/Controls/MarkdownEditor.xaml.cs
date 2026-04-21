@@ -125,6 +125,8 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     public void FocusEditor() => EditorTextBox.Focus();
 
+    public TextBox TextBox => EditorTextBox;
+
     /// <summary>
     /// Wrap the selected text with before/after markers, or insert a placeholder.
     /// </summary>

@@ -57,6 +57,13 @@ public partial class MainWindow : Window
         BuildThemeList();
         ApplyTheme("GitHub");
 
+        // Reposition search panel when editor layout changes
+        Editor.TextBox.SizeChanged += (_, _) =>
+        {
+            if (SearchPanel.Visibility == Visibility.Visible)
+                UpdateSearchPanelPosition();
+        };
+
         Editor.MarkdownChanged += OnMarkdownChanged;
 
         if (filePath != null && File.Exists(filePath))
@@ -133,6 +140,7 @@ public partial class MainWindow : Window
                 case Key.N: e.Handled = true; NewFile(); break;
                 case Key.O: e.Handled = true; OpenFile(); break;
                 case Key.S: e.Handled = true; _ = SaveCurrentFileAsync(); break;
+                case Key.F: e.Handled = true; ShowSearchPanel(); break;
             }
         }
         base.OnPreviewKeyDown(e);
@@ -145,18 +153,14 @@ public partial class MainWindow : Window
             var fileName = _currentFilePath != null
                 ? System.IO.Path.GetFileName(_currentFilePath)
                 : "Untitled";
-            var result = MessageBox.Show(
-                $"Do you want to save changes to \"{fileName}\"?",
-                "Save Changes",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Question);
+            var result = ShowSaveConfirmation(fileName);
 
             switch (result)
             {
-                case MessageBoxResult.Yes:
+                case SaveConfirmationResult.Save:
                     if (!SaveCurrentFileSync()) e.Cancel = true;
                     break;
-                case MessageBoxResult.Cancel:
+                case SaveConfirmationResult.Cancel:
                     e.Cancel = true;
                     break;
             }
@@ -278,18 +282,21 @@ public partial class MainWindow : Window
         var fileName = _currentFilePath != null
             ? System.IO.Path.GetFileName(_currentFilePath)
             : "Untitled";
-        var result = MessageBox.Show(
-            $"Do you want to save changes to \"{fileName}\"?",
-            "Save Changes",
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question);
+        var result = ShowSaveConfirmation(fileName);
 
         return result switch
         {
-            MessageBoxResult.Yes => SaveCurrentFileSync(),
-            MessageBoxResult.No => true,
+            SaveConfirmationResult.Save => SaveCurrentFileSync(),
+            SaveConfirmationResult.DontSave => true,
             _ => false
         };
+    }
+
+    private SaveConfirmationResult ShowSaveConfirmation(string fileName)
+    {
+        var dialog = new SaveConfirmationDialog(fileName) { Owner = this };
+        dialog.ShowDialog();
+        return dialog.Result;
     }
 
     private void UpdateTitle()
@@ -344,7 +351,7 @@ public partial class MainWindow : Window
     {
         if (sender is not RadioButton rb || rb.Tag is not string name) return;
         ApplyTheme(name);
-        ThemePopup.IsOpen = false;
+        ViewPopup.IsOpen = false;
     }
 
     private void ApplyTheme(string name)
@@ -353,7 +360,6 @@ public partial class MainWindow : Window
         if (entry == null) return;
 
         _currentThemeName = name;
-        CurrentThemeName.Text = name;
         ApplyWindowTheme(entry.IsDark);
         Editor.ApplyTheme(entry.Theme);
 
@@ -406,6 +412,129 @@ public partial class MainWindow : Window
     private void OnCodeBlock(object sender, RoutedEventArgs e) => Editor.WrapSelection("```\n", "\n```");
     private void OnTable(object sender, RoutedEventArgs e) => Editor.InsertText("\n| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Cell 1   | Cell 2   | Cell 3   |\n");
     private void OnHorizontalRule(object sender, RoutedEventArgs e) => Editor.InsertText("\n---\n");
+    private void OnUndo(object sender, RoutedEventArgs e) => Editor.TextBox.Undo();
+    private void OnRedo(object sender, RoutedEventArgs e) => Editor.TextBox.Redo();
+    private void OnFind(object sender, RoutedEventArgs e) => ShowSearchPanel();
+
+    private void OnToggleSidebarFromMenu(object sender, RoutedEventArgs e)
+    {
+        ViewPopup.IsOpen = false;
+        _sidebarOpen = !_sidebarOpen;
+        AnimateSidebar(_sidebarOpen ? SidebarWidth : 0);
+    }
+
+    #endregion
+
+    #region Search
+
+    private readonly List<int> _searchMatches = [];
+    private int _currentMatchIndex = -1;
+
+    private void ShowSearchPanel()
+    {
+        UpdateSearchPanelPosition();
+        SearchPanel.Visibility = Visibility.Visible;
+        SearchInput.Focus();
+        SearchInput.SelectAll();
+    }
+
+    private void UpdateSearchPanelPosition()
+    {
+        // Position over the editor TextBox column, not the preview column
+        var previewAndSplitter = Editor.ActualWidth - Editor.TextBox.ActualWidth;
+        SearchPanel.Margin = new Thickness(0, 4, previewAndSplitter + 8, 0);
+    }
+
+    private void HideSearchPanel()
+    {
+        SearchPanel.Visibility = Visibility.Collapsed;
+        SearchInput.Text = "";
+        _searchMatches.Clear();
+        _currentMatchIndex = -1;
+        SearchCount.Text = "";
+    }
+
+    private void OnSearchInputTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (SearchPanel.Visibility != Visibility.Visible) return;
+        PerformSearch();
+    }
+
+    private void OnSearchInputKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            var direction = Keyboard.Modifiers == ModifierKeys.Shift ? -1 : 1;
+            // Defer navigation so Enter key isn't routed to the editor
+            Dispatcher.BeginInvoke(() => NavigateSearch(direction));
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            HideSearchPanel();
+        }
+    }
+
+    private void OnSearchNext(object sender, RoutedEventArgs e) => NavigateSearch(1);
+    private void OnSearchPrevious(object sender, RoutedEventArgs e) => NavigateSearch(-1);
+    private void OnSearchClose(object sender, RoutedEventArgs e) => HideSearchPanel();
+
+    private void PerformSearch()
+    {
+        _searchMatches.Clear();
+        _currentMatchIndex = -1;
+
+        var searchText = SearchInput.Text;
+        if (string.IsNullOrEmpty(searchText))
+        {
+            SearchCount.Text = "";
+            return;
+        }
+
+        var content = Editor.TextBox.Text;
+        var pos = 0;
+        while ((pos = content.IndexOf(searchText, pos, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            _searchMatches.Add(pos);
+            pos += searchText.Length;
+        }
+
+        if (_searchMatches.Count > 0)
+        {
+            _currentMatchIndex = 0;
+            // Select without taking focus (keeps search input active)
+            Editor.TextBox.Select(_searchMatches[0], searchText.Length);
+        }
+
+        UpdateSearchCount();
+    }
+
+    private void NavigateSearch(int direction)
+    {
+        if (_searchMatches.Count == 0) { PerformSearch(); return; }
+        _currentMatchIndex = (_currentMatchIndex + direction + _searchMatches.Count) % _searchMatches.Count;
+        GoToMatch(_currentMatchIndex);
+        UpdateSearchCount();
+    }
+
+    private void GoToMatch(int index)
+    {
+        var textBox = Editor.TextBox;
+        var pos = _searchMatches[index];
+        var length = SearchInput.Text.Length;
+        textBox.Select(pos, length);
+        // Briefly focus editor to trigger auto-scroll, then return to search
+        textBox.Focus();
+        Dispatcher.BeginInvoke(() => SearchInput.Focus());
+    }
+
+    private void UpdateSearchCount()
+    {
+        SearchCount.Text = _searchMatches.Count > 0
+            ? $"{_currentMatchIndex + 1}/{_searchMatches.Count}"
+            : "No results";
+    }
 
     #endregion
 
@@ -621,7 +750,7 @@ public partial class MainWindow : Window
         var activeProvider = settings.GetActiveProvider();
         if (activeProvider == null || settings.LoadConfig(activeProvider)?.IsComplete != true)
         {
-            TranslatePopup.IsOpen = false;
+            ToolsPopup.IsOpen = false;
             var dialog = new TranslationConfigDialog(isFirstRun: true);
             dialog.Owner = this;
             if (dialog.ShowDialog() == true)
@@ -645,7 +774,7 @@ public partial class MainWindow : Window
 
         if (config?.IsComplete != true)
         {
-            TranslatePopup.IsOpen = false;
+            ToolsPopup.IsOpen = false;
             var dialog = new TranslationConfigDialog(isFirstRun: false, preselectedProvider: newEngine, existingConfig: config);
             dialog.Owner = this;
             if (dialog.ShowDialog() == true)
@@ -662,7 +791,7 @@ public partial class MainWindow : Window
 
     private void OnTranslationSettings(object sender, RoutedEventArgs e)
     {
-        TranslatePopup.IsOpen = false;
+        ToolsPopup.IsOpen = false;
         var settings = GetTranslationSettings();
         var activeProvider = settings.GetActiveProvider() ?? "Baidu";
         var existingConfig = settings.LoadConfig(activeProvider);
@@ -684,7 +813,7 @@ public partial class MainWindow : Window
         var activeProvider = settings.GetActiveProvider();
         if (activeProvider == null || settings.LoadConfig(activeProvider)?.IsComplete != true)
         {
-            TranslatePopup.IsOpen = false;
+            ToolsPopup.IsOpen = false;
             var dialog = new TranslationConfigDialog(isFirstRun: activeProvider == null, preselectedProvider: activeProvider, existingConfig: activeProvider != null ? settings.LoadConfig(activeProvider) : null);
             dialog.Owner = this;
             if (dialog.ShowDialog() != true) return;
@@ -707,7 +836,7 @@ public partial class MainWindow : Window
         _isTranslating = true;
         CancelTranslateBtn.Visibility = Visibility.Visible;
         TranslateLanguagePanel.Visibility = Visibility.Collapsed;
-        TranslatePopup.IsOpen = false;
+        ToolsPopup.IsOpen = false;
 
         _progressOverlay = new TranslationProgressOverlay();
         _progressOverlay.CancelRequested += OnOverlayCancel;
@@ -769,12 +898,12 @@ public partial class MainWindow : Window
     private void OnCancelTranslate(object sender, RoutedEventArgs e)
     {
         _translationCts?.Cancel();
-        TranslatePopup.IsOpen = false;
+        ToolsPopup.IsOpen = false;
     }
 
     private void OnClearTranslation(object sender, RoutedEventArgs e)
     {
-        TranslatePopup.IsOpen = false;
+        ToolsPopup.IsOpen = false;
         Editor.ClearTranslatedPreview();
         ClearTranslationBtn.Visibility = Visibility.Collapsed;
         StatusText.Text = "Translation cleared";
