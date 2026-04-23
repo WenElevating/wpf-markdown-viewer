@@ -158,12 +158,56 @@ Editor.ApplyTheme(EditorTheme.Dark);
 var custom = new EditorTheme
 {
     Name = "My Theme",
+    BaseFontSize = 13,          // base body font size (headings scale proportionally)
+    LineHeight = 22,            // line height in device-independent pixels (NaN = auto)
     BackgroundColor = Colors.White,
     ForegroundColor = Colors.Black,
+    BodyFont = new FontFamily("Segoe UI Variable, Segoe UI"),
+    HeadingFont = new FontFamily("Segoe UI Variable, Segoe UI"),
+    CodeFont = new FontFamily("Cascadia Mono, Consolas"),
     LinkColor = Colors.Blue,
+    ParagraphSpacing = 10,
+    HeadingMarginTop = 14,
+    HeadingMarginBottom = 4,
     // ... see EditorTheme for all properties
 };
 Editor.ApplyTheme(custom);
+```
+
+### Typography Properties
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `BaseFontSize` | `double` | `14` | Body font size; headings scale relative to this value |
+| `LineHeight` | `double` | `NaN` | Line height in DIPs; `NaN` = WPF automatic |
+| `BodyFont` | `FontFamily` | `"Segoe UI"` | Font used for paragraphs and lists |
+| `HeadingFont` | `FontFamily` | `"Segoe UI Semibold"` | Font used for headings |
+| `CodeFont` | `FontFamily` | `"Consolas"` | Font used for code blocks and inline code |
+| `ParagraphSpacing` | `double` | `12` | Bottom margin between paragraphs (DIPs) |
+| `HeadingMarginTop` | `double` | `24` | Top margin before headings (DIPs) |
+| `HeadingMarginBottom` | `double` | `8` | Bottom margin after headings (DIPs) |
+
+### Using FlowDocumentRenderer Directly
+
+Use `FlowDocumentRenderer` standalone to render markdown into a `FlowDocument` — useful for read-only chat bubbles, tooltips, or any custom WPF control:
+
+```csharp
+var parser = new MarkdownParser();
+var renderer = new FlowDocumentRenderer(EditorTheme.ClaudeDark);
+
+var blocks = parser.Parse(markdownText);
+var document = renderer.Render(blocks);
+
+// Attach to any FlowDocumentScrollViewer / RichTextBox
+myFlowDocumentScrollViewer.Document = document;
+```
+
+You can also expose theme as a `DependencyProperty` on your control to allow XAML configuration without modifying the library:
+
+```xml
+<local:MyMarkdownControl
+    Markdown="{Binding Text}"
+    Theme="{x:Static themes:AppThemes.ClaudeCode}" />
 ```
 
 ## Smart Editing
