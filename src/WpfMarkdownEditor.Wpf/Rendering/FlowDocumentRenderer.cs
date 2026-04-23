@@ -49,8 +49,12 @@ public sealed class FlowDocumentRenderer
             Background = new SolidColorBrush(_theme.BackgroundColor),
             Foreground = new SolidColorBrush(_theme.ForegroundColor),
             FontFamily = _theme.BodyFont,
-            PagePadding = new Thickness(16),
+            FontSize = _theme.BaseFontSize,
+            PagePadding = new Thickness(0),
         };
+
+        if (!double.IsNaN(_theme.LineHeight) && _theme.LineHeight > 0)
+            document.LineHeight = _theme.LineHeight;
 
         foreach (var block in blocks)
         {

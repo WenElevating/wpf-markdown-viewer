@@ -41,14 +41,14 @@ public sealed class HeadingRenderer(EditorTheme theme, IImageResolver? imageReso
         return paragraph;
     }
 
-    private static double GetFontSize(int level) => level switch
+    private double GetFontSize(int level) => level switch
     {
-        1 => 32,
-        2 => 24,
-        3 => 20,
-        4 => 16,
-        5 => 14,
-        6 => 13,
-        _ => 14,
+        1 => Math.Round(theme.BaseFontSize * 1.85),
+        2 => Math.Round(theme.BaseFontSize * 1.5),
+        3 => Math.Round(theme.BaseFontSize * 1.25),
+        4 => Math.Round(theme.BaseFontSize * 1.1),
+        5 => theme.BaseFontSize,
+        6 => theme.BaseFontSize,
+        _ => theme.BaseFontSize,
     };
 }

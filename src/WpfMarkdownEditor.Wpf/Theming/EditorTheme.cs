@@ -20,6 +20,7 @@ public sealed class EditorTheme
     public FontWeight EditorFontWeight { get; init; } = FontWeights.Normal;
 
     // Typography
+    public double BaseFontSize { get; init; } = 14;
     public FontFamily BodyFont { get; init; } = new("Segoe UI");
     public FontFamily HeadingFont { get; init; } = new("Segoe UI Semibold");
     public FontFamily CodeFont { get; init; } = new("Consolas");
@@ -49,6 +50,7 @@ public sealed class EditorTheme
     public Color SyntaxTypeColor { get; init; } = Color.FromRgb(0x4e, 0xc9, 0xb0);
 
     // Spacing
+    public double LineHeight { get; init; } = double.NaN;
     public double ParagraphSpacing { get; init; } = 12;
     public double HeadingMarginTop { get; init; } = 24;
     public double HeadingMarginBottom { get; init; } = 8;
@@ -201,12 +203,13 @@ public sealed class EditorTheme
     public static EditorTheme ClaudeDark { get; } = new()
     {
         Name = "Claude Dark",
+        BaseFontSize = 13,
         BackgroundColor = Color.FromRgb(0x1c, 0x1c, 0x1e),
         ForegroundColor = Color.FromRgb(0xe8, 0xe2, 0xd9),
         EditorForegroundColor = Color.FromRgb(0xe8, 0xe2, 0xd9),
         EditorCaretColor = Color.FromRgb(0xe8, 0xe2, 0xd9),
-        BodyFont = new("Segoe UI"),
-        HeadingFont = new("Segoe UI Semibold"),
+        BodyFont = new("Segoe UI Variable, Segoe UI"),
+        HeadingFont = new("Segoe UI Variable, Segoe UI"),
         CodeFont = new("Consolas"),
         HeadingColor = Color.FromRgb(0xff, 0xff, 0xff),
         CodeBackground = Color.FromRgb(0x2a, 0x28, 0x26),
@@ -218,7 +221,6 @@ public sealed class EditorTheme
         TableBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
         ThematicBreakColor = Color.FromRgb(0x3a, 0x36, 0x32),
         HeadingBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
-        ShowHeadingBorders = true,
         InlineCodeBackground = Color.FromRgb(0x2a, 0x28, 0x26),
         InlineCodeForeground = Color.FromRgb(0xe8, 0xe2, 0xd9),
         CodeBlockBorderColor = Color.FromRgb(0x3a, 0x36, 0x32),
@@ -228,10 +230,11 @@ public sealed class EditorTheme
         SyntaxStringColor = Color.FromRgb(0xa3, 0xd9, 0xa5),
         SyntaxNumberColor = Color.FromRgb(0x7d, 0xdc, 0xd0),
         SyntaxTypeColor = Color.FromRgb(0xd4, 0xb4, 0xff),
-        ParagraphSpacing = 16,
-        HeadingMarginTop = 24,
-        HeadingMarginBottom = 12,
-        BlockquotePaddingLeft = 16,
-        BlockquoteBorderWidth = 4,
+        ShowHeadingBorders = false,
+        ParagraphSpacing = 8,
+        HeadingMarginTop = 12,
+        HeadingMarginBottom = 4,
+        BlockquotePaddingLeft = 12,
+        BlockquoteBorderWidth = 3,
     };
 }
