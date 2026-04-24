@@ -56,6 +56,8 @@ public sealed class EditorTheme
     public double HeadingMarginBottom { get; init; } = 8;
     public double BlockquotePaddingLeft { get; init; } = 16;
     public double BlockquoteBorderWidth { get; init; } = 4;
+    public double ListIndent { get; init; } = 20;
+    public Thickness PagePadding { get; init; } = new Thickness(24, 12, 24, 12);
 
     // Built-in themes
     public static EditorTheme Light { get; } = new() { Name = "Light" };

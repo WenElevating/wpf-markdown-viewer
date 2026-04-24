@@ -50,7 +50,7 @@ public sealed class FlowDocumentRenderer
             Foreground = new SolidColorBrush(_theme.ForegroundColor),
             FontFamily = _theme.BodyFont,
             FontSize = _theme.BaseFontSize,
-            PagePadding = new Thickness(0),
+            PagePadding = _theme.PagePadding,
         };
 
         if (!double.IsNaN(_theme.LineHeight) && _theme.LineHeight > 0)

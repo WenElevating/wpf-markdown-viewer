@@ -30,7 +30,7 @@ public sealed class ListRenderer(EditorTheme theme, IImageResolver? imageResolve
         {
             MarkerStyle = markerStyle,
             Margin = new Thickness(0, 4, 0, 4),
-            Padding = new Thickness(20, 0, 0, 0),
+            Padding = new Thickness(theme.ListIndent, 0, 0, 0),
         };
 
         // Smaller markers for nested lists
@@ -51,7 +51,7 @@ public sealed class ListRenderer(EditorTheme theme, IImageResolver? imageResolve
                         {
                             FontFamily = theme.BodyFont,
                             Foreground = new SolidColorBrush(theme.ForegroundColor),
-                            FontSize = 14,
+                            FontSize = theme.BaseFontSize,
                             Margin = new Thickness(0),
                         };
                         _inlineRenderer.RenderInlines(p, para.Inlines);
