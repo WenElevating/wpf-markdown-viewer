@@ -741,7 +741,12 @@ public partial class MainWindow : Window
     #region Translation
 
     private TranslationSettingsService GetTranslationSettings()
-        => _translationSettings ??= new TranslationSettingsService(AppContext.BaseDirectory);
+        => _translationSettings ??= new TranslationSettingsService(GetTranslationSettingsDirectory());
+
+    private static string GetTranslationSettingsDirectory()
+        => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WpfMarkdownEditor.Sample");
 
     private void OnTranslatePopupOpened(object? sender, EventArgs e)
     {

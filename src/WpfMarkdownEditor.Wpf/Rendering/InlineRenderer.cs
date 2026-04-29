@@ -126,7 +126,7 @@ public sealed class InlineRenderer
 
     private System.Windows.Documents.Inline RenderImageInline(ImageInline img)
     {
-        if (_imageResolver is not null)
+        if (_imageResolver is not null && !IsRemoteUrl(img.Url))
         {
             try
             {
@@ -157,6 +157,10 @@ public sealed class InlineRenderer
             Foreground = new SolidColorBrush(_theme.LinkColor),
         };
     }
+
+    private static bool IsRemoteUrl(string url) =>
+        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
     private static BitmapImage? CreateBitmap(ImageData imageData)
     {

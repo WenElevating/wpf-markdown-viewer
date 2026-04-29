@@ -54,10 +54,11 @@ public class MarkdownSegmentExtractorTests
         var markdown = "Use the `print()` function.";
         var (plainText, _, inlineTokens) = MarkdownSegmentExtractor.Extract(markdown);
 
-        // Inline code markers should be replaced with tokens
+        // Inline code spans should be replaced with a single protected token.
         Assert.DoesNotContain("`print()`", plainText);
-        Assert.Contains("print()", plainText); // text content preserved
-        Assert.True(inlineTokens.Count >= 2); // start + end tokens
+        Assert.DoesNotContain("print()", plainText);
+        Assert.Single(inlineTokens);
+        Assert.Contains("`print()`", inlineTokens.Values);
     }
 
     [Fact]
@@ -204,6 +205,23 @@ public class MarkdownSegmentExtractorTests
 
         Assert.Contains("`Console.WriteLine`", restored);
         Assert.Contains("使用", restored);
+    }
+
+    [Fact]
+    public void Reconstruct_PreservesEmptyTableCells()
+    {
+        var markdown = "| A |  | B |\n| --- | --- | --- |\n| C |  | D |";
+        var (plainText, template, inlineTokens) = MarkdownSegmentExtractor.Extract(markdown);
+
+        var translated = plainText
+            .Replace("A", "甲")
+            .Replace("B", "乙")
+            .Replace("C", "丙")
+            .Replace("D", "丁");
+        var restored = MarkdownSegmentExtractor.Reconstruct(template, translated, inlineTokens);
+
+        Assert.Contains("| 甲 |  | 乙 |", restored);
+        Assert.Contains("| 丙 |  | 丁 |", restored);
     }
 
     [Fact]

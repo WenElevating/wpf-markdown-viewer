@@ -206,7 +206,7 @@ public static class MarkdownSegmentExtractor
         Dictionary<string, string> tokens,
         Dictionary<string, int> counters)
     {
-        // Order: images → links → bold → italic → inline code → standalone URLs
+        // Order: images → links → inline code → bold → italic → standalone URLs
         // Images and links first to avoid partial matches.
 
         // Images: ![alt](url) → preserve syntax, replace URL with token
@@ -229,6 +229,15 @@ public static class MarkdownSegmentExtractor
             return $"{startToken}{match.Groups[1].Value}{endToken}";
         });
 
+        // Inline code: `text` → XC_N
+        text = InlineCodeRegex.Replace(text, match =>
+        {
+            var idx = counters["C"]++;
+            var token = $"XC{idx}";
+            tokens[token] = match.Value;
+            return token;
+        });
+
         // Bold: **text** → XBS_N text XBE_N
         text = BoldRegex.Replace(text, match =>
         {
@@ -248,17 +257,6 @@ public static class MarkdownSegmentExtractor
             var endToken = $"XIE{idx}";
             tokens[startToken] = "*";
             tokens[endToken] = "*";
-            return $"{startToken}{match.Groups[1].Value}{endToken}";
-        });
-
-        // Inline code: `text` → XCS_N text XCE_N
-        text = InlineCodeRegex.Replace(text, match =>
-        {
-            var idx = counters["C"]++;
-            var startToken = $"XCS{idx}";
-            var endToken = $"XCE{idx}";
-            tokens[startToken] = "`";
-            tokens[endToken] = "`";
             return $"{startToken}{match.Groups[1].Value}{endToken}";
         });
 
@@ -286,8 +284,6 @@ public static class MarkdownSegmentExtractor
         text = Regex.Replace(text, @"XBE\d+", "**");
         text = Regex.Replace(text, @"XIS\d+", "*");
         text = Regex.Replace(text, @"XIE\d+", "*");
-        text = Regex.Replace(text, @"XCS\d+", "`");
-        text = Regex.Replace(text, @"XCE\d+", "`");
         text = Regex.Replace(text, @"XLS\d+", "[");
         // XLE tokens contain URLs — only restore via exact match above
 
@@ -308,10 +304,16 @@ public static class MarkdownSegmentExtractor
 
     private static List<string> ParseTableCells(string line)
     {
-        return line.Split('|')
+        var cells = line.Split('|')
             .Skip(1)
+            .ToList();
+
+        if (cells.Count > 0 && string.IsNullOrWhiteSpace(cells[^1]))
+            cells.RemoveAt(cells.Count - 1);
+
+        return cells
             .Select(c => c.Trim())
-            .Where(c => !string.IsNullOrWhiteSpace(c) && !Regex.IsMatch(c, @"^[\s\-:]+$"))
+            .Where(c => string.IsNullOrWhiteSpace(c) || !Regex.IsMatch(c, @"^[\s\-:]+$"))
             .ToList();
     }
 

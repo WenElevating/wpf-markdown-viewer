@@ -1,8 +1,11 @@
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing;
+using WpfMarkdownEditor.Core.Parsing.Inlines;
 using WpfMarkdownEditor.Wpf.Rendering;
 using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.Theming;
@@ -54,6 +57,41 @@ public sealed class ImageRenderingTests
                 Directory.Delete(root, recursive: true);
             }
         });
+    }
+
+    [Fact]
+    public void RenderInline_RemoteImage_DoesNotResolveSynchronously()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new ThrowingImageResolver();
+            var renderer = new InlineRenderer(EditorTheme.Light, resolver);
+            var paragraph = new Paragraph();
+
+            renderer.RenderInlines(paragraph,
+            [
+                new ImageInline
+                {
+                    Url = "https://example.com/image.png",
+                    Alt = "remote"
+                }
+            ]);
+
+            var run = Assert.IsType<Run>(Assert.Single(paragraph.Inlines));
+            Assert.Equal("[remote]", run.Text);
+            Assert.Equal(0, resolver.ResolveCount);
+        });
+    }
+
+    private sealed class ThrowingImageResolver : IImageResolver
+    {
+        public int ResolveCount { get; private set; }
+
+        public Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct)
+        {
+            ResolveCount++;
+            throw new InvalidOperationException("Remote inline images should not be resolved synchronously.");
+        }
     }
 
     private static void RunOnSta(Action action)
