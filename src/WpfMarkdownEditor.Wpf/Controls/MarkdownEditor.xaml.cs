@@ -138,13 +138,15 @@ public partial class MarkdownEditor : UserControl, IDisposable
         if (string.IsNullOrEmpty(selectedText))
         {
             var placeholder = "text";
+            var insertionPos = textBox.SelectionStart;
             textBox.SelectedText = before + placeholder + after;
-            var start = textBox.CaretIndex - before.Length - placeholder.Length - after.Length + before.Length;
-            textBox.Select(start, placeholder.Length);
+            textBox.Select(insertionPos + before.Length, placeholder.Length);
         }
         else
         {
+            var selectionStart = textBox.SelectionStart;
             textBox.SelectedText = before + selectedText + after;
+            textBox.Select(selectionStart + before.Length, selectedText.Length);
         }
 
         textBox.Focus();

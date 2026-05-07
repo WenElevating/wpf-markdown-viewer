@@ -93,38 +93,6 @@
                 </Setter>
             </Style>
 
-            <!-- Sidebar Tab Button -->
-            <Style x:Key="SidebarTabStyle" TargetType="Button">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Padding" Value="4,6"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                    CornerRadius="6" Padding="{TemplateBinding Padding}"
-                                    SnapsToDevicePixels="True" Margin="0,0,2,4">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <Trigger Property="Tag" Value="Active">
-                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-                        <Setter Property="FontWeight" Value="SemiBold"/>
-                        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-
             <!-- Sidebar Item Button (history entry, TOC heading) -->
             <Style x:Key="SidebarItemStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
@@ -273,11 +241,16 @@
                             <Border x:Name="Bd" Background="{TemplateBinding Background}"
                                     Padding="{TemplateBinding Padding}" CornerRadius="4" SnapsToDevicePixels="True">
                                 <Grid>
-                                    <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{TemplateBinding Tag}"
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{TemplateBinding Tag}"
                                                FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
                                                Foreground="{DynamicResource TextSecondaryBrush}"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                               HorizontalAlignment="Left" VerticalAlignment="Center"
+                                               Margin="16,0,0,0"/>
                                 </Grid>
                             </Border>
                             <ControlTemplate.Triggers>
