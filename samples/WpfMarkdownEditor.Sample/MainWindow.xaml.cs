@@ -77,47 +77,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            _loadingFile = true;
-            Editor.Markdown = """
-                # Welcome to WPF Markdown Editor
-
-                ## Features
-
-                - **Real-time preview** with less than 50ms latency
-                - *Italic* and **bold** text
-                - `Inline code` support
-                - [Links](https://example.com)
-
-                ## Code Block
-
-                ```csharp
-                public class HelloWorld
-                {
-                    public static void Main()
-                    {
-                        Console.WriteLine("Hello, Markdown!");
-                    }
-                }
-                ```
-
-                ## Table
-
-                | Feature | Status |
-                | ------- | ------ |
-                | Parser | Done |
-                | Renderer | Done |
-                | Theme | Done |
-
-                ## Blockquote
-
-                > This is a blockquote.
-                > It supports **inline formatting**.
-
-                ---
-
-                *Built with .NET 8 and WPF. Zero external dependencies.*
-                """;
-            _loadingFile = false;
+            _currentFilePath = null;
             _isDirty = false;
         }
         UpdateTitle();
@@ -398,6 +358,17 @@ public partial class MainWindow : Window
 
     #region Formatting Toolbar
 
+    private void OnPopupItemClick(object sender, RoutedEventArgs e)
+    {
+        FilePopup.IsOpen = false;
+        EditPopup.IsOpen = false;
+        ParagraphPopup.IsOpen = false;
+        FormatPopup.IsOpen = false;
+        InsertPopup.IsOpen = false;
+        ViewPopup.IsOpen = false;
+        ToolsPopup.IsOpen = false;
+    }
+
     private void OnHeading1(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("#");
     private void OnHeading2(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("##");
     private void OnHeading3(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("###");
@@ -410,7 +381,42 @@ public partial class MainWindow : Window
     private void OnUnorderedList(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("-");
     private void OnOrderedList(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("1.");
     private void OnCodeBlock(object sender, RoutedEventArgs e) => Editor.WrapSelection("```\n", "\n```");
-    private void OnTable(object sender, RoutedEventArgs e) => Editor.InsertText("\n| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Cell 1   | Cell 2   | Cell 3   |\n");
+    private void OnTable(object sender, RoutedEventArgs e)
+    {
+        InsertPopup.IsOpen = false;
+        var dialog = new TableInsertDialog { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.Result is (int rows, int cols))
+        {
+            Editor.InsertText(GenerateTable(rows, cols));
+        }
+    }
+
+    private static string GenerateTable(int dataRows, int columns)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('\n');
+
+        // Header
+        sb.Append("| ");
+        sb.Append(string.Join(" | ", Enumerable.Range(1, columns).Select(i => $"Column {i}")));
+        sb.Append(" |\n");
+
+        // Separator
+        sb.Append("| ");
+        sb.Append(string.Join(" | ", Enumerable.Repeat("--------", columns)));
+        sb.Append(" |\n");
+
+        // Data rows
+        var cellIndex = 1;
+        for (var r = 0; r < dataRows; r++)
+        {
+            sb.Append("| ");
+            sb.Append(string.Join(" | ", Enumerable.Range(0, columns).Select(_ => $"Cell {cellIndex++}")));
+            sb.Append(" |\n");
+        }
+
+        return sb.ToString();
+    }
     private void OnHorizontalRule(object sender, RoutedEventArgs e) => Editor.InsertText("\n---\n");
     private void OnUndo(object sender, RoutedEventArgs e) => Editor.TextBox.Undo();
     private void OnRedo(object sender, RoutedEventArgs e) => Editor.TextBox.Redo();
@@ -558,18 +564,30 @@ public partial class MainWindow : Window
         SidebarPanel.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
-    private void OnTabHistory(object sender, RoutedEventArgs e)
+    private void OnTabHistory(object sender, MouseButtonEventArgs e)
     {
-        TabHistory.Tag = "Active";
-        TabOutline.Tag = null;
+        e.Handled = true;
+        TabHistory.FontWeight = FontWeights.SemiBold;
+        TabHistory.Foreground = (Brush)FindResource("TextPrimaryBrush");
+        TabOutline.FontWeight = FontWeights.Normal;
+        TabOutline.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        HistoryUnderline.Visibility = Visibility.Visible;
+        OutlineUnderline.Visibility = Visibility.Collapsed;
+
         HistoryPanel.Visibility = Visibility.Visible;
         OutlinePanel.Visibility = Visibility.Collapsed;
     }
 
-    private void OnTabOutline(object sender, RoutedEventArgs e)
+    private void OnTabOutline(object sender, MouseButtonEventArgs e)
     {
-        TabOutline.Tag = "Active";
-        TabHistory.Tag = null;
+        e.Handled = true;
+        TabOutline.FontWeight = FontWeights.SemiBold;
+        TabOutline.Foreground = (Brush)FindResource("TextPrimaryBrush");
+        TabHistory.FontWeight = FontWeights.Normal;
+        TabHistory.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        OutlineUnderline.Visibility = Visibility.Visible;
+        HistoryUnderline.Visibility = Visibility.Collapsed;
+
         OutlinePanel.Visibility = Visibility.Visible;
         HistoryPanel.Visibility = Visibility.Collapsed;
         UpdateOutline();
