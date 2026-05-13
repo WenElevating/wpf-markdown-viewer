@@ -126,36 +126,62 @@ public sealed class InlineRenderer
 
     private System.Windows.Documents.Inline RenderImageInline(ImageInline img)
     {
-        if (_imageResolver is not null && !IsRemoteUrl(img.Url))
-        {
-            try
-            {
-                var imageData = _imageResolver.ResolveImageAsync(img.Url, CancellationToken.None).GetAwaiter().GetResult();
-                if (imageData is not null)
-                {
-                    var bitmap = CreateBitmap(imageData);
-                    if (bitmap is not null)
-                    {
-                        var imageControl = new System.Windows.Controls.Image
-                        {
-                            Source = bitmap,
-                            MaxHeight = 300,
-                            Stretch = Stretch.Uniform,
-                            StretchDirection = StretchDirection.DownOnly,
-                        };
-                        if (img.Alt is not null)
-                            imageControl.ToolTip = img.Alt;
-                        return new InlineUIContainer(imageControl) { BaselineAlignment = BaselineAlignment.Bottom };
-                    }
-                }
-            }
-            catch { /* fall through to placeholder */ }
-        }
-
-        return new Run($"[{img.Alt ?? img.Url}]")
+        var placeholder = new Run($"[{img.Alt ?? img.Url}]")
         {
             Foreground = new SolidColorBrush(_theme.LinkColor),
         };
+
+        // Only async-load local and data-URI images; remote URLs remain as placeholder text.
+        if (_imageResolver is not null && !IsRemoteUrl(img.Url))
+            _ = LoadInlineImageAsync(placeholder, img, _imageResolver);
+
+        return placeholder;
+    }
+
+    private static async Task LoadInlineImageAsync(Run placeholder, ImageInline img, IImageResolver resolver)
+    {
+        try
+        {
+            var imageData = await Task.Run(() => resolver.ResolveImageAsync(img.Url, CancellationToken.None)).ConfigureAwait(false);
+            if (imageData is null) return;
+
+            var bitmap = CreateBitmap(imageData);
+            if (bitmap is null) return;
+
+            await placeholder.Dispatcher.InvokeAsync(() =>
+            {
+                var imageControl = new System.Windows.Controls.Image
+                {
+                    Source = bitmap,
+                    MaxHeight = 300,
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = StretchDirection.DownOnly,
+                };
+                if (img.Alt is not null)
+                    imageControl.ToolTip = img.Alt;
+
+                // Replace the placeholder run with an image container in its parent paragraph/span
+                if (placeholder.Parent is Paragraph para)
+                {
+                    var idx = para.Inlines.ToList().IndexOf(placeholder);
+                    para.Inlines.Remove(placeholder);
+                    var uiContainer = new InlineUIContainer(imageControl) { BaselineAlignment = BaselineAlignment.Bottom };
+                    if (idx >= 0 && idx < para.Inlines.Count)
+                    {
+                        var afterInline = para.Inlines.Cast<System.Windows.Documents.Inline>().ElementAt(idx);
+                        para.Inlines.InsertBefore(afterInline, uiContainer);
+                    }
+                    else
+                    {
+                        para.Inlines.Add(uiContainer);
+                    }
+                }
+            });
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            // Leave placeholder in place
+        }
     }
 
     private static bool IsRemoteUrl(string url) =>

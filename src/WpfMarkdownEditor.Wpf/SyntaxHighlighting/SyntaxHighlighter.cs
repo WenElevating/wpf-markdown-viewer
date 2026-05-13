@@ -13,8 +13,8 @@ public sealed class SyntaxHighlighter : ISyntaxHighlighter
 
     private readonly SyntaxHighlighterRegistry _registry;
     private readonly Dictionary<string, string> _aliases;
-    private readonly Dictionary<(string code, string language), CacheEntry> _tokenCache = [];
-    private readonly LinkedList<(string code, string language)> _lru = [];
+    private readonly Dictionary<(int hash, string language), CacheEntry> _tokenCache = [];
+    private readonly LinkedList<(int hash, string language)> _lru = [];
     private readonly object _cacheLock = new();
 
     public SyntaxHighlighter()
@@ -110,9 +110,10 @@ public sealed class SyntaxHighlighter : ISyntaxHighlighter
 
     private bool TryGetCachedTokens(string code, string language, out List<SyntaxToken> tokens)
     {
+        var hash = code.GetHashCode();
         lock (_cacheLock)
         {
-            if (_tokenCache.TryGetValue((code, language), out var entry))
+            if (_tokenCache.TryGetValue((hash, language), out var entry) && entry.Code == code)
             {
                 _lru.Remove(entry.Node);
                 _lru.AddFirst(entry.Node);
@@ -130,20 +131,21 @@ public sealed class SyntaxHighlighter : ISyntaxHighlighter
         if (code.Length > MaxCacheCodeLength)
             return;
 
+        var hash = code.GetHashCode();
         lock (_cacheLock)
         {
-            var key = (code, language);
+            var key = (hash, language);
             if (_tokenCache.TryGetValue(key, out var existing))
             {
-                _tokenCache[key] = new CacheEntry(tokens, existing.Node);
+                _tokenCache[key] = new CacheEntry(code, tokens, existing.Node);
                 _lru.Remove(existing.Node);
                 _lru.AddFirst(existing.Node);
                 return;
             }
 
-            var node = new LinkedListNode<(string code, string language)>(key);
+            var node = new LinkedListNode<(int hash, string language)>(key);
             _lru.AddFirst(node);
-            _tokenCache[key] = new CacheEntry(tokens, node);
+            _tokenCache[key] = new CacheEntry(code, tokens, node);
 
             while (_tokenCache.Count > MaxCacheEntries && _lru.Count > 0)
             {
@@ -154,5 +156,5 @@ public sealed class SyntaxHighlighter : ISyntaxHighlighter
         }
     }
 
-    private sealed record CacheEntry(List<SyntaxToken> Tokens, LinkedListNode<(string code, string language)> Node);
+    private sealed record CacheEntry(string Code, List<SyntaxToken> Tokens, LinkedListNode<(int hash, string language)> Node);
 }

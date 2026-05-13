@@ -17,6 +17,8 @@ public sealed class FlowDocumentRenderer
 {
     private readonly Dictionary<Type, IBlockRenderer> _renderers;
     private readonly EditorTheme _theme;
+    private readonly SolidColorBrush _backgroundBrush;
+    private readonly SolidColorBrush _foregroundBrush;
 
     public FlowDocumentRenderer(EditorTheme theme) : this(theme, null, null) { }
 
@@ -25,12 +27,16 @@ public sealed class FlowDocumentRenderer
     public FlowDocumentRenderer(EditorTheme theme, IImageResolver? imageResolver, SyntaxHighlighter? highlighter)
     {
         _theme = theme;
+        _backgroundBrush = new SolidColorBrush(theme.BackgroundColor);
+        _backgroundBrush.Freeze();
+        _foregroundBrush = new SolidColorBrush(theme.ForegroundColor);
+        _foregroundBrush.Freeze();
         _renderers = new()
         {
             [typeof(HeadingBlock)] = new HeadingRenderer(theme, imageResolver),
             [typeof(ParagraphBlock)] = new ParagraphRenderer(theme, imageResolver),
             [typeof(CodeBlock)] = new CodeBlockRenderer(theme, highlighter),
-            [typeof(TableBlock)] = new TableRenderer(theme),
+            [typeof(TableBlock)] = new TableRenderer(theme, imageResolver),
             [typeof(ListBlock)] = new ListRenderer(theme, imageResolver),
             [typeof(ThematicBreakBlock)] = new ThematicBreakRenderer(theme),
             [typeof(ImageBlock)] = new ImageRenderer(theme, imageResolver),
@@ -46,8 +52,8 @@ public sealed class FlowDocumentRenderer
     {
         var document = new FlowDocument
         {
-            Background = new SolidColorBrush(_theme.BackgroundColor),
-            Foreground = new SolidColorBrush(_theme.ForegroundColor),
+            Background = _backgroundBrush,
+            Foreground = _foregroundBrush,
             FontFamily = _theme.BodyFont,
             FontSize = _theme.BaseFontSize,
             PagePadding = _theme.PagePadding,

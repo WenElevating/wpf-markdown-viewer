@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using WpfMarkdownEditor.Core.Parsing;
 
 namespace WpfMarkdownEditor.Core.Translation;
 
@@ -31,6 +32,12 @@ public static class MarkdownSegmentExtractor
     private static readonly Regex UnorderedListRegex = new(@"^([-*+])\s+", RegexOptions.Compiled);
     private static readonly Regex OrderedListRegex = new(@"^(\d+\.)\s+", RegexOptions.Compiled);
     private static readonly Regex HorizontalRuleRegex = new(@"^\s*(---+|\*\*\*+|___+)\s*$", RegexOptions.Compiled);
+    private static readonly Regex TableCellSeparatorRegex = new(@"^[\s\-:]+$", RegexOptions.Compiled);
+    private static readonly Regex RestoreBoldStartRegex = new(@"XBS\d+", RegexOptions.Compiled);
+    private static readonly Regex RestoreBoldEndRegex = new(@"XBE\d+", RegexOptions.Compiled);
+    private static readonly Regex RestoreItalicStartRegex = new(@"XIS\d+", RegexOptions.Compiled);
+    private static readonly Regex RestoreItalicEndRegex = new(@"XIE\d+", RegexOptions.Compiled);
+    private static readonly Regex RestoreLinkStartRegex = new(@"XLS\d+", RegexOptions.Compiled);
 
     /// <summary>
     /// A segment in the markdown template representing either a preserved element
@@ -280,11 +287,11 @@ public static class MarkdownSegmentExtractor
 
         // Regex fallback: if the translation API partially modified a token
         // (e.g., added spaces, changed case), pattern-match by structure.
-        text = Regex.Replace(text, @"XBS\d+", "**");
-        text = Regex.Replace(text, @"XBE\d+", "**");
-        text = Regex.Replace(text, @"XIS\d+", "*");
-        text = Regex.Replace(text, @"XIE\d+", "*");
-        text = Regex.Replace(text, @"XLS\d+", "[");
+        text = RestoreBoldStartRegex.Replace(text, "**");
+        text = RestoreBoldEndRegex.Replace(text, "**");
+        text = RestoreItalicStartRegex.Replace(text, "*");
+        text = RestoreItalicEndRegex.Replace(text, "*");
+        text = RestoreLinkStartRegex.Replace(text, "[");
         // XLE tokens contain URLs — only restore via exact match above
 
         return text;
@@ -294,13 +301,8 @@ public static class MarkdownSegmentExtractor
 
     #region Table helpers
 
-    private static bool IsTableSeparator(string line)
-    {
-        var trimmed = line.Trim();
-        if (!trimmed.StartsWith("|")) return false;
-        var cells = trimmed.Split('|').Where(c => !string.IsNullOrWhiteSpace(c.Trim()));
-        return cells.All(c => Regex.IsMatch(c.Trim(), @"^[\s\-:]+$"));
-    }
+    private static bool IsTableSeparator(string line) =>
+        TableParserHelpers.IsTableSeparator(line);
 
     private static List<string> ParseTableCells(string line)
     {
@@ -313,7 +315,7 @@ public static class MarkdownSegmentExtractor
 
         return cells
             .Select(c => c.Trim())
-            .Where(c => string.IsNullOrWhiteSpace(c) || !Regex.IsMatch(c, @"^[\s\-:]+$"))
+            .Where(c => string.IsNullOrWhiteSpace(c) || !TableCellSeparatorRegex.IsMatch(c))
             .ToList();
     }
 

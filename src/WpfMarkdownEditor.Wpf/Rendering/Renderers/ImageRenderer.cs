@@ -24,40 +24,41 @@ public sealed class ImageRenderer(EditorTheme theme, IImageResolver? imageResolv
             Margin = new Thickness(0, 8, 0, 8),
         };
 
-        // Try fast synchronous resolution for local/base64 only (no network)
-        if (imageResolver is not null && !IsRemoteUrl(image.Url))
-        {
-            try
-            {
-                var imageData = imageResolver.ResolveImageAsync(image.Url, CancellationToken.None).GetAwaiter().GetResult();
-                if (imageData is not null)
-                {
-                    var bitmap = CreateBitmap(imageData);
-                    if (bitmap is not null)
-                    {
-                        container.Child = CreateImageControl(bitmap, image.Alt);
-                        return container;
-                    }
-                }
-            }
-            catch { /* fall through to placeholder */ }
-        }
+        container.Child = BuildPlaceholder(image);
 
-        // Placeholder — async remote loading handled by caller
-        var placeholder = new TextBlock
-        {
-            Text = $"[{image.Alt ?? image.Url}]",
-            Foreground = new SolidColorBrush(theme.LinkColor),
-            FontStyle = FontStyles.Italic,
-        };
+        if (imageResolver is not null)
+            _ = LoadImageAsync(container, image, imageResolver);
 
-        container.Child = placeholder;
         return container;
     }
 
-    private static bool IsRemoteUrl(string url) =>
-        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-        url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+    private TextBlock BuildPlaceholder(ImageBlock image) => new()
+    {
+        Text = $"[{image.Alt ?? image.Url}]",
+        Foreground = new SolidColorBrush(theme.LinkColor),
+        FontStyle = FontStyles.Italic,
+    };
+
+    private static async Task LoadImageAsync(BlockUIContainer container, ImageBlock image, IImageResolver resolver)
+    {
+        try
+        {
+            var imageData = await Task.Run(() => resolver.ResolveImageAsync(image.Url, CancellationToken.None)).ConfigureAwait(false);
+            if (imageData is null) return;
+
+            var bitmap = CreateBitmap(imageData);
+            if (bitmap is null) return;
+
+            await container.Dispatcher.InvokeAsync(() =>
+            {
+                container.Child = CreateImageControl(bitmap, image.Alt);
+            });
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            // Leave placeholder in place
+        }
+    }
 
     private static System.Windows.Controls.Image CreateImageControl(BitmapImage bitmap, string? alt)
     {

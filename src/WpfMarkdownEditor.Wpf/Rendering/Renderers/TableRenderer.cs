@@ -1,13 +1,18 @@
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
+using WpfMarkdownEditor.Core;
+using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
 using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Wpf.Rendering.Renderers;
 
-public sealed class TableRenderer(EditorTheme theme) : IBlockRenderer
+public sealed class TableRenderer(EditorTheme theme, IImageResolver? imageResolver = null) : IBlockRenderer
 {
+    private readonly InlineRenderer _inlineRenderer = new(theme, imageResolver);
+    private readonly MarkdownParser _markdownParser = new();
+
     public System.Windows.Documents.Block Render(Core.Parsing.Block block)
     {
         var table = (TableBlock)block;
@@ -32,13 +37,15 @@ public sealed class TableRenderer(EditorTheme theme) : IBlockRenderer
         for (var i = 0; i < columns; i++)
         {
             var text = i < table.Headers.Count ? table.Headers[i] : "";
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run(text))
+            var headerPara = new Paragraph
             {
                 FontWeight = FontWeights.Bold,
                 Padding = new Thickness(13, 6, 13, 6),
                 BorderBrush = new SolidColorBrush(theme.TableBorderColor),
                 BorderThickness = new Thickness(0, 0, 1, 1),
-            }));
+            };
+            _inlineRenderer.RenderInlines(headerPara, _markdownParser.ParseInlines(text));
+            headerRow.Cells.Add(new TableCell(headerPara));
         }
         rg.Rows.Add(headerRow);
 
@@ -56,12 +63,14 @@ public sealed class TableRenderer(EditorTheme theme) : IBlockRenderer
             for (var i = 0; i < columns; i++)
             {
                 var text = i < row.Count ? row[i] : "";
-                dataRow.Cells.Add(new TableCell(new Paragraph(new Run(text))
+                var dataPara = new Paragraph
                 {
                     Padding = new Thickness(13, 6, 13, 6),
                     BorderBrush = new SolidColorBrush(theme.TableBorderColor),
                     BorderThickness = new Thickness(0, 0, 1, 0),
-                }));
+                };
+                _inlineRenderer.RenderInlines(dataPara, _markdownParser.ParseInlines(text));
+                dataRow.Cells.Add(new TableCell(dataPara));
             }
             rg.Rows.Add(dataRow);
             rowIndex++;

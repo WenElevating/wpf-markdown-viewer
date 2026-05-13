@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -159,7 +160,6 @@ public partial class MarkdownEditor : UserControl, IDisposable
     {
         var textBox = EditorTextBox;
         textBox.SelectedText = text;
-        textBox.CaretIndex += 0; // Keep cursor after insertion
         textBox.Focus();
     }
 
@@ -250,6 +250,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MarkdownEditor)d;
+        editor._translatedMarkdown = null;
         editor.MarkdownChanged?.Invoke(editor, new MarkdownChangedEventArgs
         {
             OldMarkdown = (string?)e.OldValue ?? string.Empty,
@@ -265,53 +266,61 @@ public partial class MarkdownEditor : UserControl, IDisposable
         editor.RenderPreview();
 
         // Editor pane colors — use softer foreground for readability
-        editor.EditorTextBox.Background = new SolidColorBrush(theme.BackgroundColor);
-        editor.EditorTextBox.Foreground = new SolidColorBrush(theme.EditorForegroundColor);
-        editor.EditorTextBox.CaretBrush = new SolidColorBrush(theme.EditorCaretColor);
+        editor.EditorTextBox.Background = Frozen(theme.BackgroundColor);
+        editor.EditorTextBox.Foreground = Frozen(theme.EditorForegroundColor);
+        editor.EditorTextBox.CaretBrush = Frozen(theme.EditorCaretColor);
         editor.EditorTextBox.FontWeight = theme.EditorFontWeight;
-        editor.EditorSplitter.Background = new SolidColorBrush(theme.ThematicBreakColor);
+        editor.EditorSplitter.Background = Frozen(theme.ThematicBreakColor);
 
         // Preview pane colors
-        editor.PreviewViewer.Background = new SolidColorBrush(theme.BackgroundColor);
+        editor.PreviewViewer.Background = Frozen(theme.BackgroundColor);
 
         // Toolbar theme brushes
-        var isDark = theme.BackgroundColor.R < 128;
-        editor.Resources["ToolbarBackground"] = new SolidColorBrush(
+        var lum = 0.299 * theme.BackgroundColor.R + 0.587 * theme.BackgroundColor.G + 0.114 * theme.BackgroundColor.B;
+        var isDark = lum < 128;
+        editor.Resources["ToolbarBackground"] = Frozen(
             isDark ? Color.FromRgb(0x16, 0x1b, 0x22) : Color.FromRgb(0xf6, 0xf8, 0xfa));
-        editor.Resources["ToolbarBorder"] = new SolidColorBrush(
+        editor.Resources["ToolbarBorder"] = Frozen(
             isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
-        editor.Resources["ToolbarForeground"] = new SolidColorBrush(
+        editor.Resources["ToolbarForeground"] = Frozen(
             isDark ? Color.FromRgb(0xe6, 0xed, 0xf3) : Color.FromRgb(0x24, 0x29, 0x2f));
-        editor.Resources["ToolbarHoverBackground"] = new SolidColorBrush(
+        editor.Resources["ToolbarHoverBackground"] = Frozen(
             isDark ? Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x18, 0x00, 0x00, 0x00));
-        editor.Resources["ToolbarPressedBackground"] = new SolidColorBrush(
+        editor.Resources["ToolbarPressedBackground"] = Frozen(
             isDark ? Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x28, 0x00, 0x00, 0x00));
-        editor.Resources["ToolbarAccent"] = new SolidColorBrush(
+        editor.Resources["ToolbarAccent"] = Frozen(
             isDark ? Color.FromRgb(0x58, 0xa6, 0xff) : Color.FromRgb(0x09, 0x69, 0xda));
 
         // Toolbar border & separator
-        editor.PreviewToolbarBorder.BorderBrush = new SolidColorBrush(
+        editor.PreviewToolbarBorder.BorderBrush = Frozen(
             isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
-        editor.PreviewToolbarBorder.Background = new SolidColorBrush(
+        editor.PreviewToolbarBorder.Background = Frozen(
             isDark ? Color.FromRgb(0x16, 0x1b, 0x22) : Color.FromRgb(0xf6, 0xf8, 0xfa));
-        editor.ToolBarSeparator.Background = new SolidColorBrush(
+        editor.ToolBarSeparator.Background = Frozen(
             isDark ? Color.FromRgb(0x30, 0x36, 0x3d) : Color.FromRgb(0xd0, 0xd7, 0xde));
-        editor.ZoomText.Foreground = new SolidColorBrush(
+        editor.ZoomText.Foreground = Frozen(
             isDark ? Color.FromRgb(0x8b, 0x94, 0x9e) : Color.FromRgb(0x65, 0x6d, 0x76));
 
         // Context menu theme
-        editor.Resources["MenuBackground"] = new SolidColorBrush(
+        editor.Resources["MenuBackground"] = Frozen(
             isDark ? Color.FromRgb(0x2d, 0x2d, 0x2d) : Color.FromRgb(0xff, 0xff, 0xff));
-        editor.Resources["MenuBorder"] = new SolidColorBrush(
+        editor.Resources["MenuBorder"] = Frozen(
             isDark ? Color.FromRgb(0x3d, 0x3d, 0x3d) : Color.FromRgb(0xe5, 0xe5, 0xe5));
-        editor.Resources["MenuForeground"] = new SolidColorBrush(
+        editor.Resources["MenuForeground"] = Frozen(
             isDark ? Color.FromRgb(0xff, 0xff, 0xff) : Color.FromRgb(0x1a, 0x1a, 0x1a));
-        editor.Resources["MenuHoverBackground"] = new SolidColorBrush(
+        editor.Resources["MenuHoverBackground"] = Frozen(
             isDark ? Color.FromRgb(0x38, 0x38, 0x38) : Color.FromRgb(0xf5, 0xf5, 0xf5));
-        editor.Resources["MenuSeparator"] = new SolidColorBrush(
+        editor.Resources["MenuSeparator"] = Frozen(
             isDark ? Color.FromRgb(0x3d, 0x3d, 0x3d) : Color.FromRgb(0xe5, 0xe5, 0xe5));
-        editor.Resources["MenuDisabledForeground"] = new SolidColorBrush(
+        editor.Resources["MenuDisabledForeground"] = Frozen(
             isDark ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0xb0, 0xb0, 0xb0));
+    }
+
+    private static SolidColorBrush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private void UpdateRenderer()
@@ -330,7 +339,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
         _debounceTimer.Start();
     }
 
-    private async void OnDebounceTick(object? sender, EventArgs e)
+    private void OnDebounceTick(object? sender, EventArgs e)
     {
         _debounceTimer.Stop();
         RenderPreview();
@@ -367,6 +376,17 @@ public partial class MarkdownEditor : UserControl, IDisposable
         {
             // Newer render superseded this one
         }
+        catch (Exception)
+        {
+            PreviewViewer.Document = BuildErrorDocument("Preview unavailable");
+        }
+    }
+
+    private static FlowDocument BuildErrorDocument(string message)
+    {
+        var doc = new FlowDocument();
+        doc.Blocks.Add(new Paragraph(new Run(message)) { FontStyle = FontStyles.Italic });
+        return doc;
     }
 
     /// <summary>
@@ -394,7 +414,6 @@ public partial class MarkdownEditor : UserControl, IDisposable
                 if (imagePath != null)
                 {
                     textBox.SelectedText = CreateImageMarkdown(imagePath);
-                    textBox.CaretIndex += 0;
                     textBox.Focus();
                     e.Handled = true;
                     return;
@@ -413,7 +432,6 @@ public partial class MarkdownEditor : UserControl, IDisposable
                 if (ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".webp" or ".svg")
                 {
                     textBox.SelectedText = CreateImageMarkdown(file);
-                    textBox.CaretIndex += 0;
                     textBox.Focus();
                     e.Handled = true;
                     return;
@@ -425,7 +443,6 @@ public partial class MarkdownEditor : UserControl, IDisposable
         if (Clipboard.ContainsText())
         {
             textBox.SelectedText = Clipboard.GetText();
-            textBox.CaretIndex += 0;
             textBox.Focus();
             e.Handled = true;
         }
@@ -473,7 +490,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
             return $"images/{fileName}";
         }
-        catch
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
             return null;
         }
@@ -620,7 +637,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     private static string GetNextMarker(string currentMarker)
     {
-        if (int.TryParse(currentMarker.TrimEnd('.'), out var number))
+        if (int.TryParse(currentMarker[..^1], out var number))
             return $"{number + 1}.";
         return currentMarker; // Unordered: keep same marker (-, *, +)
     }

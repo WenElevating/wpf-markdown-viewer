@@ -35,9 +35,7 @@ public sealed class ListRenderer(EditorTheme theme, IImageResolver? imageResolve
 
         // Smaller markers for nested lists
         if (level > 0)
-        {
-            listEl.FontSize = 11;
-        }
+            listEl.FontSize = theme.BaseFontSize * 0.85;
 
         foreach (var item in list.Items)
         {
