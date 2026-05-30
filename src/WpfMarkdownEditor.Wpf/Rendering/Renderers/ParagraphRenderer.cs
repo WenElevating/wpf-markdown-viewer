@@ -66,7 +66,7 @@ public sealed class ParagraphRenderer(EditorTheme theme, IImageResolver? imageRe
             bitmap.Freeze();
             return bitmap;
         }
-        catch
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
             return null;
         }

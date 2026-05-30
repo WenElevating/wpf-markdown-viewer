@@ -26,7 +26,7 @@ public sealed class ImageRenderer(EditorTheme theme, IImageResolver? imageResolv
 
         container.Child = BuildPlaceholder(image);
 
-        if (imageResolver is not null)
+        if (imageResolver is not null && !IsRemoteUrl(image.Url))
             _ = LoadImageAsync(container, image, imageResolver);
 
         return container;
@@ -92,9 +92,13 @@ public sealed class ImageRenderer(EditorTheme theme, IImageResolver? imageResolv
             bitmap.Freeze();
             return bitmap;
         }
-        catch
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
             return null;
         }
     }
+
+    private static bool IsRemoteUrl(string url) =>
+        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 }
