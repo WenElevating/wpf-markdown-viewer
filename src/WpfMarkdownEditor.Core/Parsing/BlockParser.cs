@@ -246,7 +246,6 @@ internal sealed class BlockParser
                 blankLineCount++;
                 // Two or more consecutive blank lines end the indented code block
                 if (blankLineCount >= 2) break;
-                code.AppendLine();
                 reader.ReadLine();
                 continue;
             }
@@ -582,6 +581,9 @@ internal sealed class BlockParser
             var peeked = reader.PeekLine();
             if (peeked is null) break;
             if (string.IsNullOrWhiteSpace(peeked.Content)) break;
+
+            // Stop at indented code block (4+ spaces)
+            if (peeked.IndentLevel >= 4) break;
 
             var stripped = peeked.Content.TrimStart();
 

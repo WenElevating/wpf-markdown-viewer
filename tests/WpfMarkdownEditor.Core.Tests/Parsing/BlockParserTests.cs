@@ -137,6 +137,26 @@ public class BlockParserTests
     }
 
     [Fact]
+    public void Parse_IndentedCodeBlock_SingleBlankLine_Included()
+    {
+        var md = "    line1\n\n    line2";
+        var result = _parser.Parse(md);
+        var code = Assert.IsType<CodeBlock>(Assert.Single(result));
+        var normalized = code.Code.Replace("\r\n", "\n");
+        Assert.Equal("line1\n\nline2", normalized);
+    }
+
+    [Fact]
+    public void Parse_IndentedCodeBlock_TwoBlankLines_EndsBlock()
+    {
+        var md = "    code\n\n\nnot code";
+        var result = _parser.Parse(md);
+        Assert.Equal(2, result.Count);
+        Assert.IsType<CodeBlock>(result[0]);
+        Assert.IsType<ParagraphBlock>(result[1]);
+    }
+
+    [Fact]
     public void Parse_CodeBlock_ThenParagraph()
     {
         var md = "```\ncode\n```\n\nAfter code";
@@ -408,6 +428,16 @@ public class BlockParserTests
         var md = "Text\n- Item";
         var result = _parser.Parse(md);
         Assert.Equal(2, result.Count);
+    }
+
+    [Fact]
+    public void Parse_Paragraph_StopsAtIndentedCodeBlock()
+    {
+        var md = "Paragraph text\n    indented code";
+        var result = _parser.Parse(md);
+        Assert.Equal(2, result.Count);
+        Assert.IsType<ParagraphBlock>(result[0]);
+        Assert.IsType<CodeBlock>(result[1]);
     }
 
     [Fact]
