@@ -107,13 +107,33 @@ public class BlockParserTests
     }
 
     [Fact]
-    public void Parse_IndentedCodeBlock_MultipleBlocks()
+    public void Parse_IndentedCodeBlock_MultiLine()
     {
-        // IndentLevel is capped at 3, so continuation fails — each line is a separate block
+        // After IndentLevel fix: four consecutive indented lines become one code block
         var md = "    line1\n    line2\n    line3";
         var result = _parser.Parse(md);
-        Assert.Equal(3, result.Count);
-        Assert.All(result, b => Assert.IsType<CodeBlock>(b));
+        Assert.Single(result);
+        var code = Assert.IsType<CodeBlock>(result[0]);
+        var normalized = code.Code.Replace("\r\n", "\n");
+        Assert.Equal("line1\nline2\nline3", normalized);
+    }
+
+    [Fact]
+    public void Parse_IndentedCodeBlock_StopsAtNonIndentedLine()
+    {
+        var md = "    code\nnot code";
+        var result = _parser.Parse(md);
+        Assert.Equal(2, result.Count);
+        Assert.IsType<CodeBlock>(result[0]);
+        Assert.IsType<ParagraphBlock>(result[1]);
+    }
+
+    [Fact]
+    public void Parse_IndentedCodeBlock_ThreeSpaces_NotCodeBlock()
+    {
+        // 3 spaces indent is NOT a code block
+        var result = _parser.Parse("   not code");
+        Assert.IsType<ParagraphBlock>(Assert.Single(result));
     }
 
     [Fact]

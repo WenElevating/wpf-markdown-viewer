@@ -91,7 +91,7 @@ internal sealed class LineInfo(string content, int lineNumber, int offset)
         get
         {
             var count = 0;
-            while (count < Content.Length && count < 3 && Content[count] == ' ')
+            while (count < Content.Length && Content[count] == ' ')
                 count++;
             return count;
         }

@@ -234,13 +234,33 @@ internal sealed class BlockParser
         var firstLine = reader.ReadLine()!;
         var code = new StringBuilder(firstLine.Content[4..]);
         var endLine = firstLine.LineNumber;
+        var blankLineCount = 0;
 
         while (reader.HasMore)
         {
             var peeked = reader.PeekLine();
             if (peeked is null) break;
-            if (string.IsNullOrWhiteSpace(peeked.Content)) break;
-            if (peeked.IndentLevel < 4) break;
+
+            if (string.IsNullOrWhiteSpace(peeked.Content))
+            {
+                blankLineCount++;
+                // Two or more consecutive blank lines end the indented code block
+                if (blankLineCount >= 2) break;
+                code.AppendLine();
+                reader.ReadLine();
+                continue;
+            }
+
+            if (peeked.IndentLevel < 4)
+            {
+                // Non-blank, non-indented line ends the block
+                break;
+            }
+
+            // Add any blank lines that were consumed
+            for (var b = 0; b < blankLineCount; b++)
+                code.AppendLine();
+            blankLineCount = 0;
 
             code.AppendLine();
             code.Append(peeked.Content[4..]);

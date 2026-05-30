@@ -136,7 +136,7 @@ public class LineReaderTests
     {
         var reader = new LineReader("    indented");
         var line = reader.ReadLine();
-        Assert.Equal(3, line!.IndentLevel); // Capped at 3
+        Assert.Equal(4, line!.IndentLevel);
     }
 
     [Fact]
