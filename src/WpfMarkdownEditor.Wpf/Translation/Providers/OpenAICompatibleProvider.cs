@@ -73,7 +73,7 @@ public sealed class OpenAICompatibleProvider : ITranslationProvider
 
         CRITICAL RULES:
         1. Output EXACTLY the same number of lines as the input. Do NOT merge, split, add, or remove any lines.
-        2. Preserve ALL tokens in the format XBS, XBE, XIS, XIE, XCS, XCE, XLS, XLE, XURL (followed by digits) exactly as-is. These are protected markers — never modify, translate, or remove them.
+        2. Preserve ALL tokens in the format XBS, XBE, XIS, XIE, XC, XLS, XLE, XURL (followed by digits) exactly as-is. These are protected markers — never modify, translate, or remove them.
         3. Translate ONLY the human-readable text on each line. Do not translate tokens or URLs.
         4. Output ONLY the translated text. No explanations, no quotes, no extra content.
         """;

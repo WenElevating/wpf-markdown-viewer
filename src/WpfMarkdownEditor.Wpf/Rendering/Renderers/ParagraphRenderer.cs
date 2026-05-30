@@ -138,4 +138,8 @@ public sealed class ParagraphRenderer(EditorTheme theme, IImageResolver? imageRe
             // Leave placeholder in place
         }
     }
+
+    private static bool IsRemoteUrl(string url) =>
+        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 }

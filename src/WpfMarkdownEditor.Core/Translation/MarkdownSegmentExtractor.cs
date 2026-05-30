@@ -294,6 +294,10 @@ public static class MarkdownSegmentExtractor
         text = RestoreLinkStartRegex.Replace(text, "[");
         // XLE tokens contain URLs — only restore via exact match above
 
+        // XC tokens store the full original match — try dictionary lookup for any remaining
+        text = Regex.Replace(text, @"XC\d+", match =>
+            tokens.TryGetValue(match.Value, out var val) ? val : match.Value);
+
         return text;
     }
 
