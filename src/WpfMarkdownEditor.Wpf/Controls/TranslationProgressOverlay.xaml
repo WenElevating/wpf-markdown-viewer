@@ -24,7 +24,7 @@
                 </TextBlock>
 
                 <TextBlock x:Name="StatusTitle"
-                           Text="Translating..."
+                           Text="{DynamicResource Loc.Translation.Progress.Translating}"
                            FontSize="16" FontWeight="SemiBold"
                            FontFamily="Segoe UI Variable, Segoe UI"
                            Foreground="{DynamicResource TextPrimaryBrush}"
@@ -63,7 +63,7 @@
                 <!-- Buttons -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
                     <Button x:Name="CancelButton"
-                            Content="Cancel"
+                            Content="{DynamicResource Loc.Common.Cancel}"
                             Click="OnCancelClick"
                             FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
                             Padding="24,8"
@@ -71,7 +71,7 @@
                             Foreground="{DynamicResource TextPrimaryBrush}"
                             BorderThickness="0" Cursor="Hand"/>
                     <Button x:Name="RetryButton"
-                            Content="Retry"
+                            Content="{DynamicResource Loc.Common.Retry}"
                             Click="OnRetryClick"
                             FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
                             Padding="24,8" Margin="8,0,0,0"
@@ -80,7 +80,7 @@
                             BorderThickness="0" Cursor="Hand"
                             Visibility="Collapsed"/>
                     <Button x:Name="CloseButton"
-                            Content="Close"
+                            Content="{DynamicResource Loc.Common.Close}"
                             Click="OnCloseClick"
                             FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
                             Padding="24,8" Margin="8,0,0,0"

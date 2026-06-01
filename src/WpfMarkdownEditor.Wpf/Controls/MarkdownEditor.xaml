@@ -187,24 +187,24 @@
 	            <TextBox.ContextMenu>
 	                <ContextMenu x:Name="EditorContextMenu"
 	                             Style="{StaticResource EditorContextMenuStyle}">
-	                    <MenuItem Command="ApplicationCommands.Undo" Style="{StaticResource EditorMenuItemStyle}" Header="Undo">
+	                    <MenuItem x:Name="UndoMenuItem" Command="ApplicationCommands.Undo" Style="{StaticResource EditorMenuItemStyle}" Header="{DynamicResource Loc.Editor.Undo}">
 	                        <MenuItem.Icon><TextBlock Text="&#xE7A7;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
 	                    </MenuItem>
-	                    <MenuItem Command="ApplicationCommands.Redo" Style="{StaticResource EditorMenuItemStyle}" Header="Redo">
+	                    <MenuItem x:Name="RedoMenuItem" Command="ApplicationCommands.Redo" Style="{StaticResource EditorMenuItemStyle}" Header="{DynamicResource Loc.Editor.Redo}">
 	                        <MenuItem.Icon><TextBlock Text="&#xE7A6;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
 	                    </MenuItem>
 	                    <Separator Style="{StaticResource EditorMenuSeparatorStyle}"/>
-	                    <MenuItem Command="ApplicationCommands.Cut" Style="{StaticResource EditorMenuItemStyle}" Header="Cut">
+	                    <MenuItem x:Name="CutMenuItem" Command="ApplicationCommands.Cut" Style="{StaticResource EditorMenuItemStyle}" Header="{DynamicResource Loc.Editor.Cut}">
 	                        <MenuItem.Icon><TextBlock Text="&#xE8C6;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
 	                    </MenuItem>
-	                    <MenuItem Command="ApplicationCommands.Copy" Style="{StaticResource EditorMenuItemStyle}" Header="Copy">
+	                    <MenuItem x:Name="CopyMenuItem" Command="ApplicationCommands.Copy" Style="{StaticResource EditorMenuItemStyle}" Header="{DynamicResource Loc.Editor.Copy}">
 	                        <MenuItem.Icon><TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
 	                    </MenuItem>
-	                    <MenuItem Command="ApplicationCommands.Paste" Style="{StaticResource EditorMenuItemStyle}" Header="Paste">
+	                    <MenuItem x:Name="PasteMenuItem" Command="ApplicationCommands.Paste" Style="{StaticResource EditorMenuItemStyle}" Header="{DynamicResource Loc.Editor.Paste}">
 	                        <MenuItem.Icon><TextBlock Text="&#xE77F;" FontFamily="Segoe MDL2 Assets" FontSize="14"/></MenuItem.Icon>
 	                    </MenuItem>
 	                    <Separator Style="{StaticResource EditorMenuSeparatorStyle}"/>
-	                    <MenuItem Command="ApplicationCommands.SelectAll" Style="{StaticResource EditorMenuItemStyle}" Header="Select All"/>
+	                    <MenuItem x:Name="SelectAllMenuItem" Command="ApplicationCommands.SelectAll" Style="{StaticResource EditorMenuItemStyle}" Header="{DynamicResource Loc.Editor.SelectAll}"/>
 	                </ContextMenu>
 	            </TextBox.ContextMenu>
 	        </TextBox>
@@ -276,7 +276,7 @@
 
                     <!-- Zoom Out -->
                     <Button x:Name="ZoomOutBtn" Click="OnZoomOut"
-                            ToolTip="Zoom Out"
+                            ToolTip="{DynamicResource Loc.Editor.ZoomOut}"
                             Style="{StaticResource ToolBarFlatButton}">
                         <TextBlock Text="&#xE949;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,-1,0,0"/>
                     </Button>
@@ -303,7 +303,7 @@
 
                     <!-- Zoom In -->
                     <Button x:Name="ZoomInBtn" Click="OnZoomIn"
-                            ToolTip="Zoom In"
+                            ToolTip="{DynamicResource Loc.Editor.ZoomIn}"
                             Style="{StaticResource ToolBarFlatButton}">
                         <TextBlock Text="&#xE948;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,-1,0,0"/>
                     </Button>
@@ -314,7 +314,7 @@
 
                     <!-- Reset Zoom -->
                     <Button x:Name="ZoomResetBtn" Click="OnZoomReset"
-                            ToolTip="Reset Zoom"
+                            ToolTip="{DynamicResource Loc.Editor.ResetZoom}"
                             Style="{StaticResource ToolBarFlatButton}">
                         <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,-1,0,0"/>
                     </Button>

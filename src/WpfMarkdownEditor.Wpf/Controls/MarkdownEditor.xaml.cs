@@ -12,6 +12,7 @@ using WpfMarkdownEditor.Wpf.Rendering;
 using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.SyntaxHighlighting;
 using WpfMarkdownEditor.Wpf.Theming;
+using WpfMarkdownEditor.Wpf.Localization;
 
 namespace WpfMarkdownEditor.Wpf.Controls;
 
@@ -28,6 +29,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private CancellationTokenSource? _cts;
     private int _renderVersion;
     private string? _translatedMarkdown;
+    private LocalizationService? _localizationService;
 
     #region DependencyProperties
 
@@ -127,6 +129,25 @@ public partial class MarkdownEditor : UserControl, IDisposable
     public void FocusEditor() => EditorTextBox.Focus();
 
     public TextBox TextBox => EditorTextBox;
+
+    public void SetLocalizer(LocalizationService localizationService)
+    {
+        if (_localizationService != null)
+        {
+            WeakEventManager<LocalizationService, LanguageChangedEventArgs>.RemoveHandler(
+                _localizationService,
+                nameof(LocalizationService.LanguageChanged),
+                OnLanguageChanged);
+        }
+
+        _localizationService = localizationService;
+        WeakEventManager<LocalizationService, LanguageChangedEventArgs>.AddHandler(
+            localizationService,
+            nameof(LocalizationService.LanguageChanged),
+            OnLanguageChanged);
+
+        RefreshLocalizedText();
+    }
 
     /// <summary>
     /// Wrap the selected text with before/after markers, or insert a placeholder.
@@ -321,6 +342,24 @@ public partial class MarkdownEditor : UserControl, IDisposable
         var brush = new SolidColorBrush(color);
         brush.Freeze();
         return brush;
+    }
+
+    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e) => RefreshLocalizedText();
+
+    private void RefreshLocalizedText()
+    {
+        if (_localizationService == null)
+            return;
+
+        UndoMenuItem.Header = _localizationService.GetString("Editor.Undo");
+        RedoMenuItem.Header = _localizationService.GetString("Editor.Redo");
+        CutMenuItem.Header = _localizationService.GetString("Editor.Cut");
+        CopyMenuItem.Header = _localizationService.GetString("Editor.Copy");
+        PasteMenuItem.Header = _localizationService.GetString("Editor.Paste");
+        SelectAllMenuItem.Header = _localizationService.GetString("Editor.SelectAll");
+        ZoomOutBtn.ToolTip = _localizationService.GetString("Editor.ZoomOut");
+        ZoomInBtn.ToolTip = _localizationService.GetString("Editor.ZoomIn");
+        ZoomResetBtn.ToolTip = _localizationService.GetString("Editor.ResetZoom");
     }
 
     private void UpdateRenderer()
@@ -646,6 +685,14 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     public void Dispose()
     {
+        if (_localizationService != null)
+        {
+            WeakEventManager<LocalizationService, LanguageChangedEventArgs>.RemoveHandler(
+                _localizationService,
+                nameof(LocalizationService.LanguageChanged),
+                OnLanguageChanged);
+        }
+
         _imageLoader.Dispose();
         _debounceTimer.Stop();
         var oldCts = Interlocked.Exchange(ref _cts, null);

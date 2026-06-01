@@ -65,6 +65,11 @@
     <sys:String x:Key="Loc.Dialog.TableInsert.Rows">Rows</sys:String>
     <sys:String x:Key="Loc.Dialog.TableInsert.Columns">Columns</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.SelectEngine">Select Translation Engine</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.Custom">Custom</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.BaiduName">Baidu Translate</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.BaiduDescription">Baidu Translate · Fast &amp; reliable</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.OpenAIName">OpenAI Compatible</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.OpenAIDescription">Qwen · Zhipu · DeepSeek · OpenAI</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.BaiduConfig">Baidu Translate Configuration</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.OpenAIConfig">OpenAI Compatible Configuration</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.GetBaiduKey">Get App ID &amp; Secret Key from fanyi-api.baidu.com →</sys:String>

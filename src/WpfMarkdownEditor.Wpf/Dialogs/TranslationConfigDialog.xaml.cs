@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using WpfMarkdownEditor.Wpf.Localization;
 using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.Translation.Providers;
 
@@ -13,14 +14,20 @@ public sealed partial class TranslationConfigDialog : Window
     public ProviderConfig? SavedConfig { get; private set; }
 
     private readonly string? _preselectedProvider;
+    private readonly IStringLocalizer _localizer;
 
-    public TranslationConfigDialog(bool isFirstRun = true, string? preselectedProvider = null, ProviderConfig? existingConfig = null)
+    public TranslationConfigDialog(
+        bool isFirstRun = true,
+        string? preselectedProvider = null,
+        ProviderConfig? existingConfig = null,
+        IStringLocalizer? localizer = null)
     {
+        _localizer = localizer ?? FallbackStringLocalizer.Instance;
         InitializeComponent();
 
         _preselectedProvider = preselectedProvider;
 
-        ServiceComboBox.Items.Add("Custom");
+        ServiceComboBox.Items.Add(_localizer.GetString("Dialog.TranslationConfig.Custom"));
         foreach (var preset in OpenAIPresets.All)
             ServiceComboBox.Items.Insert(0, preset.Name);
         ServiceComboBox.SelectedIndex = 0;
@@ -30,7 +37,7 @@ public sealed partial class TranslationConfigDialog : Window
             EngineSelectionPanel.Visibility = Visibility.Visible;
             BaiduConfigPanel.Visibility = Visibility.Collapsed;
             OpenAIConfigPanel.Visibility = Visibility.Collapsed;
-            DialogTitle.Text = "Select Translation Engine";
+            DialogTitle.Text = _localizer.GetString("Dialog.TranslationConfig.SelectEngine");
         }
         else
         {
@@ -105,7 +112,7 @@ public sealed partial class TranslationConfigDialog : Window
     {
         if (providerName == "Baidu")
         {
-            DialogTitle.Text = "Baidu Translate";
+            DialogTitle.Text = _localizer.GetString("Dialog.TranslationConfig.BaiduName");
             BaiduConfigPanel.Visibility = Visibility.Visible;
             OpenAIConfigPanel.Visibility = Visibility.Collapsed;
 
@@ -118,7 +125,7 @@ public sealed partial class TranslationConfigDialog : Window
         }
         else
         {
-            DialogTitle.Text = "OpenAI Compatible";
+            DialogTitle.Text = _localizer.GetString("Dialog.TranslationConfig.OpenAIName");
             OpenAIConfigPanel.Visibility = Visibility.Visible;
             BaiduConfigPanel.Visibility = Visibility.Collapsed;
 
@@ -134,7 +141,7 @@ public sealed partial class TranslationConfigDialog : Window
                 if (matchingPreset != null)
                     ServiceComboBox.SelectedItem = matchingPreset.Name;
                 else
-                    ServiceComboBox.SelectedItem = "Custom";
+                    ServiceComboBox.SelectedItem = _localizer.GetString("Dialog.TranslationConfig.Custom");
             }
         }
     }
@@ -161,7 +168,7 @@ public sealed partial class TranslationConfigDialog : Window
         {
             if (string.IsNullOrWhiteSpace(BaiduAppId.Text) || string.IsNullOrWhiteSpace(BaiduSecretKey.Password))
             {
-                ShowValidationError("Please fill in both App ID and Secret Key.");
+                ShowValidationError(_localizer.GetString("Dialog.TranslationConfig.Validation.Baidu"));
                 return;
             }
             SavedConfig = new ProviderConfig("Baidu")
@@ -174,7 +181,7 @@ public sealed partial class TranslationConfigDialog : Window
         {
             if (string.IsNullOrWhiteSpace(ApiEndpoint.Text) || string.IsNullOrWhiteSpace(ApiKey.Password))
             {
-                ShowValidationError("Please fill in both API Address and API Key.");
+                ShowValidationError(_localizer.GetString("Dialog.TranslationConfig.Validation.OpenAI"));
                 return;
             }
             SavedConfig = new ProviderConfig("OpenAI")
@@ -197,7 +204,7 @@ public sealed partial class TranslationConfigDialog : Window
     private void ShowValidationError(string message)
     {
         // Flash the border red briefly — simple inline validation
-        MessageBox.Show(message, "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageBox.Show(message, _localizer.GetString("Common.Validation"), MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e)

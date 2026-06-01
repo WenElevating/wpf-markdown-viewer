@@ -1,7 +1,7 @@
 <Window x:Class="WpfMarkdownEditor.Wpf.Dialogs.TranslationConfigDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Translation Settings"
+        Title="{DynamicResource Loc.Dialog.TranslationConfig.SelectEngine}"
         Width="440" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -60,7 +60,7 @@
                     CornerRadius="12,12,0,0">
                 <Grid Margin="24,20,16,0">
                     <TextBlock x:Name="DialogTitle"
-                               Text="Select Translation Engine"
+                               Text="{DynamicResource Loc.Dialog.TranslationConfig.SelectEngine}"
                                FontFamily="Segoe UI Variable, Segoe UI" FontSize="18" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
@@ -106,9 +106,9 @@
                                        Foreground="{DynamicResource AccentBrush}"
                                        VerticalAlignment="Center" Margin="0,0,14,0"/>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Baidu Translate" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14" FontWeight="SemiBold"
+                                <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.BaiduName}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                <TextBlock Text="百度翻译 · Fast &amp; reliable" FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.BaiduDescription}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
                                            Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                             </StackPanel>
                             <RadioButton x:Name="EngineBaidu" GroupName="Engine" IsChecked="True"
@@ -133,9 +133,9 @@
                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                        VerticalAlignment="Center" Margin="0,0,14,0"/>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="OpenAI Compatible" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14" FontWeight="SemiBold"
+                                <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.OpenAIName}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                <TextBlock Text="Qwen · Zhipu · DeepSeek · OpenAI" FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
+                                <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.OpenAIDescription}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="11"
                                            Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                             </StackPanel>
                             <RadioButton x:Name="EngineOpenAI" GroupName="Engine"
@@ -145,27 +145,27 @@
                     </Border>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Cancel" Click="OnCancelClick" Padding="24,10" Margin="0,0,8,0"
+                        <Button Content="{DynamicResource Loc.Common.Cancel}" Click="OnCancelClick" Padding="24,10" Margin="0,0,8,0"
                                 Template="{StaticResource SecondaryButtonTemplate}"/>
-                        <Button Content="Next" Click="OnNextClick" Padding="24,10"
+                        <Button Content="{DynamicResource Loc.Common.Next}" Click="OnNextClick" Padding="24,10"
                                 Template="{StaticResource PrimaryButtonTemplate}"/>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Baidu config -->
                 <StackPanel x:Name="BaiduConfigPanel" Visibility="Collapsed">
-                    <TextBlock Text="Baidu Translate Configuration"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.BaiduConfig}"
                                FontFamily="Segoe UI Variable, Segoe UI" FontSize="14" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
 
                     <TextBlock FontFamily="Segoe UI Variable, Segoe UI" FontSize="12" Margin="0,0,0,16">
                         <Hyperlink NavigateUri="https://fanyi-api.baidu.com/" RequestNavigate="OnLinkClick"
                                    Foreground="{DynamicResource AccentBrush}" TextDecorations="None">
-                            Get App ID &amp; Secret Key from fanyi-api.baidu.com →
+                            <Run Text="{DynamicResource Loc.Dialog.TranslationConfig.GetBaiduKey}" />
                         </Hyperlink>
                     </TextBlock>
 
-                    <TextBlock Text="App ID" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.AppId}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <TextBox x:Name="BaiduAppId" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
                              Padding="10,8" Margin="0,0,0,16"
@@ -173,7 +173,7 @@
                              Foreground="{DynamicResource TextPrimaryBrush}"
                              BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"/>
 
-                    <TextBlock Text="Secret Key" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.SecretKey}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <PasswordBox x:Name="BaiduSecretKey" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
                                  Padding="10,8" Margin="0,0,0,20"
@@ -182,20 +182,20 @@
                                  BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"/>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Cancel" Click="OnCancelClick" Padding="24,10" Margin="0,0,8,0"
+                        <Button Content="{DynamicResource Loc.Common.Cancel}" Click="OnCancelClick" Padding="24,10" Margin="0,0,8,0"
                                 Template="{StaticResource SecondaryButtonTemplate}"/>
-                        <Button Content="Save &amp; Translate" Click="OnSaveClick" Padding="24,10"
+                        <Button Content="{DynamicResource Loc.Dialog.TranslationConfig.SaveAndTranslate}" Click="OnSaveClick" Padding="24,10"
                                 Template="{StaticResource PrimaryButtonTemplate}"/>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- OpenAI config -->
                 <StackPanel x:Name="OpenAIConfigPanel" Visibility="Collapsed">
-                    <TextBlock Text="OpenAI Compatible Configuration"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.OpenAIConfig}"
                                FontFamily="Segoe UI Variable, Segoe UI" FontSize="14" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,16"/>
 
-                    <TextBlock Text="Service" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.Service}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <ComboBox x:Name="ServiceComboBox" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
                               SelectionChanged="OnServiceChanged"
@@ -204,7 +204,7 @@
                               Foreground="{DynamicResource TextPrimaryBrush}"
                               BorderBrush="{DynamicResource DividerBrush}"/>
 
-                    <TextBlock Text="API Address" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.ApiAddress}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <TextBox x:Name="ApiEndpoint" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
                              Padding="10,8" Margin="0,0,0,16"
@@ -212,7 +212,7 @@
                              Foreground="{DynamicResource TextPrimaryBrush}"
                              BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"/>
 
-                    <TextBlock Text="API Key" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.ApiKey}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <PasswordBox x:Name="ApiKey" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
                                  Padding="10,8" Margin="0,0,0,16"
@@ -220,7 +220,7 @@
                                  Foreground="{DynamicResource TextPrimaryBrush}"
                                  BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"/>
 
-                    <TextBlock Text="Model" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+                    <TextBlock Text="{DynamicResource Loc.Dialog.TranslationConfig.Model}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                     <TextBox x:Name="ModelName" FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
                              Padding="10,8" Margin="0,0,0,20"
@@ -229,9 +229,9 @@
                              BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"/>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Cancel" Click="OnCancelClick" Padding="24,10" Margin="0,0,8,0"
+                        <Button Content="{DynamicResource Loc.Common.Cancel}" Click="OnCancelClick" Padding="24,10" Margin="0,0,8,0"
                                 Template="{StaticResource SecondaryButtonTemplate}"/>
-                        <Button Content="Save &amp; Translate" Click="OnSaveClick" Padding="24,10"
+                        <Button Content="{DynamicResource Loc.Dialog.TranslationConfig.SaveAndTranslate}" Click="OnSaveClick" Padding="24,10"
                                 Template="{StaticResource PrimaryButtonTemplate}"/>
                     </StackPanel>
                 </StackPanel>

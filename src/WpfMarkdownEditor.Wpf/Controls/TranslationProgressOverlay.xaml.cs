@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Core.Translation;
+using WpfMarkdownEditor.Wpf.Localization;
 
 namespace WpfMarkdownEditor.Wpf.Controls;
 
@@ -11,14 +12,17 @@ public sealed partial class TranslationProgressOverlay : IDisposable
     private DispatcherTimer? _elapsedTimer;
     private DateTime _startTime;
     private bool _isError;
+    private readonly IStringLocalizer _localizer;
 
     public event EventHandler? CancelRequested;
     public event EventHandler? RetryRequested;
     public event EventHandler? CloseRequested;
 
-    public TranslationProgressOverlay()
+    public TranslationProgressOverlay(IStringLocalizer? localizer = null)
     {
+        _localizer = localizer ?? FallbackStringLocalizer.Instance;
         InitializeComponent();
+        RefreshLocalizedText();
     }
 
     public void Show()
@@ -49,9 +53,9 @@ public sealed partial class TranslationProgressOverlay : IDisposable
 
         StatusTitle.Text = progress.Stage switch
         {
-            TranslationStage.Connecting => "Connecting...",
-            TranslationStage.Translating => "Translating...",
-            TranslationStage.Completed => "Done!",
+            TranslationStage.Connecting => progress.Message,
+            TranslationStage.Translating => _localizer.GetString("Translation.Progress.Translating"),
+            TranslationStage.Completed => _localizer.GetString("Translation.Progress.Done"),
             _ => StatusTitle.Text
         };
 
@@ -68,7 +72,7 @@ public sealed partial class TranslationProgressOverlay : IDisposable
     public void ShowError(string message, bool canRetry = true)
     {
         _isError = true;
-        StatusTitle.Text = "Translation Failed";
+        StatusTitle.Text = _localizer.GetString("Translation.Progress.Failed");
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
         RetryButton.Visibility = canRetry ? Visibility.Visible : Visibility.Collapsed;
@@ -83,6 +87,15 @@ public sealed partial class TranslationProgressOverlay : IDisposable
     private void OnCancelClick(object sender, RoutedEventArgs e) => CancelRequested?.Invoke(this, EventArgs.Empty);
     private void OnRetryClick(object sender, RoutedEventArgs e) => RetryRequested?.Invoke(this, EventArgs.Empty);
     private void OnCloseClick(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
+
+    private void RefreshLocalizedText()
+    {
+        CancelButton.Content = _localizer.GetString("Common.Cancel");
+        RetryButton.Content = _localizer.GetString("Common.Retry");
+        CloseButton.Content = _localizer.GetString("Common.Close");
+        if (!_isError)
+            StatusTitle.Text = _localizer.GetString("Translation.Progress.Translating");
+    }
 
     private void StartSpinAnimation()
     {
@@ -102,7 +115,7 @@ public sealed partial class TranslationProgressOverlay : IDisposable
         _elapsedTimer.Tick += (_, _) =>
         {
             var elapsed = DateTime.Now - _startTime;
-            ElapsedText.Text = $"{(int)elapsed.TotalSeconds}s elapsed";
+            ElapsedText.Text = _localizer.Format("Translation.Progress.Elapsed", (int)elapsed.TotalSeconds);
         };
         _elapsedTimer.Start();
     }

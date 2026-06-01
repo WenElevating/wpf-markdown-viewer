@@ -65,6 +65,11 @@
     <sys:String x:Key="Loc.Dialog.TableInsert.Rows">行</sys:String>
     <sys:String x:Key="Loc.Dialog.TableInsert.Columns">列</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.SelectEngine">选择翻译引擎</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.Custom">自定义</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.BaiduName">百度翻译</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.BaiduDescription">百度翻译 · 快速可靠</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.OpenAIName">OpenAI 兼容</sys:String>
+    <sys:String x:Key="Loc.Dialog.TranslationConfig.OpenAIDescription">通义千问 · 智谱 · DeepSeek · OpenAI</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.BaiduConfig">百度翻译配置</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.OpenAIConfig">OpenAI 兼容配置</sys:String>
     <sys:String x:Key="Loc.Dialog.TranslationConfig.GetBaiduKey">从 fanyi-api.baidu.com 获取 App ID 和密钥 →</sys:String>

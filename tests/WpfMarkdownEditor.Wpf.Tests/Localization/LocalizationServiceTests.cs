@@ -57,6 +57,19 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void LanguageChanged_ProvidesNewLanguageForUiRefresh()
+    {
+        var service = new LocalizationService();
+        SupportedLanguage? observed = null;
+
+        service.LanguageChanged += (_, args) => observed = args.NewLanguage;
+
+        service.SetLanguage(SupportedLanguage.Chinese);
+
+        Assert.Equal(SupportedLanguage.Chinese, observed);
+    }
+
+    [Fact]
     public void GetDefaultLanguage_UsesChineseForChineseCultureAndEnglishOtherwise()
     {
         Assert.Equal(SupportedLanguage.Chinese, LocalizationService.GetDefaultLanguage(new CultureInfo("zh-CN")));
