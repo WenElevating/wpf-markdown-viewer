@@ -1,5 +1,4 @@
 using System.Threading;
-using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Wpf.Controls;
@@ -14,7 +13,6 @@ public sealed class MarkdownEditorFileMenuTests
     {
         RunOnSta(() =>
         {
-            EnsureApplication();
             var editor = new MarkdownEditor { Markdown = "# Existing" };
 
             editor.AppendMarkdown("Imported");
@@ -29,19 +27,12 @@ public sealed class MarkdownEditorFileMenuTests
     {
         RunOnSta(() =>
         {
-            EnsureApplication();
             var editor = new MarkdownEditor { Markdown = "# Existing" };
 
             var document = editor.CreatePlainTextPrintDocument();
 
             Assert.Contains("# Existing", new TextRange(document.ContentStart, document.ContentEnd).Text);
         });
-    }
-
-    private static void EnsureApplication()
-    {
-        if (Application.Current == null)
-            _ = new Application();
     }
 
     private static void RunOnSta(Action action)
