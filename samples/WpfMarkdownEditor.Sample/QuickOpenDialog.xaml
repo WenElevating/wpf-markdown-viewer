@@ -1,0 +1,23 @@
+<Window
+    x:Class="WpfMarkdownEditor.Sample.QuickOpenDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Quick Open"
+    Width="560"
+    Height="420"
+    KeyDown="OnDialogKeyDown"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="12">
+        <TextBox
+            x:Name="SearchBox"
+            Margin="0,0,0,8"
+            DockPanel.Dock="Top"
+            TextChanged="OnSearchTextChanged" />
+        <ListBox
+            x:Name="ResultsList"
+            DisplayMemberPath="Path"
+            MouseDoubleClick="OnResultDoubleClick" />
+    </DockPanel>
+</Window>
