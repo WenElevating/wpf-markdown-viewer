@@ -1,5 +1,6 @@
 using System.Net.Http;
 using WpfMarkdownEditor.Core.Translation;
+using WpfMarkdownEditor.Wpf.Localization;
 
 namespace WpfMarkdownEditor.Wpf.Translation;
 
@@ -7,13 +8,18 @@ public sealed class TranslationService
 {
     private readonly ITranslationProvider _provider;
     private readonly RetryPolicy _retryPolicy;
+    private readonly IStringLocalizer _localizer;
 
     private static readonly TimeSpan TotalTimeout = TimeSpan.FromSeconds(300);
 
-    public TranslationService(ITranslationProvider provider, RetryPolicy? retryPolicy = null)
+    public TranslationService(
+        ITranslationProvider provider,
+        RetryPolicy? retryPolicy = null,
+        IStringLocalizer? localizer = null)
     {
         _provider = provider;
         _retryPolicy = retryPolicy ?? new RetryPolicy();
+        _localizer = localizer ?? FallbackStringLocalizer.Instance;
     }
 
     public ITranslationProvider CurrentProvider => _provider;
@@ -51,8 +57,14 @@ public sealed class TranslationService
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         var effectiveCt = linkedCts.Token;
 
-        Report(progress, TranslationStage.Connecting, $"Connecting to {_provider.Name}...");
-        Report(progress, TranslationStage.Translating, "Translating...");
+        Report(
+            progress,
+            TranslationStage.Connecting,
+            _localizer.Format("Translation.Progress.ConnectingToProvider", _provider.Name));
+        Report(
+            progress,
+            TranslationStage.Translating,
+            _localizer.GetString("Translation.Progress.Translating"));
 
         Exception? lastException = null;
 
@@ -64,17 +76,23 @@ public sealed class TranslationService
             {
                 if (attempt > 0)
                 {
-                    Report(progress, TranslationStage.Translating, $"Retrying... (attempt {attempt + 1})");
+                    Report(
+                        progress,
+                        TranslationStage.Translating,
+                        _localizer.Format("Translation.Progress.Retrying", attempt + 1));
                     await Task.Delay(_retryPolicy.DelayMs * (1 << (attempt - 1)), effectiveCt);
                 }
 
                 var result = await _provider.TranslateAsync(text, targetLanguage, effectiveCt);
-                Report(progress, TranslationStage.Completed, "Translation completed");
+                Report(
+                    progress,
+                    TranslationStage.Completed,
+                    _localizer.GetString("Translation.Progress.Completed"));
                 return result;
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
             {
-                throw new TimeoutException("Translation timed out. Please check your network or try a shorter document.");
+                throw new TimeoutException(_localizer.GetString("Translation.Progress.Timeout"));
             }
             catch (OperationCanceledException) { throw; }
             catch (HttpRequestException ex)

@@ -1,5 +1,6 @@
 using System.Net.Http;
 using WpfMarkdownEditor.Core.Translation;
+using WpfMarkdownEditor.Wpf.Localization;
 using WpfMarkdownEditor.Wpf.Translation;
 using Xunit;
 
@@ -30,6 +31,22 @@ public class TranslationServiceTests
         Assert.Equal(TranslationStage.Connecting, progressReports[0].Stage);
         Assert.Equal(TranslationStage.Translating, progressReports[1].Stage);
         Assert.Equal(TranslationStage.Completed, progressReports[^1].Stage);
+    }
+
+    [Fact]
+    public async Task TranslateAsync_UsesInjectedLocalizerForProgressMessages()
+    {
+        var progressReports = new List<TranslationProgress>();
+        var mockProvider = new MockProvider("Mock", true, new TranslationResult("ok", TranslationLanguage.English));
+        var localizer = new TestLocalizer();
+        var service = new TranslationService(mockProvider, new RetryPolicy { MaxRetries = 0 }, localizer);
+
+        await service.TranslateAsync("hello", TranslationLanguage.Chinese,
+            new SynchronousProgress<TranslationProgress>(p => progressReports.Add(p)), CancellationToken.None);
+
+        Assert.Contains(progressReports, p => p.Message == "LOC:Translation.Progress.ConnectingToProvider:Mock");
+        Assert.Contains(progressReports, p => p.Message == "LOC:Translation.Progress.Translating");
+        Assert.Contains(progressReports, p => p.Message == "LOC:Translation.Progress.Completed");
     }
 
     [Fact]
@@ -164,6 +181,16 @@ public class TranslationServiceTests
         private readonly Action<T> _action;
         public SynchronousProgress(Action<T> action) => _action = action;
         public void Report(T value) => _action(value);
+    }
+
+    private sealed class TestLocalizer : IStringLocalizer
+    {
+        public SupportedLanguage CurrentLanguage => SupportedLanguage.English;
+
+        public string GetString(string key) => $"LOC:{key}";
+
+        public string Format(string key, params object[] args) =>
+            args.Length == 0 ? GetString(key) : $"{GetString(key)}:{string.Join(":", args)}";
     }
 
     private sealed class SlowProvider : ITranslationProvider
