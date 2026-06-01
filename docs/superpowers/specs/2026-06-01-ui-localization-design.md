@@ -40,7 +40,7 @@ Proposed WPF library additions:
 
 | File | Purpose |
 | --- | --- |
-| `src/WpfMarkdownEditor.Wpf/Localization/SupportedLanguage.cs` | Defines `English` and `Chinese`. |
+| `src/WpfMarkdownEditor.Wpf/Localization/SupportedLanguage.cs` | Defines supported language descriptors for `en-US` and `zh-CN`. |
 | `src/WpfMarkdownEditor.Wpf/Localization/IStringLocalizer.cs` | Backend-safe interface for dynamic text. |
 | `src/WpfMarkdownEditor.Wpf/Localization/LocalizationService.cs` | Current language, language change event, resource dictionary application, string lookup, formatted lookup. |
 | `src/WpfMarkdownEditor.Wpf/Resources/Localization.en-US.xaml` | English UI string resources. |
@@ -59,6 +59,20 @@ The sample app initializes localization during startup, before showing `MainWind
 3. Apply the language through `LocalizationService`.
 4. Create the main window.
 
+`SupportedLanguage` should be a small immutable descriptor rather than a closed enum. It should expose a stable code such as `en-US` or `zh-CN`, a resource dictionary URI, and a display key. The initial registry contains only English and Chinese, but the rest of the design should depend on language codes instead of switch-heavy enum logic where practical.
+
+Resource keys should use dot-separated namespaces:
+
+- `Common.*` for shared commands and captions.
+- `MainWindow.*` for sample shell text.
+- `Editor.*` for `MarkdownEditor` UI text.
+- `Dialog.<DialogName>.*` for dialog-specific text.
+- `Translation.*` for translation feature UI and progress messages.
+- `Status.*` for status bar templates.
+- `Error.*` for user-facing error templates.
+
+Keys should describe intent rather than control names when possible, for example `Common.Cancel`, `Editor.ZoomIn`, and `Status.FileLoaded`.
+
 ## Backend Interface
 
 Dynamic text must use a service interface rather than direct English or Chinese string literals:
@@ -73,6 +87,8 @@ public interface IStringLocalizer
 ```
 
 `LocalizationService` implements this interface. Services and code-behind can receive `IStringLocalizer` through constructors or properties. If a library service is used without an injected localizer, it should fall back to a default English localizer so host apps are not forced to initialize WPF application resources.
+
+The fallback localizer must be independent from `Application.Current.Resources`. It should be an immutable, thread-safe singleton or an instance that owns a read-only English string map. It must not mutate WPF resources, subscribe to language changes, or share mutable state with the application-level localization service.
 
 Expected usage:
 
@@ -94,7 +110,7 @@ Runtime text falls into three categories:
 | Dynamic controls | Rebuild or refresh only the affected controls on `LanguageChanged`, for example language menu items, history empty states, outline empty states, and translation menu labels. |
 | User or external data | Do not translate. Insert as parameters into localized templates. |
 
-`TranslationLanguage.DisplayName()` can remain as a self-name helper, but UI menus should use localizable keys where the display language matters. For example, English UI may show `Chinese`; Chinese UI may show `中文`.
+`TranslationLanguage.DisplayName()` can remain only for non-UI contexts such as logs, diagnostics, and debugging. All user-facing language names must go through `IStringLocalizer`. For example, English UI may show `Chinese`; Chinese UI may show `中文`.
 
 Table insertion currently writes document content such as `Column 1` and `Cell 1`. Because this content becomes Markdown document data, it is outside automatic UI localization. This change should not rewrite existing document content on language switch.
 
@@ -142,6 +158,10 @@ Language changes follow this flow:
 4. Sample persists the language setting.
 5. Each subscribed window or control refreshes only its own dynamic text.
 
+`SetLanguage` must run on the WPF UI thread because it mutates `Application.Current.Resources`. The service should enforce this by using the application dispatcher when `Application.Current` exists. If no WPF application is available, it may update only its current language and non-WPF string map.
+
+Controls must avoid strong-reference event leaks when subscribing to language changes. Use `WeakEventManager` for `LanguageChanged`, or explicitly unsubscribe in `Unloaded` or `Dispose` for controls that own a clear lifecycle. This requirement applies to windows, dialogs, overlays, and reusable controls.
+
 XAML text should use dynamic resources where practical:
 
 ```xml
@@ -150,6 +170,8 @@ ToolTip="{DynamicResource Loc.Editor.ZoomIn}"
 ```
 
 Code-generated text should be refreshed with explicit methods such as `RefreshLocalizedText()` and `BuildLanguageList()`. These methods should be small and scoped to the owning component.
+
+File dialog filters and captions should be read from the localizer every time the dialog is opened. Dialog instances should not be cached with previously localized filter strings.
 
 ## Performance
 
@@ -160,6 +182,7 @@ Localization must not enter high-frequency rendering or parsing paths.
 - Prefer WPF `DynamicResource` updates for static XAML text.
 - Avoid scanning the whole visual tree during language changes.
 - Recompute dynamic text only for controls that own it.
+- Keep language change handling idempotent so rapid repeated changes such as English -> Chinese -> English do not leave duplicate subscriptions or stale selected menu items.
 - Read localization settings once during startup.
 - Write localization settings only when the user manually changes language.
 - Do not trigger Markdown parser, renderer, syntax highlighter, preview rerender, editor text replacement, theme reset, or caret reset during language switching.
@@ -177,9 +200,10 @@ Localization must not enter high-frequency rendering or parsing paths.
 Add focused tests for the service boundaries:
 
 - `LocalizationService` applies languages, returns strings, formats parameters, and falls back for missing keys.
+- `LocalizationService` handles rapid repeated language changes without duplicate events or stale current language state.
 - `LocalizationSettingsService` persists and reads language choices, and falls back when the settings file is malformed.
 - `TranslationService` progress messages use the injected `IStringLocalizer`.
-- At least one WPF-level test covers language switching for a dynamic UI owner, such as the translation progress overlay or a menu/list refresh method.
+- At least one UI-owner test covers language switching for a dynamic text owner, such as the translation progress overlay or a menu/list refresh method. If CI cannot run interactive WPF automation, expose the refresh method or a small presenter/helper so it can be tested without showing a real window.
 
 Run:
 
