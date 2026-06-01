@@ -22,18 +22,6 @@ namespace WpfMarkdownEditor.Sample;
 
 public partial class MainWindow : Window
 {
-    private record ThemeEntry(string Name, EditorTheme Theme, Color DotColor, Color DotBorder, bool IsDark);
-
-    private static readonly ThemeEntry[] Themes =
-    [
-        new("GitHub", EditorTheme.GitHub, Color.FromRgb(0xfa, 0xfb, 0xfc), Color.FromRgb(0xd0, 0xd7, 0xde), false),
-        new("GitHub Dark", EditorTheme.GitHubDark, Color.FromRgb(0x0d, 0x11, 0x17), Color.FromRgb(0x30, 0x36, 0x3d), true),
-        new("Claude", EditorTheme.Claude, Color.FromRgb(0xfa, 0xf9, 0xf6), Color.FromRgb(0xd9, 0x77, 0x57), false),
-        new("Claude Dark", EditorTheme.ClaudeDark, Color.FromRgb(0x1c, 0x1c, 0x1e), Color.FromRgb(0xd9, 0x77, 0x57), true),
-        new("Light", EditorTheme.Light, Color.FromRgb(0xff, 0xff, 0xff), Color.FromRgb(0xdd, 0xdd, 0xdd), false),
-        new("Dark", EditorTheme.Dark, Color.FromRgb(0x1e, 0x1e, 0x1e), Color.FromRgb(0x55, 0x55, 0x55), true),
-    ];
-
     private const double SidebarWidth = 260;
     private const int SidebarAnimMs = 200;
 
@@ -307,7 +295,7 @@ public partial class MainWindow : Window
     private void BuildThemeList()
     {
         ThemeListPanel.Children.Clear();
-        foreach (var theme in Themes)
+        foreach (var theme in ThemeCatalog.Themes)
         {
             var item = new RadioButton
             {
@@ -350,7 +338,7 @@ public partial class MainWindow : Window
 
     private void ApplyTheme(string name)
     {
-        var entry = Array.Find(Themes, t => t.Name == name);
+        var entry = ThemeCatalog.Themes.FirstOrDefault(t => t.Name == name);
         if (entry == null) return;
 
         _currentThemeName = name;
