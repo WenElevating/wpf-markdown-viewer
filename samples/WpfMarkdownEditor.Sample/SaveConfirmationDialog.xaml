@@ -1,7 +1,7 @@
 <Window x:Class="WpfMarkdownEditor.Sample.SaveConfirmationDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Save Changes"
+        Title="{DynamicResource Loc.Dialog.SaveChanges.Title}"
         Width="400" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -21,7 +21,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="20"
                            Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <TextBlock Text="Save Changes" FontFamily="Segoe UI Variable, Segoe UI" FontSize="16"
+                <TextBlock Text="{DynamicResource Loc.Dialog.SaveChanges.Title}" FontFamily="Segoe UI Variable, Segoe UI" FontSize="16"
                            FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
@@ -33,7 +33,7 @@
 
             <!-- Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="CancelBtn" Content="Cancel" Click="OnCancel"
+                <Button x:Name="CancelBtn" Content="{DynamicResource Loc.Common.Cancel}" Click="OnCancel"
                         Margin="0,0,8,0" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
@@ -52,7 +52,7 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                <Button x:Name="DontSaveBtn" Content="Don't Save" Click="OnDontSave"
+                <Button x:Name="DontSaveBtn" Content="{DynamicResource Loc.Dialog.SaveChanges.DontSave}" Click="OnDontSave"
                         Margin="0,0,8,0" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
@@ -71,7 +71,7 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                <Button x:Name="SaveBtn" Content="Save" Click="OnSave" Cursor="Hand">
+                <Button x:Name="SaveBtn" Content="{DynamicResource Loc.Common.Save}" Click="OnSave" Cursor="Hand">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="Bd" Padding="16,8" CornerRadius="6" Cursor="Hand"

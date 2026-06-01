@@ -11,6 +11,8 @@
     <sys:String x:Key="Loc.Common.Validation">验证</sys:String>
     <sys:String x:Key="Loc.Language.English">English</sys:String>
     <sys:String x:Key="Loc.Language.Chinese">中文</sys:String>
+    <sys:String x:Key="Loc.Translation.Language.Japanese">日文</sys:String>
+    <sys:String x:Key="Loc.Translation.Language.Korean">韩文</sys:String>
     <sys:String x:Key="Loc.MainWindow.TitleSuffix">Markdown 查看器</sys:String>
     <sys:String x:Key="Loc.MainWindow.File">文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.Edit">编辑</sys:String>
@@ -19,6 +21,7 @@
     <sys:String x:Key="Loc.MainWindow.Insert">插入</sys:String>
     <sys:String x:Key="Loc.MainWindow.View">视图</sys:String>
     <sys:String x:Key="Loc.MainWindow.Tools">工具</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Untitled">未命名</sys:String>
     <sys:String x:Key="Loc.MainWindow.NewFile">新建文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.OpenFile">打开文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.SaveFile">保存文件</sys:String>

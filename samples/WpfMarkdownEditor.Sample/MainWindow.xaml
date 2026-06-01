@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ctrl="clr-namespace:WpfMarkdownEditor.Wpf.Controls;assembly=WpfMarkdownEditor.Wpf"
-    Title="Markdown Viewer"
+    Title="{DynamicResource Loc.MainWindow.TitleSuffix}"
     Width="1200"
     Height="800"
     MinWidth="600"
@@ -32,7 +32,7 @@
                     BorderThickness="0"
                     Click="OnToggleSidebar"
                     Cursor="Hand"
-                    ToolTip="Toggle Sidebar">
+                    ToolTip="{DynamicResource Loc.MainWindow.ToggleSidebar}">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border
@@ -78,7 +78,7 @@
                 <!--  File  -->
                 <ToggleButton
                     x:Name="FileMenuBtn"
-                    Content="File"
+                    Content="{DynamicResource Loc.MainWindow.File}"
                     IsChecked="{Binding IsOpen, ElementName=FilePopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -101,17 +101,17 @@
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnNewFile"
-                                Content="New File"
+                                Content="{DynamicResource Loc.MainWindow.NewFile}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+N" />
                             <Button
                                 Click="OnOpenFile"
-                                Content="Open File"
+                                Content="{DynamicResource Loc.MainWindow.OpenFile}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+O" />
                             <Button
                                 Click="OnSaveFile"
-                                Content="Save File"
+                                Content="{DynamicResource Loc.MainWindow.SaveFile}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+S" />
                         </StackPanel>
@@ -121,7 +121,7 @@
                 <!--  Edit  -->
                 <ToggleButton
                     x:Name="EditMenuBtn"
-                    Content="Edit"
+                    Content="{DynamicResource Loc.MainWindow.Edit}"
                     IsChecked="{Binding IsOpen, ElementName=EditPopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -143,12 +143,12 @@
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnUndo"
-                                Content="Undo"
+                                Content="{DynamicResource Loc.MainWindow.Undo}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+Z" />
                             <Button
                                 Click="OnRedo"
-                                Content="Redo"
+                                Content="{DynamicResource Loc.MainWindow.Redo}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+Y" />
                             <Border
@@ -157,7 +157,7 @@
                                 Background="{DynamicResource DividerBrush}" />
                             <Button
                                 Click="OnFind"
-                                Content="Find"
+                                Content="{DynamicResource Loc.MainWindow.Find}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+F" />
                         </StackPanel>
@@ -167,7 +167,7 @@
                 <!--  Paragraph  -->
                 <ToggleButton
                     x:Name="ParagraphMenuBtn"
-                    Content="Paragraph"
+                    Content="{DynamicResource Loc.MainWindow.Paragraph}"
                     IsChecked="{Binding IsOpen, ElementName=ParagraphPopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -189,15 +189,15 @@
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnHeading1"
-                                Content="Heading 1"
+                                Content="{DynamicResource Loc.MainWindow.Heading1}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnHeading2"
-                                Content="Heading 2"
+                                Content="{DynamicResource Loc.MainWindow.Heading2}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnHeading3"
-                                Content="Heading 3"
+                                Content="{DynamicResource Loc.MainWindow.Heading3}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Border
                                 Height="1"
@@ -205,15 +205,15 @@
                                 Background="{DynamicResource DividerBrush}" />
                             <Button
                                 Click="OnQuote"
-                                Content="Blockquote"
+                                Content="{DynamicResource Loc.MainWindow.Blockquote}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnOrderedList"
-                                Content="Ordered List"
+                                Content="{DynamicResource Loc.MainWindow.OrderedList}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnUnorderedList"
-                                Content="Bullet List"
+                                Content="{DynamicResource Loc.MainWindow.BulletList}"
                                 Style="{StaticResource MenuItemStyle}" />
                         </StackPanel>
                     </Border>
@@ -222,7 +222,7 @@
                 <!--  Format  -->
                 <ToggleButton
                     x:Name="FormatMenuBtn"
-                    Content="Format"
+                    Content="{DynamicResource Loc.MainWindow.Format}"
                     IsChecked="{Binding IsOpen, ElementName=FormatPopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -244,21 +244,21 @@
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnBold"
-                                Content="Bold"
+                                Content="{DynamicResource Loc.MainWindow.Bold}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+B" />
                             <Button
                                 Click="OnItalic"
-                                Content="Italic"
+                                Content="{DynamicResource Loc.MainWindow.Italic}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+I" />
                             <Button
                                 Click="OnStrikethrough"
-                                Content="Strikethrough"
+                                Content="{DynamicResource Loc.MainWindow.Strikethrough}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnInlineCode"
-                                Content="Inline Code"
+                                Content="{DynamicResource Loc.MainWindow.InlineCode}"
                                 Style="{StaticResource MenuItemStyle}" />
                         </StackPanel>
                     </Border>
@@ -267,7 +267,7 @@
                 <!--  Insert  -->
                 <ToggleButton
                     x:Name="InsertMenuBtn"
-                    Content="Insert"
+                    Content="{DynamicResource Loc.MainWindow.Insert}"
                     IsChecked="{Binding IsOpen, ElementName=InsertPopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -289,19 +289,19 @@
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnLink"
-                                Content="Link"
+                                Content="{DynamicResource Loc.MainWindow.Link}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnCodeBlock"
-                                Content="Code Block"
+                                Content="{DynamicResource Loc.MainWindow.CodeBlock}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnTable"
-                                Content="Table"
+                                Content="{DynamicResource Loc.MainWindow.Table}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
                                 Click="OnHorizontalRule"
-                                Content="Horizontal Rule"
+                                Content="{DynamicResource Loc.MainWindow.HorizontalRule}"
                                 Style="{StaticResource MenuItemStyle}" />
                         </StackPanel>
                     </Border>
@@ -310,7 +310,7 @@
                 <!--  View  -->
                 <ToggleButton
                     x:Name="ViewMenuBtn"
-                    Content="View"
+                    Content="{DynamicResource Loc.MainWindow.View}"
                     IsChecked="{Binding IsOpen, ElementName=ViewPopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -332,7 +332,7 @@
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnToggleSidebarFromMenu"
-                                Content="Toggle Sidebar"
+                                Content="{DynamicResource Loc.MainWindow.ToggleSidebar}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Border
                                 Height="1"
@@ -344,8 +344,20 @@
                                 FontSize="11"
                                 FontWeight="SemiBold"
                                 Foreground="{DynamicResource TextSecondaryBrush}"
-                                Text="Themes" />
+                                Text="{DynamicResource Loc.MainWindow.Themes}" />
                             <StackPanel x:Name="ThemeListPanel" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <TextBlock
+                                Padding="16,7,16,4"
+                                FontFamily="Segoe UI Variable, Segoe UI"
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                Text="{DynamicResource Loc.MainWindow.Language}" />
+                            <StackPanel x:Name="LanguageListPanel" />
                         </StackPanel>
                     </Border>
                 </Popup>
@@ -353,7 +365,7 @@
                 <!--  Tools  -->
                 <ToggleButton
                     x:Name="ToolsMenuBtn"
-                    Content="Tools"
+                    Content="{DynamicResource Loc.MainWindow.Tools}"
                     IsChecked="{Binding IsOpen, ElementName=ToolsPopup, Mode=TwoWay}"
                     Style="{StaticResource MenuHeaderStyle}" />
                 <Popup
@@ -399,7 +411,7 @@
                                                     FontFamily="Segoe UI Variable, Segoe UI"
                                                     FontSize="12"
                                                     Foreground="{DynamicResource TextPrimaryBrush}"
-                                                    Text="Cancel Translation" />
+                                                    Text="{DynamicResource Loc.MainWindow.CancelTranslation}" />
                                             </StackPanel>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -437,7 +449,7 @@
                                                         FontSize="12"
                                                         FontWeight="SemiBold"
                                                         Foreground="{DynamicResource AccentBrush}"
-                                                        Text="Clear Translation" />
+                                                        Text="{DynamicResource Loc.MainWindow.ClearTranslation}" />
                                                 </StackPanel>
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -475,19 +487,19 @@
                                     Background="{DynamicResource DividerBrush}" />
                                 <Button
                                     Click="OnTranslateToEnglish"
-                                    Content="→ English"
+                                    Content="{DynamicResource Loc.MainWindow.TranslateToEnglish}"
                                     Style="{StaticResource MenuItemStyle}" />
                                 <Button
                                     Click="OnTranslateToChinese"
-                                    Content="→ Chinese"
+                                    Content="{DynamicResource Loc.MainWindow.TranslateToChinese}"
                                     Style="{StaticResource MenuItemStyle}" />
                                 <Button
                                     Click="OnTranslateToJapanese"
-                                    Content="→ Japanese"
+                                    Content="{DynamicResource Loc.MainWindow.TranslateToJapanese}"
                                     Style="{StaticResource MenuItemStyle}" />
                                 <Button
                                     Click="OnTranslateToKorean"
-                                    Content="→ Korean"
+                                    Content="{DynamicResource Loc.MainWindow.TranslateToKorean}"
                                     Style="{StaticResource MenuItemStyle}" />
                                 <Border
                                     Height="1"
@@ -495,7 +507,7 @@
                                     Background="{DynamicResource DividerBrush}" />
                                 <Button
                                     Click="OnTranslationSettings"
-                                    Content="Translation Settings..."
+                                    Content="{DynamicResource Loc.MainWindow.TranslationSettings}"
                                     Style="{StaticResource MenuItemStyle}" />
                             </StackPanel>
                         </StackPanel>
@@ -542,7 +554,7 @@
                                 FontWeight="SemiBold"
                                 Foreground="{DynamicResource TextPrimaryBrush}"
                                 MouseLeftButtonDown="OnTabHistory"
-                                Text="History" />
+                                Text="{DynamicResource Loc.MainWindow.History}" />
                             <Border
                                 x:Name="HistoryUnderline"
                                 Width="20"
@@ -560,7 +572,7 @@
                                 FontSize="12"
                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                 MouseLeftButtonDown="OnTabOutline"
-                                Text="Outline" />
+                                Text="{DynamicResource Loc.MainWindow.Outline}" />
                             <Border
                                 x:Name="OutlineUnderline"
                                 Width="20"
@@ -585,7 +597,7 @@
                                     FontFamily="Segoe UI Variable, Segoe UI"
                                     FontSize="12"
                                     Foreground="{DynamicResource TextSecondaryBrush}"
-                                    Text="No files opened yet" />
+                                    Text="{DynamicResource Loc.MainWindow.NoFilesOpened}" />
                             </StackPanel>
                         </ScrollViewer>
                         <ScrollViewer
@@ -600,7 +612,7 @@
                                     FontFamily="Segoe UI Variable, Segoe UI"
                                     FontSize="12"
                                     Foreground="{DynamicResource TextSecondaryBrush}"
-                                    Text="No headings found" />
+                                    Text="{DynamicResource Loc.MainWindow.NoHeadingsFound}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
@@ -631,7 +643,7 @@
                             Click="OnSearchClose"
                             DockPanel.Dock="Right"
                             Style="{StaticResource FormatButtonStyle}"
-                            ToolTip="Close (Esc)">
+                            ToolTip="{DynamicResource Loc.MainWindow.SearchCloseTooltip}">
                             <TextBlock
                                 FontFamily="Segoe MDL2 Assets"
                                 FontSize="11"
@@ -642,7 +654,7 @@
                             Click="OnSearchNext"
                             DockPanel.Dock="Right"
                             Style="{StaticResource FormatButtonStyle}"
-                            ToolTip="Next (Enter)">
+                            ToolTip="{DynamicResource Loc.MainWindow.SearchNextTooltip}">
                             <TextBlock
                                 FontFamily="Segoe MDL2 Assets"
                                 FontSize="10"
@@ -653,7 +665,7 @@
                             Click="OnSearchPrevious"
                             DockPanel.Dock="Right"
                             Style="{StaticResource FormatButtonStyle}"
-                            ToolTip="Previous (Shift+Enter)">
+                            ToolTip="{DynamicResource Loc.MainWindow.SearchPreviousTooltip}">
                             <TextBlock
                                 FontFamily="Segoe MDL2 Assets"
                                 FontSize="10"
@@ -700,14 +712,14 @@
                     FontFamily="{StaticResource UIFont}"
                     FontSize="11"
                     Foreground="{DynamicResource TextSecondaryBrush}"
-                    Text="Ready" />
+                    Text="{DynamicResource Loc.Status.Ready}" />
                 <TextBlock
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
                     FontFamily="{StaticResource UIFont}"
                     FontSize="11"
                     Foreground="{DynamicResource TextSecondaryBrush}"
-                    Text="UTF-8 · Markdown" />
+                    Text="{DynamicResource Loc.MainWindow.EncodingStatus}" />
             </Grid>
         </Border>
     </Grid>

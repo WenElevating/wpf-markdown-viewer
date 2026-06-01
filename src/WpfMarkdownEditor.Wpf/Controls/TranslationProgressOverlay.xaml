@@ -46,7 +46,7 @@
 
                 <!-- Elapsed time -->
                 <TextBlock x:Name="ElapsedText"
-                           Text="0s elapsed"
+                           Text="{DynamicResource Loc.Translation.Progress.Elapsed}"
                            FontSize="11"
                            FontFamily="Segoe UI Variable, Segoe UI"
                            Foreground="{DynamicResource TextSecondaryBrush}"

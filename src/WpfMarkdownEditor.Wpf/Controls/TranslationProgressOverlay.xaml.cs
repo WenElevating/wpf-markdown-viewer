@@ -93,6 +93,7 @@ public sealed partial class TranslationProgressOverlay : IDisposable
         CancelButton.Content = _localizer.GetString("Common.Cancel");
         RetryButton.Content = _localizer.GetString("Common.Retry");
         CloseButton.Content = _localizer.GetString("Common.Close");
+        ElapsedText.Text = _localizer.Format("Translation.Progress.Elapsed", 0);
         if (!_isError)
             StatusTitle.Text = _localizer.GetString("Translation.Progress.Translating");
     }

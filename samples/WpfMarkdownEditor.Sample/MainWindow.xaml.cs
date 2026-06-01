@@ -12,6 +12,7 @@ using Microsoft.Win32;
 using WpfMarkdownEditor.Core.Translation;
 using WpfMarkdownEditor.Wpf.Controls;
 using WpfMarkdownEditor.Wpf.Dialogs;
+using WpfMarkdownEditor.Wpf.Localization;
 using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.Theming;
 using WpfMarkdownEditor.Wpf.Translation;
@@ -36,7 +37,11 @@ public partial class MainWindow : Window
     private const double SidebarWidth = 260;
     private const int SidebarAnimMs = 200;
 
+    private readonly LocalizationService _localizationService;
+    private readonly LocalizationSettingsService _localizationSettingsService;
     private string _currentThemeName = "GitHub";
+    private string _statusKey = "Status.Ready";
+    private object[] _statusArgs = [];
     private bool _sidebarOpen;
     private readonly List<FileHistoryEntry> _fileHistory = [];
     private TranslationService? _translationService;
@@ -51,11 +56,29 @@ public partial class MainWindow : Window
 
     private record FileHistoryEntry(string Path, DateTime OpenedAt);
 
-    public MainWindow(string? filePath = null)
+    public MainWindow(
+        string? filePath = null,
+        LocalizationService? localizationService = null,
+        LocalizationSettingsService? localizationSettingsService = null)
     {
+        _localizationService = localizationService ?? new LocalizationService();
+        _localizationSettingsService = localizationSettingsService
+            ?? new LocalizationSettingsService(GetTranslationSettingsDirectory());
+
+        if (localizationService == null)
+            _localizationService.SetLanguage(SupportedLanguage.English);
+
         InitializeComponent();
+        WeakEventManager<LocalizationService, LanguageChangedEventArgs>.AddHandler(
+            _localizationService,
+            nameof(LocalizationService.LanguageChanged),
+            OnLanguageChanged);
+
+        Editor.SetLocalizer(_localizationService);
         BuildThemeList();
+        BuildLanguageList();
         ApplyTheme("GitHub");
+        SetStatus("Status.Ready");
 
         // Reposition search panel when editor layout changes
         Editor.TextBox.SizeChanged += (_, _) =>
@@ -74,6 +97,7 @@ public partial class MainWindow : Window
             _currentFilePath = filePath;
             _isDirty = false;
             AddToHistory(filePath);
+            SetStatus("Status.FileLoaded", filePath);
         }
         else
         {
@@ -81,6 +105,15 @@ public partial class MainWindow : Window
             _isDirty = false;
         }
         UpdateTitle();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        WeakEventManager<LocalizationService, LanguageChangedEventArgs>.RemoveHandler(
+            _localizationService,
+            nameof(LocalizationService.LanguageChanged),
+            OnLanguageChanged);
+        base.OnClosed(e);
     }
 
     #region File Operations
@@ -112,7 +145,7 @@ public partial class MainWindow : Window
         {
             var fileName = _currentFilePath != null
                 ? System.IO.Path.GetFileName(_currentFilePath)
-                : "Untitled";
+                : _localizationService.GetString("MainWindow.Untitled");
             var result = ShowSaveConfirmation(fileName);
 
             switch (result)
@@ -137,7 +170,7 @@ public partial class MainWindow : Window
         _currentFilePath = null;
         _isDirty = false;
         UpdateTitle();
-        StatusText.Text = "New file";
+        SetStatus("Status.NewFile");
     }
 
     private void OpenFile()
@@ -146,7 +179,7 @@ public partial class MainWindow : Window
 
         var dialog = new OpenFileDialog
         {
-            Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
+            Filter = _localizationService.GetString("FileDialog.MarkdownFilter"),
             DefaultExt = ".md"
         };
         if (dialog.ShowDialog() != true) return;
@@ -160,12 +193,12 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(dialog.FileName);
             UpdateTitle();
-            StatusText.Text = $"Loaded: {dialog.FileName}";
+            SetStatus("Status.FileLoaded", dialog.FileName);
         }
         catch (Exception ex)
         {
             _loadingFile = false;
-            MessageBox.Show($"Failed to load file: {ex.Message}", "Error",
+            MessageBox.Show(_localizationService.Format("Error.LoadFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -178,7 +211,7 @@ public partial class MainWindow : Window
         {
             var dialog = new SaveFileDialog
             {
-                Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
+                Filter = _localizationService.GetString("FileDialog.MarkdownFilter"),
                 DefaultExt = ".md"
             };
             if (dialog.ShowDialog() != true) return false;
@@ -192,12 +225,12 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(targetPath);
             UpdateTitle();
-            StatusText.Text = $"Saved: {targetPath}";
+            SetStatus("Status.FileSaved", targetPath);
             return true;
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to save file: {ex.Message}", "Error",
+            MessageBox.Show(_localizationService.Format("Error.SaveFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
@@ -211,7 +244,7 @@ public partial class MainWindow : Window
         {
             var dialog = new SaveFileDialog
             {
-                Filter = "Markdown files (*.md)|*.md|All files (*.*)|*.*",
+                Filter = _localizationService.GetString("FileDialog.MarkdownFilter"),
                 DefaultExt = ".md"
             };
             if (dialog.ShowDialog() != true) return false;
@@ -229,7 +262,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to save file: {ex.Message}", "Error",
+            MessageBox.Show(_localizationService.Format("Error.SaveFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
@@ -241,7 +274,7 @@ public partial class MainWindow : Window
 
         var fileName = _currentFilePath != null
             ? System.IO.Path.GetFileName(_currentFilePath)
-            : "Untitled";
+            : _localizationService.GetString("MainWindow.Untitled");
         var result = ShowSaveConfirmation(fileName);
 
         return result switch
@@ -254,7 +287,7 @@ public partial class MainWindow : Window
 
     private SaveConfirmationResult ShowSaveConfirmation(string fileName)
     {
-        var dialog = new SaveConfirmationDialog(fileName) { Owner = this };
+        var dialog = new SaveConfirmationDialog(fileName, _localizationService) { Owner = this };
         dialog.ShowDialog();
         return dialog.Result;
     }
@@ -263,8 +296,8 @@ public partial class MainWindow : Window
     {
         var fileName = _currentFilePath != null
             ? System.IO.Path.GetFileName(_currentFilePath)
-            : "Untitled";
-        Title = $"{fileName}{(_isDirty ? " *" : "")} - Markdown Viewer";
+            : _localizationService.GetString("MainWindow.Untitled");
+        Title = $"{fileName}{(_isDirty ? " *" : "")} - {_localizationService.GetString("MainWindow.TitleSuffix")}";
     }
 
     #endregion
@@ -273,6 +306,7 @@ public partial class MainWindow : Window
 
     private void BuildThemeList()
     {
+        ThemeListPanel.Children.Clear();
         foreach (var theme in Themes)
         {
             var item = new RadioButton
@@ -330,7 +364,7 @@ public partial class MainWindow : Window
                 rb.IsChecked = (rb.Tag as string) == name;
         }
 
-        StatusText.Text = $"{name} theme";
+        SetStatus("Status.ThemeApplied", name);
     }
 
     private void ApplyWindowTheme(bool dark)
@@ -353,6 +387,72 @@ public partial class MainWindow : Window
         var color = (Color)ColorConverter.ConvertFromString(hex);
         r[key] = new SolidColorBrush(color);
     }
+
+    private void BuildLanguageList()
+    {
+        LanguageListPanel.Children.Clear();
+        foreach (var language in SupportedLanguage.All)
+        {
+            var item = new RadioButton
+            {
+                Content = _localizationService.GetString(language.DisplayKey),
+                Tag = language,
+                Style = (Style)FindResource("ThemeItemStyle"),
+                IsChecked = language.Equals(_localizationService.CurrentLanguage),
+            };
+            item.Checked += OnLanguageItemSelected;
+            LanguageListPanel.Children.Add(item);
+        }
+    }
+
+    private void OnLanguageItemSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not SupportedLanguage language)
+            return;
+
+        _localizationService.SetLanguage(language);
+        _localizationSettingsService.SaveLanguage(language);
+        ViewPopup.IsOpen = false;
+    }
+
+    private void OnLanguageChanged(object? sender, LanguageChangedEventArgs e)
+    {
+        BuildLanguageList();
+        RefreshLocalizedText();
+    }
+
+    private void RefreshLocalizedText()
+    {
+        UpdateTitle();
+        RefreshStatusText();
+        UpdateHistoryList();
+        if (OutlinePanel.Visibility == Visibility.Visible)
+            UpdateOutline();
+        UpdateSearchCount();
+    }
+
+    private void SetStatus(string key, params object[] args)
+    {
+        _statusKey = key;
+        _statusArgs = args;
+        RefreshStatusText();
+    }
+
+    private void RefreshStatusText()
+    {
+        StatusText.Text = _statusArgs.Length == 0
+            ? _localizationService.GetString(_statusKey)
+            : _localizationService.Format(_statusKey, _statusArgs);
+    }
+
+    private string GetTranslationLanguageDisplayName(TranslationLanguage language) => language switch
+    {
+        TranslationLanguage.English => _localizationService.GetString("Language.English"),
+        TranslationLanguage.Chinese => _localizationService.GetString("Language.Chinese"),
+        TranslationLanguage.Japanese => _localizationService.GetString("Translation.Language.Japanese"),
+        TranslationLanguage.Korean => _localizationService.GetString("Translation.Language.Korean"),
+        _ => language.ToString()
+    };
 
     #endregion
 
@@ -384,7 +484,7 @@ public partial class MainWindow : Window
     private void OnTable(object sender, RoutedEventArgs e)
     {
         InsertPopup.IsOpen = false;
-        var dialog = new TableInsertDialog { Owner = this };
+        var dialog = new TableInsertDialog(_localizationService) { Owner = this };
         if (dialog.ShowDialog() == true && dialog.Result is (int rows, int cols))
         {
             Editor.InsertText(GenerateTable(rows, cols));
@@ -539,7 +639,7 @@ public partial class MainWindow : Window
     {
         SearchCount.Text = _searchMatches.Count > 0
             ? $"{_currentMatchIndex + 1}/{_searchMatches.Count}"
-            : "No results";
+            : _localizationService.GetString("MainWindow.NoResults");
     }
 
     #endregion
@@ -625,7 +725,7 @@ public partial class MainWindow : Window
         {
             HistoryList.Children.Add(new TextBlock
             {
-                Text = "No files opened yet",
+                Text = _localizationService.GetString("MainWindow.NoFilesOpened"),
                 Foreground = (Brush)FindResource("TextSecondaryBrush"),
                 FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
                 FontSize = 12,
@@ -685,12 +785,12 @@ public partial class MainWindow : Window
             _currentFilePath = path;
             _isDirty = false;
             UpdateTitle();
-            StatusText.Text = $"Loaded: {path}";
+            SetStatus("Status.FileLoaded", path);
         }
         catch (Exception ex)
         {
             _loadingFile = false;
-            MessageBox.Show($"Failed to load file: {ex.Message}", "Error",
+            MessageBox.Show(_localizationService.Format("Error.LoadFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -704,7 +804,7 @@ public partial class MainWindow : Window
         {
             OutlineList.Children.Add(new TextBlock
             {
-                Text = "No headings found",
+                Text = _localizationService.GetString("MainWindow.NoHeadingsFound"),
                 Foreground = (Brush)FindResource("TextSecondaryBrush"),
                 FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
                 FontSize = 12,
@@ -721,7 +821,7 @@ public partial class MainWindow : Window
         {
             OutlineList.Children.Add(new TextBlock
             {
-                Text = "No headings found",
+                Text = _localizationService.GetString("MainWindow.NoHeadingsFound"),
                 Foreground = (Brush)FindResource("TextSecondaryBrush"),
                 FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
                 FontSize = 12,
@@ -774,7 +874,7 @@ public partial class MainWindow : Window
         if (activeProvider == null || settings.LoadConfig(activeProvider)?.IsComplete != true)
         {
             ToolsPopup.IsOpen = false;
-            var dialog = new TranslationConfigDialog(isFirstRun: true);
+            var dialog = new TranslationConfigDialog(isFirstRun: true, localizer: _localizationService);
             dialog.Owner = this;
             if (dialog.ShowDialog() == true)
             {
@@ -798,7 +898,11 @@ public partial class MainWindow : Window
         if (config?.IsComplete != true)
         {
             ToolsPopup.IsOpen = false;
-            var dialog = new TranslationConfigDialog(isFirstRun: false, preselectedProvider: newEngine, existingConfig: config);
+            var dialog = new TranslationConfigDialog(
+                isFirstRun: false,
+                preselectedProvider: newEngine,
+                existingConfig: config,
+                localizer: _localizationService);
             dialog.Owner = this;
             if (dialog.ShowDialog() == true)
             {
@@ -818,7 +922,11 @@ public partial class MainWindow : Window
         var settings = GetTranslationSettings();
         var activeProvider = settings.GetActiveProvider() ?? "Baidu";
         var existingConfig = settings.LoadConfig(activeProvider);
-        var dialog = new TranslationConfigDialog(isFirstRun: false, preselectedProvider: activeProvider, existingConfig: existingConfig);
+        var dialog = new TranslationConfigDialog(
+            isFirstRun: false,
+            preselectedProvider: activeProvider,
+            existingConfig: existingConfig,
+            localizer: _localizationService);
         dialog.Owner = this;
         if (dialog.ShowDialog() == true)
         {
@@ -837,7 +945,11 @@ public partial class MainWindow : Window
         if (activeProvider == null || settings.LoadConfig(activeProvider)?.IsComplete != true)
         {
             ToolsPopup.IsOpen = false;
-            var dialog = new TranslationConfigDialog(isFirstRun: activeProvider == null, preselectedProvider: activeProvider, existingConfig: activeProvider != null ? settings.LoadConfig(activeProvider) : null);
+            var dialog = new TranslationConfigDialog(
+                isFirstRun: activeProvider == null,
+                preselectedProvider: activeProvider,
+                existingConfig: activeProvider != null ? settings.LoadConfig(activeProvider) : null,
+                localizer: _localizationService);
             dialog.Owner = this;
             if (dialog.ShowDialog() != true) return;
 
@@ -855,13 +967,13 @@ public partial class MainWindow : Window
             ? new BaiduTranslateProvider(config, httpClient)
             : new OpenAICompatibleProvider(config, httpClient);
 
-        _translationService = new TranslationService(provider);
+        _translationService = new TranslationService(provider, localizer: _localizationService);
         _isTranslating = true;
         CancelTranslateBtn.Visibility = Visibility.Visible;
         TranslateLanguagePanel.Visibility = Visibility.Collapsed;
         ToolsPopup.IsOpen = false;
 
-        _progressOverlay = new TranslationProgressOverlay();
+        _progressOverlay = new TranslationProgressOverlay(_localizationService);
         _progressOverlay.CancelRequested += OnOverlayCancel;
         _progressOverlay.RetryRequested += OnOverlayRetry;
         _progressOverlay.CloseRequested += OnOverlayClose;
@@ -882,12 +994,15 @@ public partial class MainWindow : Window
             Editor.RenderTranslatedPreview(result.TranslatedText);
 
             ClearTranslationBtn.Visibility = Visibility.Visible;
-            StatusText.Text = $"Preview: {result.DetectedSourceLanguage.DisplayName()} → {targetLanguage.DisplayName()}";
+            SetStatus(
+                "Status.TranslationPreview",
+                GetTranslationLanguageDisplayName(result.DetectedSourceLanguage),
+                GetTranslationLanguageDisplayName(targetLanguage));
             _progressOverlay.Hide();
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Translation cancelled";
+            SetStatus("Status.TranslationCancelled");
             _progressOverlay.Hide();
         }
         catch (TimeoutException ex)
@@ -896,7 +1011,7 @@ public partial class MainWindow : Window
         }
         catch (HttpRequestException ex)
         {
-            _progressOverlay.ShowError($"Network error: {ex.Message}");
+            _progressOverlay.ShowError(_localizationService.Format("Error.Network", ex.Message));
         }
         catch (InvalidOperationException ex)
         {
@@ -929,7 +1044,7 @@ public partial class MainWindow : Window
         ToolsPopup.IsOpen = false;
         Editor.ClearTranslatedPreview();
         ClearTranslationBtn.Visibility = Visibility.Collapsed;
-        StatusText.Text = "Translation cleared";
+        SetStatus("Status.TranslationCleared");
     }
 
     private void OnOverlayCancel(object? sender, EventArgs e) => _translationCts?.Cancel();

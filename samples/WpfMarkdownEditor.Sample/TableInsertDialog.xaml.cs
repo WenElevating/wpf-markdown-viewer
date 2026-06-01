@@ -1,18 +1,22 @@
 using System.Windows;
 using System.Windows.Input;
+using WpfMarkdownEditor.Wpf.Localization;
 
 namespace WpfMarkdownEditor.Sample;
 
 public partial class TableInsertDialog : Window
 {
+    private readonly IStringLocalizer _localizer;
     private int _rows = 2;
     private int _columns = 3;
 
     public (int Rows, int Columns)? Result { get; private set; }
 
-    public TableInsertDialog()
+    public TableInsertDialog(IStringLocalizer? localizer = null)
     {
+        _localizer = localizer ?? FallbackStringLocalizer.Instance;
         InitializeComponent();
+        Title = _localizer.GetString("Dialog.TableInsert.Title");
     }
 
     private void OnRowsUp(object sender, RoutedEventArgs e)
