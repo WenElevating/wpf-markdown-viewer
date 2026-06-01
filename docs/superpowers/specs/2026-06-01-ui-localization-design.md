@@ -61,6 +61,8 @@ The sample app initializes localization during startup, before showing `MainWind
 
 `SupportedLanguage` should be a small immutable descriptor rather than a closed enum. It should expose a stable code such as `en-US` or `zh-CN`, a resource dictionary URI, and a display key. The initial registry contains only English and Chinese, but the rest of the design should depend on language codes instead of switch-heavy enum logic where practical.
 
+`SupportedLanguage` equality must be based on the stable language code using ordinal string comparison. It should implement `IEquatable<SupportedLanguage>` and override `Equals` and `GetHashCode`. This lets `SetLanguage` detect no-op language changes even if two different descriptor instances represent the same code.
+
 Resource keys should use dot-separated namespaces:
 
 - `Common.*` for shared commands and captions.
@@ -89,6 +91,22 @@ public interface IStringLocalizer
 `LocalizationService` implements this interface. Services and code-behind can receive `IStringLocalizer` through constructors or properties. If a library service is used without an injected localizer, it should fall back to a default English localizer so host apps are not forced to initialize WPF application resources.
 
 The fallback localizer must be independent from `Application.Current.Resources`. It should be an immutable, thread-safe singleton or an instance that owns a read-only English string map. It must not mutate WPF resources, subscribe to language changes, or share mutable state with the application-level localization service.
+
+The WPF application should use one application-level `LocalizationService` instance. The service can be exposed through an `Instance` property or created once in `App.xaml.cs` and passed to windows and services. There must not be multiple mutable services racing to modify `Application.Current.Resources`.
+
+Language changes use a typed event:
+
+```csharp
+public event EventHandler<LanguageChangedEventArgs>? LanguageChanged;
+
+public sealed class LanguageChangedEventArgs : EventArgs
+{
+    public SupportedLanguage OldLanguage { get; }
+    public SupportedLanguage NewLanguage { get; }
+}
+```
+
+Subscribers should use `args.NewLanguage` for selection state and refresh logic instead of rereading global state.
 
 Expected usage:
 
@@ -158,7 +176,7 @@ Language changes follow this flow:
 4. Sample persists the language setting.
 5. Each subscribed window or control refreshes only its own dynamic text.
 
-`SetLanguage` must run on the WPF UI thread because it mutates `Application.Current.Resources`. The service should enforce this by using the application dispatcher when `Application.Current` exists. If no WPF application is available, it may update only its current language and non-WPF string map.
+`SetLanguage` must mutate `Application.Current.Resources` on the WPF UI thread. The service owns that responsibility: if `Application.Current` exists and the caller is not on the UI thread, `SetLanguage` should marshal the resource update and event raise through `Application.Current.Dispatcher.Invoke` or `InvokeAsync`. Callers may invoke `SetLanguage` from any thread, but subscribers should expect `LanguageChanged` to be raised on the UI thread when a WPF application exists. If no WPF application is available, the service may update only its current language and non-WPF string map.
 
 Controls must avoid strong-reference event leaks when subscribing to language changes. Use `WeakEventManager` for `LanguageChanged`, or explicitly unsubscribe in `Unloaded` or `Dispose` for controls that own a clear lifecycle. This requirement applies to windows, dialogs, overlays, and reusable controls.
 
@@ -192,7 +210,7 @@ Localization must not enter high-frequency rendering or parsing paths.
 - If the saved language setting is missing, use the system-derived default.
 - If the saved language setting is malformed, ignore it and use the system-derived default.
 - If a localization key is missing, return the key itself rather than throwing at runtime.
-- If a format string is invalid, return the key or unformatted template in a fail-soft way.
+- If a format string is invalid or the provided argument count does not match the template, return the unformatted template if available, otherwise return the key. Do not throw from `Format` during normal UI rendering.
 - If a translation provider returns an error message, do not translate that provider text. Wrap it in a localized UI template such as `Network error: {0}` / `网络错误：{0}`.
 
 ## Testing
@@ -201,6 +219,8 @@ Add focused tests for the service boundaries:
 
 - `LocalizationService` applies languages, returns strings, formats parameters, and falls back for missing keys.
 - `LocalizationService` handles rapid repeated language changes without duplicate events or stale current language state.
+- `SupportedLanguage` equality is based on the language code, so two descriptors with the same code compare equal.
+- `LanguageChanged` includes old and new languages and is raised only when the effective language code changes.
 - `LocalizationSettingsService` persists and reads language choices, and falls back when the settings file is malformed.
 - `TranslationService` progress messages use the injected `IStringLocalizer`.
 - At least one UI-owner test covers language switching for a dynamic text owner, such as the translation progress overlay or a menu/list refresh method. If CI cannot run interactive WPF automation, expose the refresh method or a small presenter/helper so it can be tested without showing a real window.
@@ -215,6 +235,7 @@ dotnet test WpfMarkdownEditor.sln
 
 - With no saved setting, the app chooses Chinese on Chinese systems and English on other systems.
 - `View > Language` switches the visible application UI immediately.
+- `View > Language` radio selection accurately reflects the current language immediately after switching and after restart.
 - The selected language persists across restarts.
 - Dynamic backend messages are generated through `IStringLocalizer`.
 - Markdown document content and preview rendering are unchanged by language switching.
