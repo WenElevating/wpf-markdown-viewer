@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WpfMarkdownEditor.Wpf\WpfMarkdownEditor.Wpf.csproj" />
     <ProjectReference Include="..\..\src\WpfMarkdownEditor.Core\WpfMarkdownEditor.Core.csproj" />
+    <ProjectReference Include="..\..\samples\WpfMarkdownEditor.Sample\WpfMarkdownEditor.Sample.csproj" />
   </ItemGroup>
 
 </Project>
