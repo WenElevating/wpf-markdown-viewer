@@ -21,6 +21,8 @@ namespace WpfMarkdownEditor.Wpf.Controls;
 /// </summary>
 public partial class MarkdownEditor : UserControl, IDisposable
 {
+    private static readonly object PreviewErrorTag = new();
+
     private readonly MarkdownParser _parser = new();
     private readonly DispatcherTimer _debounceTimer;
     private readonly ImageLoader _imageLoader;
@@ -131,6 +133,43 @@ public partial class MarkdownEditor : UserControl, IDisposable
     public void FocusEditor() => EditorTextBox.Focus();
 
     public TextBox TextBox => EditorTextBox;
+
+    public void AppendMarkdown(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return;
+
+        var current = Markdown;
+        if (!string.IsNullOrEmpty(current) && !current.EndsWith("\n", StringComparison.Ordinal))
+            current += Environment.NewLine + Environment.NewLine;
+
+        var updated = current + content;
+        EditorTextBox.Text = updated;
+        Markdown = updated;
+        EditorTextBox.CaretIndex = Markdown.Length;
+        EditorTextBox.Focus();
+    }
+
+    public bool TryGetPrintablePreviewDocument(out FlowDocument document)
+    {
+        document = null!;
+        if (!ShowPreview)
+            return false;
+
+        var candidate = PreviewViewer.Document;
+        if (candidate is null || candidate.Blocks.Count == 0 || ReferenceEquals(candidate.Tag, PreviewErrorTag))
+            return false;
+
+        document = candidate;
+        return true;
+    }
+
+    public FlowDocument CreatePlainTextPrintDocument()
+    {
+        var document = new FlowDocument();
+        document.Blocks.Add(new Paragraph(new Run(Markdown)));
+        return document;
+    }
 
     public void SetLocalizer(LocalizationService localizationService)
     {
@@ -459,7 +498,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     private static FlowDocument BuildErrorDocument(string message)
     {
-        var doc = new FlowDocument();
+        var doc = new FlowDocument { Tag = PreviewErrorTag };
         doc.Blocks.Add(new Paragraph(new Run(message)) { FontStyle = FontStyles.Italic });
         return doc;
     }
