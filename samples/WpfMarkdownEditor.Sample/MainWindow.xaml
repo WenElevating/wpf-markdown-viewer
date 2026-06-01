@@ -132,10 +132,41 @@
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+P" />
                             <Button
+                                x:Name="OpenRecentFileButton"
                                 Click="OnOpenRecentFile"
                                 Content="{DynamicResource Loc.MainWindow.OpenRecentFile}"
+                                MouseEnter="OnOpenRecentFile"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag=">" />
+                            <Popup
+                                x:Name="RecentFilesPopup"
+                                AllowsTransparency="True"
+                                HorizontalOffset="-4"
+                                Placement="Right"
+                                PlacementTarget="{Binding ElementName=OpenRecentFileButton}"
+                                PopupAnimation="Slide"
+                                StaysOpen="False">
+                                <Border
+                                    Margin="0,0,0,0"
+                                    Padding="4"
+                                    Background="{DynamicResource CardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource DividerBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Effect="{StaticResource PopupShadowEffect}">
+                                    <StackPanel x:Name="RecentFilesList" MinWidth="430">
+                                        <StackPanel x:Name="RecentFileItemsPanel" />
+                                        <Border
+                                            Height="1"
+                                            Margin="4,2"
+                                            Background="{DynamicResource DividerBrush}" />
+                                        <Button
+                                            Click="OnClearRecentFiles"
+                                            Content="{DynamicResource Loc.MainWindow.ClearRecentFiles}"
+                                            Style="{StaticResource MenuItemStyle}" />
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
                             <Border
                                 Height="1"
                                 Margin="4,2"

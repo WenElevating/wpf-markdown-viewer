@@ -28,6 +28,8 @@
     <sys:String x:Key="Loc.MainWindow.OpenFolder">Open Folder...</sys:String>
     <sys:String x:Key="Loc.MainWindow.QuickOpen">Quick Open...</sys:String>
     <sys:String x:Key="Loc.MainWindow.OpenRecentFile">Open Recent File</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoRecentFiles">No recent files</sys:String>
+    <sys:String x:Key="Loc.MainWindow.ClearRecentFiles">Clear Recent Files</sys:String>
     <sys:String x:Key="Loc.MainWindow.SaveFile">Save File</sys:String>
     <sys:String x:Key="Loc.MainWindow.SaveAs">Save As...</sys:String>
     <sys:String x:Key="Loc.MainWindow.MoveTo">Move To...</sys:String>

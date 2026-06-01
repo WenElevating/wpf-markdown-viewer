@@ -65,6 +65,11 @@ public sealed class RecentFilesService
         });
     }
 
+    public void ClearFiles()
+    {
+        TryWithMutex(() => SaveRaw([]));
+    }
+
     private T? TryWithMutex<T>(Func<T> action)
     {
         using var mutex = new Mutex(false, _mutexName);

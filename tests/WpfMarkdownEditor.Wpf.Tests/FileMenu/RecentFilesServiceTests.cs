@@ -73,6 +73,19 @@ public sealed class RecentFilesServiceTests : IDisposable
     }
 
     [Fact]
+    public void ClearFiles_RemovesPersistedEntries()
+    {
+        Directory.CreateDirectory(_directory);
+        var service = new RecentFilesService(_directory, "RecentFilesServiceTests.Clear");
+        service.AddOrRefreshFile(CreateFile("first.md"));
+        service.AddOrRefreshFile(CreateFile("second.md"));
+
+        service.ClearFiles();
+
+        Assert.Empty(service.LoadFiles());
+    }
+
+    [Fact]
     public async Task AddOrRefreshFile_SerializesConcurrentWrites()
     {
         Directory.CreateDirectory(_directory);

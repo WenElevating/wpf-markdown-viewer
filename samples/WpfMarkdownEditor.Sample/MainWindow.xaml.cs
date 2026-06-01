@@ -130,7 +130,7 @@ public partial class MainWindow : Window
     private void OnNewWindow(object sender, RoutedEventArgs e) => NewWindow();
     private void OnOpenFolder(object sender, RoutedEventArgs e) => OpenFolder();
     private void OnQuickOpen(object sender, RoutedEventArgs e) => QuickOpen();
-    private void OnOpenRecentFile(object sender, RoutedEventArgs e) => OpenRecentFileMenu();
+    private void OnOpenRecentFile(object sender, RoutedEventArgs e) => OpenRecentFileMenu(e);
     private async void OnSaveFileAs(object sender, RoutedEventArgs e) => await SaveCurrentFileAsAsync();
     private void OnMoveFile(object sender, RoutedEventArgs e) => MoveCurrentFile();
     private void OnShowFileProperties(object sender, RoutedEventArgs e) => ShowCurrentFileProperties();
@@ -385,13 +385,64 @@ public partial class MainWindow : Window
         ShowQuickOpenDialog(items);
     }
 
-    private void OpenRecentFileMenu()
+    private void OpenRecentFileMenu(RoutedEventArgs? e = null)
     {
-        var items = _recentFilesService
-            .LoadFiles(removeMissingFiles: true)
-            .Select(entry => new QuickOpenItem(System.IO.Path.GetFileName(entry.Path), entry.Path, QuickOpenSource.Recent))
-            .ToList();
-        ShowQuickOpenDialog(items);
+        if (e is not null)
+            e.Handled = true;
+
+        RefreshRecentFilesMenu();
+        RecentFilesPopup.IsOpen = true;
+    }
+
+    private void RefreshRecentFilesMenu()
+    {
+        RecentFileItemsPanel.Children.Clear();
+
+        var entries = _recentFilesService.LoadFiles(removeMissingFiles: true);
+        if (entries.Count == 0)
+        {
+            RecentFileItemsPanel.Children.Add(new TextBlock
+            {
+                Text = _localizationService.GetString("MainWindow.NoRecentFiles"),
+                Foreground = (Brush)FindResource("TextSecondaryBrush"),
+                FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
+                FontSize = 12,
+                Margin = new Thickness(16, 8, 16, 8),
+            });
+            return;
+        }
+
+        foreach (var entry in entries)
+        {
+            var button = new Button
+            {
+                Content = entry.Path,
+                Tag = entry.Path,
+                Style = (Style)FindResource("MenuItemStyle"),
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+            };
+            button.Click += OnRecentFileItemClick;
+            RecentFileItemsPanel.Children.Add(button);
+        }
+    }
+
+    private void OnRecentFileItemClick(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is Button { Tag: string path })
+            OpenFilePath(path);
+
+        RecentFilesPopup.IsOpen = false;
+        FilePopup.IsOpen = false;
+    }
+
+    private void OnClearRecentFiles(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        _recentFilesService.ClearFiles();
+        RefreshRecentFilesMenu();
+        RecentFilesPopup.IsOpen = false;
+        FilePopup.IsOpen = false;
     }
 
     private void ShowQuickOpenDialog(IReadOnlyList<QuickOpenItem> items)
@@ -940,6 +991,7 @@ public partial class MainWindow : Window
 
     private void OnPopupItemClick(object sender, RoutedEventArgs e)
     {
+        RecentFilesPopup.IsOpen = false;
         FilePopup.IsOpen = false;
         EditPopup.IsOpen = false;
         ParagraphPopup.IsOpen = false;
