@@ -73,6 +73,25 @@ public class MarkdownParserTests
         Assert.Equal("Line one Line two", text.Content);
     }
 
+    [Fact]
+    public void Parse_MultiLineParagraph_WithHardBreak_ReturnsLineBreak()
+    {
+        var result = _parser.Parse("GitHub地址：https://github.com/Panuon/PanuonUI.Silver  \n码云地址： https://gitee.com/panuon/PanuonUI.Silver");
+        var para = Assert.IsType<ParagraphBlock>(Assert.Single(result));
+
+        Assert.Contains(para.Inlines, inline => inline is LineBreakInline);
+        Assert.Equal(2, para.Inlines.OfType<LinkInline>().Count());
+    }
+
+    [Fact]
+    public void Parse_MultiLineParagraph_WithCjkSoftBreak_ReturnsLineBreak()
+    {
+        var result = _parser.Parse("修复在修改MenuHelper.SubmenuWidth属性时出现的显示异常BUG。\n修复PendingBox无法从CenterOwner启动的BUG。");
+        var para = Assert.IsType<ParagraphBlock>(Assert.Single(result));
+
+        Assert.Contains(para.Inlines, inline => inline is LineBreakInline);
+    }
+
     #endregion
 
     #region Code Blocks

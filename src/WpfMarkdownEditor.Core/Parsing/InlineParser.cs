@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.RegularExpressions;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 
 namespace WpfMarkdownEditor.Core.Parsing;
@@ -7,7 +9,16 @@ namespace WpfMarkdownEditor.Core.Parsing;
 /// </summary>
 internal sealed class InlineParser
 {
-    public List<Inline> ParseInlines(string text)
+    private static readonly Regex HtmlAttributeRegex = new(
+        @"(?<name>[A-Za-z_:][A-Za-z0-9_:.-]*)\s*=\s*(?:""(?<double>[^""]*)""|'(?<single>[^']*)'|(?<bare>[^\s""'=<`>]+))",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex BareUrlRegex = new(
+        @"https?://[^\s<]+",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    public List<Inline> ParseInlines(string text) => ParseInlines(text, autoLink: true);
+
+    private List<Inline> ParseInlines(string text, bool autoLink)
     {
         if (string.IsNullOrEmpty(text))
             return [new TextInline { Content = "" }];
@@ -42,11 +53,12 @@ internal sealed class InlineParser
         }
 
         // Process emphasis: merge **, *, __, _ into Bold, Italic, BoldItalic
-        return ProcessEmphasis(inlines);
+        var parsed = ProcessEmphasis(inlines);
+        return autoLink ? AutoLinkTextRuns(parsed) : parsed;
     }
 
     private static bool IsSpecialChar(char c) =>
-        c is '*' or '_' or '`' or '[' or '!' or '~' or '\\' or '\n';
+        c is '*' or '_' or '`' or '[' or '!' or '~' or '\\' or '\n' or '<';
 
     private int TryParseInline(string text, int start, out Inline? inline)
     {
@@ -61,6 +73,7 @@ internal sealed class InlineParser
             '[' => TryParseLink(text, start, out inline),
             '~' => TryParseStrikethrough(text, start, out inline),
             '\n' => TryParseLineBreak(text, start, out inline),
+            '<' => TryParseHtmlImage(text, start, out inline),
             '*' or '_' => TryParseEmphasisMarker(text, start, out inline),
             _ => 0
         };
@@ -134,7 +147,7 @@ internal sealed class InlineParser
         var url = ExtractUrl(urlAndTitle);
         var title = ExtractTitle(urlAndTitle);
 
-        var children = ParseInlines(linkText);
+        var children = ParseInlines(linkText, autoLink: false);
 
         inline = new LinkInline
         {
@@ -173,6 +186,150 @@ internal sealed class InlineParser
             Title = ExtractTitle(urlAndTitle)
         };
         return closeParen + 1 - start;
+    }
+
+    #endregion
+
+    #region Raw HTML Images
+
+    private static int TryParseHtmlImage(string text, int start, out Inline? inline)
+    {
+        inline = null;
+
+        if (StartsWithHtmlTag(text, start, "img"))
+            return TryParseHtmlImageTag(text, start, out inline, out _);
+
+        if (!StartsWithHtmlTag(text, start, "a"))
+            return 0;
+
+        var anchorTagEnd = FindHtmlTagEnd(text, start);
+        if (anchorTagEnd < 0) return 0;
+
+        var imageStart = SkipWhitespace(text, anchorTagEnd + 1);
+        if (!StartsWithHtmlTag(text, imageStart, "img"))
+            return 0;
+
+        var imageConsumed = TryParseHtmlImageTag(text, imageStart, out inline, out var imageTagEnd);
+        if (imageConsumed == 0 || inline is null)
+            return 0;
+
+        var closeAnchorStart = SkipWhitespace(text, imageTagEnd + 1);
+        if (!StartsWithClosingHtmlTag(text, closeAnchorStart, "a", out var closeAnchorEnd))
+            return 0;
+
+        return closeAnchorEnd + 1 - start;
+    }
+
+    private static int TryParseHtmlImageTag(string text, int start, out Inline? inline, out int tagEnd)
+    {
+        inline = null;
+        tagEnd = FindHtmlTagEnd(text, start);
+        if (tagEnd < 0) return 0;
+
+        var tag = text[start..(tagEnd + 1)];
+        var src = ExtractHtmlAttribute(tag, "src");
+        if (string.IsNullOrWhiteSpace(src))
+            return 0;
+
+        inline = new ImageInline
+        {
+            Url = src,
+            Alt = ExtractHtmlAttribute(tag, "alt"),
+            Title = ExtractHtmlAttribute(tag, "title")
+        };
+        return tagEnd + 1 - start;
+    }
+
+    private static bool StartsWithHtmlTag(string text, int start, string tagName)
+    {
+        if (start < 0 || start >= text.Length || text[start] != '<')
+            return false;
+
+        var nameStart = start + 1;
+        if (nameStart + tagName.Length > text.Length)
+            return false;
+
+        if (string.Compare(text, nameStart, tagName, 0, tagName.Length, StringComparison.OrdinalIgnoreCase) != 0)
+            return false;
+
+        var afterName = nameStart + tagName.Length;
+        return afterName < text.Length && (char.IsWhiteSpace(text[afterName]) || text[afterName] is '>' or '/');
+    }
+
+    private static bool StartsWithClosingHtmlTag(string text, int start, string tagName, out int tagEnd)
+    {
+        tagEnd = -1;
+        if (start < 0 || start + tagName.Length + 3 > text.Length)
+            return false;
+
+        if (text[start] != '<' || text[start + 1] != '/')
+            return false;
+
+        var nameStart = start + 2;
+        if (string.Compare(text, nameStart, tagName, 0, tagName.Length, StringComparison.OrdinalIgnoreCase) != 0)
+            return false;
+
+        var i = nameStart + tagName.Length;
+        while (i < text.Length && char.IsWhiteSpace(text[i]))
+            i++;
+
+        if (i >= text.Length || text[i] != '>')
+            return false;
+
+        tagEnd = i;
+        return true;
+    }
+
+    private static int FindHtmlTagEnd(string text, int start)
+    {
+        var quote = '\0';
+        for (var i = start + 1; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (quote != '\0')
+            {
+                if (c == quote)
+                    quote = '\0';
+                continue;
+            }
+
+            if (c is '"' or '\'')
+            {
+                quote = c;
+                continue;
+            }
+
+            if (c == '>')
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static int SkipWhitespace(string text, int start)
+    {
+        var i = start;
+        while (i < text.Length && char.IsWhiteSpace(text[i]))
+            i++;
+        return i;
+    }
+
+    private static string? ExtractHtmlAttribute(string tag, string name)
+    {
+        foreach (Match match in HtmlAttributeRegex.Matches(tag))
+        {
+            if (!string.Equals(match.Groups["name"].Value, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var value =
+                match.Groups["double"].Success ? match.Groups["double"].Value :
+                match.Groups["single"].Success ? match.Groups["single"].Value :
+                match.Groups["bare"].Value;
+
+            return WebUtility.HtmlDecode(value);
+        }
+
+        return null;
     }
 
     #endregion
@@ -379,6 +536,60 @@ internal sealed class InlineParser
             result.Add(new TextInline { Content = textBuffer.ToString() });
 
         return result;
+    }
+
+    private static List<Inline> AutoLinkTextRuns(List<Inline> inlines)
+    {
+        var result = new List<Inline>(inlines.Count);
+
+        foreach (var inline in inlines)
+        {
+            if (inline is not TextInline textInline)
+            {
+                result.Add(inline);
+                continue;
+            }
+
+            result.AddRange(AutoLinkText(textInline.Content));
+        }
+
+        return MergeAdjacentText(result);
+    }
+
+    private static IEnumerable<Inline> AutoLinkText(string text)
+    {
+        var position = 0;
+        foreach (Match match in BareUrlRegex.Matches(text))
+        {
+            if (match.Index > position)
+                yield return new TextInline { Content = text[position..match.Index] };
+
+            var rawUrl = match.Value;
+            var url = TrimTrailingUrlPunctuation(rawUrl);
+            var trailing = rawUrl[url.Length..];
+
+            yield return new LinkInline
+            {
+                Url = url,
+                Children = [new TextInline { Content = url }]
+            };
+
+            if (trailing.Length > 0)
+                yield return new TextInline { Content = trailing };
+
+            position = match.Index + match.Length;
+        }
+
+        if (position < text.Length)
+            yield return new TextInline { Content = text[position..] };
+    }
+
+    private static string TrimTrailingUrlPunctuation(string value)
+    {
+        var end = value.Length;
+        while (end > 0 && value[end - 1] is '.' or ',' or ';' or ':' or '!' or '?')
+            end--;
+        return value[..end];
     }
 
     #endregion

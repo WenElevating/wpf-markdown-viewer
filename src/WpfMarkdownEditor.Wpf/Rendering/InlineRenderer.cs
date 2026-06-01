@@ -1,10 +1,9 @@
 using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 using WpfMarkdownEditor.Wpf.Theming;
@@ -19,11 +18,13 @@ public sealed class InlineRenderer
 {
     private readonly EditorTheme _theme;
     private readonly IImageResolver? _imageResolver;
+    private readonly Action? _requestLayoutRefresh;
 
-    public InlineRenderer(EditorTheme theme, IImageResolver? imageResolver = null)
+    public InlineRenderer(EditorTheme theme, IImageResolver? imageResolver = null, Action? requestLayoutRefresh = null)
     {
         _theme = theme;
         _imageResolver = imageResolver;
+        _requestLayoutRefresh = requestLayoutRefresh;
     }
 
     public void RenderInlines(Paragraph paragraph, List<CoreInline> inlines)
@@ -126,87 +127,115 @@ public sealed class InlineRenderer
 
     private System.Windows.Documents.Inline RenderImageInline(ImageInline img)
     {
-        var placeholder = new Run($"[{img.Alt ?? img.Url}]")
+        var placeholder = new Run(string.IsNullOrEmpty(img.Alt) ? string.Empty : $"[{img.Alt}]")
         {
             Foreground = new SolidColorBrush(_theme.LinkColor),
         };
 
-        // Only async-load local and data-URI images; remote URLs remain as placeholder text.
-        if (_imageResolver is not null && !IsRemoteUrl(img.Url))
-            _ = LoadInlineImageAsync(placeholder, img, _imageResolver);
+        if (_imageResolver is not null)
+        {
+            var resolver = _imageResolver;
+            var requestLayoutRefresh = _requestLayoutRefresh;
+            _ = placeholder.Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => _ = LoadInlineImageAsync(placeholder, img, resolver, requestLayoutRefresh)));
+        }
 
         return placeholder;
     }
 
-    private static async Task LoadInlineImageAsync(Run placeholder, ImageInline img, IImageResolver resolver)
+    private static async Task LoadInlineImageAsync(
+        Run placeholder,
+        ImageInline img,
+        IImageResolver resolver,
+        Action? requestLayoutRefresh)
     {
         try
         {
             var imageData = await Task.Run(() => resolver.ResolveImageAsync(img.Url, CancellationToken.None)).ConfigureAwait(false);
-            if (imageData is null) return;
-
-            var bitmap = CreateBitmap(imageData);
-            if (bitmap is null) return;
-
-            await placeholder.Dispatcher.InvokeAsync(() =>
+            if (imageData is null)
             {
-                var imageControl = new System.Windows.Controls.Image
-                {
-                    Source = bitmap,
-                    MaxHeight = 300,
-                    Stretch = Stretch.Uniform,
-                    StretchDirection = StretchDirection.DownOnly,
-                };
-                if (img.Alt is not null)
-                    imageControl.ToolTip = img.Alt;
+                await ReplaceWithBrokenImageAsync(placeholder, img.Url, requestLayoutRefresh).ConfigureAwait(false);
+                return;
+            }
 
-                // Replace the placeholder run with an image container in its parent paragraph/span
-                if (placeholder.Parent is Paragraph para)
+            if (ImageElementFactory.IsSvg(imageData))
+            {
+                await placeholder.Dispatcher.InvokeAsync(() =>
                 {
-                    var idx = para.Inlines.ToList().IndexOf(placeholder);
-                    para.Inlines.Remove(placeholder);
-                    var uiContainer = new InlineUIContainer(imageControl) { BaselineAlignment = BaselineAlignment.Bottom };
-                    if (idx >= 0 && idx < para.Inlines.Count)
+                    var svg = ImageElementFactory.CreateSvgBrowser(imageData, img.Alt, 300);
+                    if (svg is not null)
                     {
-                        var afterInline = para.Inlines.Cast<System.Windows.Documents.Inline>().ElementAt(idx);
-                        para.Inlines.InsertBefore(afterInline, uiContainer);
+                        svg.InvalidateMeasure();
+                        svg.InvalidateArrange();
+                        ReplaceInline(placeholder, new InlineUIContainer(svg) { BaselineAlignment = BaselineAlignment.Bottom });
+                        requestLayoutRefresh?.Invoke();
                     }
                     else
                     {
-                        para.Inlines.Add(uiContainer);
+                        ReplaceInline(placeholder, CreateBrokenInline(img.Url));
+                        requestLayoutRefresh?.Invoke();
                     }
-                }
+                });
+                return;
+            }
+
+            var bitmap = ImageElementFactory.CreateBitmap(imageData);
+            if (bitmap is null)
+            {
+                await ReplaceWithBrokenImageAsync(placeholder, img.Url, requestLayoutRefresh).ConfigureAwait(false);
+                return;
+            }
+
+            await placeholder.Dispatcher.InvokeAsync(() =>
+            {
+                var imageControl = ImageElementFactory.CreateBitmapImageControl(bitmap, img.Alt, 300, alignLeft: false);
+                imageControl.InvalidateMeasure();
+                imageControl.InvalidateArrange();
+                ReplaceInline(placeholder, new InlineUIContainer(imageControl) { BaselineAlignment = BaselineAlignment.Bottom });
+                requestLayoutRefresh?.Invoke();
             });
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
-            // Leave placeholder in place
+            await ReplaceWithBrokenImageAsync(placeholder, img.Url, requestLayoutRefresh).ConfigureAwait(false);
         }
     }
 
-    private static bool IsRemoteUrl(string url) =>
-        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-        url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-
-    private static BitmapImage? CreateBitmap(ImageData imageData)
+    private static async Task ReplaceWithBrokenImageAsync(Run placeholder, string url, Action? requestLayoutRefresh)
     {
-        try
+        await placeholder.Dispatcher.InvokeAsync(() =>
         {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            using (var stream = new MemoryStream(imageData.Data))
-            {
-                bitmap.StreamSource = stream;
-                bitmap.EndInit();
-            }
-            bitmap.Freeze();
-            return bitmap;
-        }
-        catch
+            ReplaceInline(placeholder, CreateBrokenInline(url));
+            requestLayoutRefresh?.Invoke();
+        });
+    }
+
+    private static InlineUIContainer CreateBrokenInline(string url) =>
+        new(ImageElementFactory.CreateBrokenImageIcon(url)) { BaselineAlignment = BaselineAlignment.Bottom };
+
+    private static void ReplaceInline(Run placeholder, InlineUIContainer replacement)
+    {
+        switch (placeholder.Parent)
         {
-            return null;
+            case Paragraph paragraph:
+                ReplaceInline(paragraph.Inlines, placeholder, replacement);
+                break;
+            case Span span:
+                ReplaceInline(span.Inlines, placeholder, replacement);
+                break;
         }
+    }
+
+    private static void ReplaceInline(InlineCollection inlines, Run placeholder, InlineUIContainer replacement)
+    {
+        var next = placeholder.NextInline;
+        inlines.Remove(placeholder);
+
+        if (next is not null)
+            inlines.InsertBefore(next, replacement);
+        else
+            inlines.Add(replacement);
     }
 
     private Hyperlink CreateHyperlink(LinkInline link)

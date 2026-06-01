@@ -572,7 +572,7 @@ internal sealed class BlockParser
     private Block ParseParagraph(LineReader reader, ParserState state)
     {
         var firstLine = reader.ReadLine()!;
-        var text = firstLine.Content.Trim();
+        var text = firstLine.Content.TrimStart();
         var endLine = firstLine.LineNumber;
 
         // Collect continuation lines
@@ -599,7 +599,7 @@ internal sealed class BlockParser
 
             if (TryParseOrderedListStart(stripped, out _)) break;
 
-            text += "\n" + peeked.Content.Trim();
+            text += "\n" + peeked.Content.TrimStart();
             reader.ReadLine();
             endLine = peeked.LineNumber;
         }
@@ -638,10 +638,71 @@ internal sealed class BlockParser
 
         return new ParagraphBlock
         {
-            Inlines = _inlineParser.ParseInlines(text.Replace("\n", " ")),
+            Inlines = _inlineParser.ParseInlines(NormalizeParagraphSoftBreaks(text)),
             LineStart = firstLine.LineNumber,
             LineEnd = endLine
         };
+    }
+
+    private static string NormalizeParagraphSoftBreaks(string text)
+    {
+        var lines = text.Split('\n');
+        if (lines.Length == 1) return TrimLineBreakMarker(lines[0]);
+
+        var normalized = new StringBuilder(TrimLineBreakMarker(lines[0]));
+        for (var i = 1; i < lines.Length; i++)
+        {
+            normalized.Append(ShouldPreserveSoftBreak(lines[i - 1], lines[i]) ? '\n' : ' ');
+            normalized.Append(TrimLineBreakMarker(lines[i]));
+        }
+
+        return normalized.ToString();
+    }
+
+    private static bool ShouldPreserveSoftBreak(string before, string after) =>
+        HasHardLineBreak(before) ||
+        IsStandaloneImageLine(before) ||
+        IsStandaloneImageLine(after) ||
+        IsCjkLineBreak(before, after);
+
+    private static bool HasHardLineBreak(string line)
+    {
+        var trailingSpaces = 0;
+        for (var i = line.Length - 1; i >= 0 && line[i] == ' '; i--)
+            trailingSpaces++;
+
+        return trailingSpaces >= 2 || line.EndsWith('\\');
+    }
+
+    private static string TrimLineBreakMarker(string line)
+    {
+        var trimmed = line.TrimEnd();
+        return line.EndsWith('\\') ? trimmed.TrimEnd('\\') : trimmed;
+    }
+
+    private static bool IsStandaloneImageLine(string line)
+    {
+        var trimmed = line.Trim();
+        return trimmed.StartsWith("![", StringComparison.Ordinal) ||
+               trimmed.StartsWith("<img", StringComparison.OrdinalIgnoreCase) ||
+               (trimmed.StartsWith("<a", StringComparison.OrdinalIgnoreCase) &&
+                trimmed.Contains("<img", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsCjkLineBreak(string before, string after) =>
+        ContainsCjk(before) && ContainsCjk(after);
+
+    private static bool ContainsCjk(string text)
+    {
+        foreach (var c in text)
+        {
+            if (c is >= '\u3400' and <= '\u4DBF' ||
+                c is >= '\u4E00' and <= '\u9FFF' ||
+                c is >= '\uF900' and <= '\uFAFF')
+                return true;
+        }
+
+        return false;
     }
 
     #endregion

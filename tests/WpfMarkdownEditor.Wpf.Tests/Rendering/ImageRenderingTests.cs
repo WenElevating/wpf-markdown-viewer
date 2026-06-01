@@ -1,8 +1,11 @@
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Threading;
 using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
@@ -28,6 +31,9 @@ public sealed class ImageRenderingTests
         0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
         0x42, 0x60, 0x82
     ];
+
+    private static readonly byte[] SvgBadge = Encoding.UTF8.GetBytes(
+        """<svg xmlns="http://www.w3.org/2000/svg" width="80" height="20"><rect width="80" height="20" fill="#d73a49"/></svg>""");
 
     [Fact]
     public void Render_LocalImagePathWithSpaces_CreatesImageControl()
@@ -60,11 +66,11 @@ public sealed class ImageRenderingTests
     }
 
     [Fact]
-    public void RenderInline_RemoteImage_DoesNotResolveSynchronously()
+    public void RenderInline_RemoteImage_LoadsAsynchronously()
     {
         RunOnSta(() =>
         {
-            var resolver = new ThrowingImageResolver();
+            var resolver = new DeferredImageResolver();
             var renderer = new InlineRenderer(EditorTheme.Light, resolver);
             var paragraph = new Paragraph();
 
@@ -79,18 +85,269 @@ public sealed class ImageRenderingTests
 
             var run = Assert.IsType<Run>(Assert.Single(paragraph.Inlines));
             Assert.Equal("[remote]", run.Text);
-            Assert.Equal(0, resolver.ResolveCount);
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            Assert.Equal("https://example.com/image.png", resolver.ResolveStarted.Task.Result);
+
+            resolver.Complete(Png1x1);
+
+            Assert.True(WaitUntil(() => paragraph.Inlines.Single() is InlineUIContainer));
+            var container = Assert.IsType<InlineUIContainer>(Assert.Single(paragraph.Inlines));
+            var image = Assert.IsType<Image>(container.Child);
+            Assert.NotNull(image.Source);
         });
     }
 
-    private sealed class ThrowingImageResolver : IImageResolver
+    [Fact]
+    public void RenderInline_RemoteSvgImage_CreatesSvgBrowser()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var renderer = new InlineRenderer(EditorTheme.Light, resolver);
+            var paragraph = new Paragraph();
+
+            renderer.RenderInlines(paragraph,
+            [
+                new ImageInline
+                {
+                    Url = "https://example.com/badge.svg",
+                    Alt = "badge"
+                }
+            ]);
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            resolver.Complete(SvgBadge, "svg");
+
+            Assert.True(WaitUntil(() => paragraph.Inlines.Single() is InlineUIContainer container && container.Child is WebBrowser));
+            var imageContainer = Assert.IsType<InlineUIContainer>(Assert.Single(paragraph.Inlines));
+            var browser = Assert.IsType<WebBrowser>(imageContainer.Child);
+            Assert.Equal(80, browser.Width);
+            Assert.Equal(20, browser.Height);
+        });
+    }
+
+    [Fact]
+    public void RenderInline_ImageLoadFailure_ReplacesUrlPlaceholderWithBrokenIcon()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var renderer = new InlineRenderer(EditorTheme.Light, resolver);
+            var paragraph = new Paragraph();
+
+            renderer.RenderInlines(paragraph,
+            [
+                new ImageInline
+                {
+                    Url = "https://camo.githubusercontent.com/image",
+                }
+            ]);
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            resolver.Complete(null);
+
+            Assert.True(WaitUntil(() => paragraph.Inlines.Single() is InlineUIContainer));
+            var container = Assert.IsType<InlineUIContainer>(Assert.Single(paragraph.Inlines));
+            var icon = Assert.IsAssignableFrom<FrameworkElement>(container.Child);
+            Assert.Equal(16, icon.Width);
+            Assert.Equal(16, icon.Height);
+        });
+    }
+
+    [Fact]
+    public void Render_RemoteMarkdownImage_LoadsBlockImageAsynchronously()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var layoutRefreshCount = 0;
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, resolver, requestLayoutRefresh: () => layoutRefreshCount++);
+            var parser = new MarkdownParser();
+
+            var document = renderer.Render(parser.Parse(
+                "![](https://panuonui-silver-1252047526.cos.ap-chengdu.myqcloud.com/case_morin_4.png)"));
+
+            var block = Assert.IsType<BlockUIContainer>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+            var host = Assert.IsType<ContentControl>(block.Child);
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            resolver.Complete(Png1x1);
+
+            Assert.True(
+                WaitUntil(() => host.Content is Image image && image.Source is not null),
+                $"Final content: {host.Content?.GetType().FullName}");
+            var image = Assert.IsType<Image>(host.Content);
+            Assert.NotNull(image.Source);
+            Assert.True(WaitUntil(() => layoutRefreshCount > 0));
+        });
+    }
+
+    [Fact]
+    public void Render_RemoteMarkdownImage_KeepsStableHostWhenImageCompletes()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, resolver);
+            var parser = new MarkdownParser();
+
+            var document = renderer.Render(parser.Parse("![](https://example.com/stable.png)"));
+            var block = Assert.IsType<BlockUIContainer>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+            var host = Assert.IsType<ContentControl>(block.Child);
+
+            resolver.Complete(Png1x1);
+
+            Assert.True(WaitUntil(() => host.Content is Image image && image.Source is not null));
+            Assert.Same(host, block.Child);
+        });
+    }
+
+    [Fact]
+    public void Render_SameRemoteMarkdownImage_UsesCachedImageData()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new CountingImageResolver(new ImageData { Data = Png1x1, Format = "png" });
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, resolver);
+            var parser = new MarkdownParser();
+
+            var markdown = "![](https://example.com/cached.png)";
+            var firstDocument = renderer.Render(parser.Parse(markdown));
+            var firstBlock = Assert.IsType<BlockUIContainer>(Assert.Single(firstDocument.Blocks.Cast<WpfBlock>()));
+            var firstHost = Assert.IsType<ContentControl>(firstBlock.Child);
+            Assert.True(WaitUntil(() => firstHost.Content is Image));
+
+            var secondDocument = renderer.Render(parser.Parse(markdown));
+            var secondBlock = Assert.IsType<BlockUIContainer>(Assert.Single(secondDocument.Blocks.Cast<WpfBlock>()));
+            var secondHost = Assert.IsType<ContentControl>(secondBlock.Child);
+            Assert.True(WaitUntil(() => secondHost.Content is Image));
+
+            Assert.Equal(1, resolver.ResolveCount);
+        });
+    }
+
+    [Fact]
+    public void RenderIncremental_UnchangedImageBlock_ReusesLoadedBlockWithoutResolvingAgain()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new CountingImageResolver(new ImageData { Data = Png1x1, Format = "png" });
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, resolver);
+            var parser = new MarkdownParser();
+
+            const string firstMarkdown = "before\n\n![](https://example.com/reused.png)\n\nafter";
+            var document = renderer.RenderIncremental(null, parser.Parse(firstMarkdown), firstMarkdown);
+            var originalImageBlock = Assert.Single(document.Blocks.Cast<WpfBlock>().OfType<BlockUIContainer>());
+            var originalHost = Assert.IsType<ContentControl>(originalImageBlock.Child);
+            Assert.True(WaitUntil(() => originalHost.Content is Image));
+
+            const string editedMarkdown = "changed before\n\n![](https://example.com/reused.png)\n\nchanged after";
+            var updatedDocument = renderer.RenderIncremental(document, parser.Parse(editedMarkdown), editedMarkdown);
+            var reusedImageBlock = Assert.Single(updatedDocument.Blocks.Cast<WpfBlock>().OfType<BlockUIContainer>());
+
+            Assert.Same(document, updatedDocument);
+            Assert.Same(originalImageBlock, reusedImageBlock);
+            Assert.Equal(1, resolver.ResolveCount);
+        });
+    }
+
+    [Fact]
+    public void Render_RemoteMarkdownImage_UsesLoadingPlaceholderBeforeCompletion()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, resolver);
+            var parser = new MarkdownParser();
+
+            var document = renderer.Render(parser.Parse("![](https://example.com/case.png)"));
+
+            var block = Assert.IsType<BlockUIContainer>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+            Assert.Equal(TextAlignment.Left, block.TextAlignment);
+            var host = Assert.IsType<ContentControl>(block.Child);
+            var placeholder = Assert.IsType<Border>(host.Content);
+            Assert.Equal(HorizontalAlignment.Left, placeholder.HorizontalAlignment);
+            Assert.True(placeholder.Opacity > 0);
+        });
+    }
+
+    [Fact]
+    public void Render_RemoteMarkdownImageFailure_UsesLeftAlignedBrokenIcon()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, resolver);
+            var parser = new MarkdownParser();
+
+            var document = renderer.Render(parser.Parse("![](https://example.com/missing.png)"));
+            var block = Assert.IsType<BlockUIContainer>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            resolver.Complete(null);
+
+            var host = Assert.IsType<ContentControl>(block.Child);
+            Assert.True(WaitUntil(() => host.Content is Canvas));
+            var icon = Assert.IsType<Canvas>(host.Content);
+            Assert.Equal(HorizontalAlignment.Left, icon.HorizontalAlignment);
+        });
+    }
+
+    [Fact]
+    public void Render_StandaloneImageLines_RendersSeparateBlockContainers()
+    {
+        RunOnSta(() =>
+        {
+            var renderer = new FlowDocumentRenderer(EditorTheme.Light, new ImmediateImageResolver(null));
+            var parser = new MarkdownParser();
+
+            var document = renderer.Render(parser.Parse(
+                """
+                <a href="https://996.icu"><img src="https://img.shields.io/badge/link-996.icu-red.svg"></a>
+                <a href="https://996.icu"><img src="https://camo.githubusercontent.com/image"></a>
+                """));
+
+            var section = Assert.IsType<Section>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+            var imageBlocks = section.Blocks.Cast<WpfBlock>().ToList();
+            Assert.Equal(2, imageBlocks.Count);
+            Assert.All(imageBlocks, block =>
+            {
+                var container = Assert.IsType<BlockUIContainer>(block);
+                Assert.True(container.Margin.Bottom >= 20);
+            });
+        });
+    }
+
+    private sealed class DeferredImageResolver : IImageResolver
+    {
+        private readonly TaskCompletionSource<ImageData?> _imageData = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<string> ResolveStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct)
+        {
+            ResolveStarted.TrySetResult(url);
+            return _imageData.Task;
+        }
+
+        public void Complete(byte[]? data, string format = "png") =>
+            _imageData.TrySetResult(data is null ? null : new ImageData { Data = data, Format = format });
+    }
+
+    private sealed class ImmediateImageResolver(ImageData? imageData) : IImageResolver
+    {
+        public Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct) => Task.FromResult(imageData);
+    }
+
+    private sealed class CountingImageResolver(ImageData? imageData) : IImageResolver
     {
         public int ResolveCount { get; private set; }
 
         public Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct)
         {
             ResolveCount++;
-            throw new InvalidOperationException("Remote inline images should not be resolved synchronously.");
+            return Task.FromResult(imageData);
         }
     }
 
@@ -115,5 +372,24 @@ public sealed class ImageRenderingTests
 
         if (exception is not null)
             throw exception;
+    }
+
+    private static bool WaitUntil(Func<bool> condition, int timeoutMs = 2000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition()) return true;
+
+            var frame = new DispatcherFrame();
+            Dispatcher.CurrentDispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame);
+            Thread.Sleep(10);
+        }
+
+        return condition();
     }
 }

@@ -28,6 +28,8 @@ public partial class MarkdownEditor : UserControl, IDisposable
     private FlowDocumentRenderer? _renderer;
     private CancellationTokenSource? _cts;
     private int _renderVersion;
+    private FlowDocument? _previewDocument;
+    private bool _layoutRefreshQueued;
     private string? _translatedMarkdown;
     private LocalizationService? _localizationService;
 
@@ -277,6 +279,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
             OldMarkdown = (string?)e.OldValue ?? string.Empty,
             NewMarkdown = (string?)e.NewValue ?? string.Empty,
         });
+        editor.SchedulePreviewRender();
     }
 
     private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -364,18 +367,14 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     private void UpdateRenderer()
     {
-        _renderer = new FlowDocumentRenderer(Theme, _imageLoader, _highlighter);
+        _previewDocument = null;
+        _renderer = new FlowDocumentRenderer(Theme, _imageLoader, _highlighter, RequestPreviewLayoutRefresh);
     }
 
     private void OnEditorTextChanged(object sender, TextChangedEventArgs e)
     {
-        _debounceTimer.Stop();
-        SwapCts()?.Cancel();
-
-        // Clear translated preview when user edits
         _translatedMarkdown = null;
-
-        _debounceTimer.Start();
+        SchedulePreviewRender();
     }
 
     private void OnDebounceTick(object? sender, EventArgs e)
@@ -404,11 +403,19 @@ public partial class MarkdownEditor : UserControl, IDisposable
             if (version != Volatile.Read(ref _renderVersion)) return;
             ct.ThrowIfCancellationRequested();
 
-            var document = renderer.Render(blocks);
+            var renderIncrementally = _translatedMarkdown is null;
+            var existingDocument = renderIncrementally ? _previewDocument : null;
+            if (existingDocument is not null && ReferenceEquals(PreviewViewer.Document, existingDocument))
+                PreviewViewer.Document = null;
+
+            var document = renderIncrementally
+                ? renderer.RenderIncremental(existingDocument, blocks, markdown)
+                : renderer.Render(blocks);
 
             // Final version check before UI update
             if (version != Volatile.Read(ref _renderVersion)) return;
 
+            _previewDocument = document;
             PreviewViewer.Document = document;
         }
         catch (OperationCanceledException)
@@ -417,8 +424,37 @@ public partial class MarkdownEditor : UserControl, IDisposable
         }
         catch (Exception)
         {
-            PreviewViewer.Document = BuildErrorDocument("Preview unavailable");
+            _previewDocument = BuildErrorDocument("Preview unavailable");
+            PreviewViewer.Document = _previewDocument;
         }
+    }
+
+    private void SchedulePreviewRender()
+    {
+        _debounceTimer.Stop();
+        var oldCts = SwapCts();
+        oldCts?.Cancel();
+        oldCts?.Dispose();
+        _debounceTimer.Start();
+    }
+
+    private void RequestPreviewLayoutRefresh()
+    {
+        if (_layoutRefreshQueued)
+            return;
+
+        _layoutRefreshQueued = true;
+        PreviewViewer.Dispatcher.BeginInvoke(
+            DispatcherPriority.Render,
+            new Action(() =>
+            {
+                _layoutRefreshQueued = false;
+                var document = PreviewViewer.Document;
+                PreviewViewer.InvalidateMeasure();
+                PreviewViewer.InvalidateArrange();
+                PreviewViewer.InvalidateVisual();
+                PreviewViewer.UpdateLayout();
+            }));
     }
 
     private static FlowDocument BuildErrorDocument(string message)

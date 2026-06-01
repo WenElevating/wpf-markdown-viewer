@@ -7,9 +7,12 @@ using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Wpf.Rendering.Renderers;
 
-public sealed class HeadingRenderer(EditorTheme theme, IImageResolver? imageResolver = null) : IBlockRenderer
+public sealed class HeadingRenderer(
+    EditorTheme theme,
+    IImageResolver? imageResolver = null,
+    Action? requestLayoutRefresh = null) : IBlockRenderer
 {
-    private readonly InlineRenderer _inlineRenderer = new(theme, imageResolver);
+    private readonly InlineRenderer _inlineRenderer = new(theme, imageResolver, requestLayoutRefresh);
 
     public System.Windows.Documents.Block Render(Core.Parsing.Block block)
     {

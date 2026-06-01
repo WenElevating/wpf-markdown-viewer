@@ -1,5 +1,6 @@
 using Xunit;
 using WpfMarkdownEditor.Core.Parsing;
+using WpfMarkdownEditor.Core.Parsing.Blocks;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 
 namespace WpfMarkdownEditor.Core.Tests.Parsing;
@@ -148,6 +149,17 @@ public class InlineParserTests
         Assert.Contains(link.Children, c => c is BoldInline);
     }
 
+    [Fact]
+    public void ParseInlines_BareHttpUrl_ReturnsLinkInline()
+    {
+        var result = _parser.ParseInlines("http://www.huanghunxiao.com/");
+
+        var link = Assert.IsType<LinkInline>(Assert.Single(result));
+        Assert.Equal("http://www.huanghunxiao.com/", link.Url);
+        var text = Assert.IsType<TextInline>(Assert.Single(link.Children));
+        Assert.Equal("http://www.huanghunxiao.com/", text.Content);
+    }
+
     #endregion
 
     #region Images
@@ -178,6 +190,47 @@ public class InlineParserTests
         var img = Assert.IsType<ImageInline>(Assert.Single(result));
         Assert.Equal(@"C:\Users\Test Folder\pasted image.png", img.Url);
         Assert.Equal("Preview", img.Title);
+    }
+
+    [Fact]
+    public void ParseInlines_AnchorWrappedHtmlImage_ReturnsImageInline()
+    {
+        var result = _parser.ParseInlines(
+            """<a href="https://996.icu" target='_blank'><img src="https://img.shields.io/badge/link-996.icu-red.svg"></a>""");
+
+        var img = Assert.IsType<ImageInline>(Assert.Single(result));
+        Assert.Equal("https://img.shields.io/badge/link-996.icu-red.svg", img.Url);
+    }
+
+    [Fact]
+    public void Parse_ConsecutiveAnchorWrappedHtmlImages_PreservesLineBreak()
+    {
+        var blocks = _parser.Parse(
+            """
+            <a href="https://996.icu" target='_blank'><img src="https://img.shields.io/badge/link-996.icu-red.svg"></a>
+            <a href="https://996.icu" target='_blank'><img src="https://camo.githubusercontent.com/image"></a>
+            """);
+
+        var para = Assert.IsType<ParagraphBlock>(Assert.Single(blocks));
+        Assert.IsType<ImageInline>(para.Inlines[0]);
+        Assert.IsType<LineBreakInline>(para.Inlines[1]);
+        Assert.IsType<ImageInline>(para.Inlines[2]);
+    }
+
+    [Fact]
+    public void Parse_BareUrlThenRemoteImage_ReturnsLinkAndImageParagraphs()
+    {
+        var markdown =
+            "http://www.huanghunxiao.com/  \n\n" +
+            "![](https://panuonui-silver-1252047526.cos.ap-chengdu.myqcloud.com/case_morin_4.png)";
+        var blocks = _parser.Parse(markdown);
+
+        var linkParagraph = Assert.IsType<ParagraphBlock>(blocks[0]);
+        Assert.IsType<LinkInline>(Assert.Single(linkParagraph.Inlines));
+
+        var imageParagraph = Assert.IsType<ParagraphBlock>(blocks[1]);
+        var image = Assert.IsType<ImageInline>(Assert.Single(imageParagraph.Inlines));
+        Assert.Equal("https://panuonui-silver-1252047526.cos.ap-chengdu.myqcloud.com/case_morin_4.png", image.Url);
     }
 
     [Fact]

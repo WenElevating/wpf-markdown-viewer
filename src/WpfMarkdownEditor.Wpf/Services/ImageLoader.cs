@@ -14,9 +14,12 @@ public sealed class ImageLoader : IImageResolver, IDisposable
     private readonly string? _baseDirectory;
     private bool _disposed;
 
-    public ImageLoader(string? baseDirectory = null)
+    public ImageLoader(string? baseDirectory = null) : this(new HttpClientHandler(), baseDirectory) { }
+
+    internal ImageLoader(HttpMessageHandler handler, string? baseDirectory = null)
     {
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("WpfMarkdownEditor/0.1");
         _baseDirectory = baseDirectory;
     }
 
@@ -70,12 +73,25 @@ public sealed class ImageLoader : IImageResolver, IDisposable
 
     private async Task<ImageData?> ResolveRemoteAsync(string url, CancellationToken ct)
     {
-        var response = await _http.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        var requestUrl = GetPreferredRasterUrl(url) ?? url;
+        var response = await _http.GetAsync(requestUrl, ct);
+        if (!response.IsSuccessStatusCode && !string.Equals(requestUrl, url, StringComparison.Ordinal))
+        {
+            response.Dispose();
+            requestUrl = url;
+            response = await _http.GetAsync(requestUrl, ct);
+        }
 
-        var data = await response.Content.ReadAsByteArrayAsync(ct);
-        var format = InferFormatFromUrl(url) ?? InferFormatFromContentType(response.Content.Headers.ContentType?.MediaType);
-        return new ImageData { Data = data, Format = format ?? "png" };
+        using (response)
+        {
+            response.EnsureSuccessStatusCode();
+
+            var data = await response.Content.ReadAsByteArrayAsync(ct);
+            var format = InferFormatFromContentType(response.Content.Headers.ContentType?.MediaType) ??
+                         InferFormatFromUrl(requestUrl) ??
+                         InferFormatFromUrl(url);
+            return new ImageData { Data = data, Format = format ?? "png" };
+        }
     }
 
     private ImageData? ResolveLocal(string url)
@@ -123,6 +139,22 @@ public sealed class ImageLoader : IImageResolver, IDisposable
             "image/webp" => "webp",
             _ => null
         };
+    }
+
+    private static string? GetPreferredRasterUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return null;
+
+        if (!string.Equals(uri.Host, "img.shields.io", StringComparison.OrdinalIgnoreCase) ||
+            !uri.AbsolutePath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var builder = new UriBuilder(uri)
+        {
+            Path = uri.AbsolutePath[..^4] + ".png"
+        };
+        return builder.Uri.ToString();
     }
 
     public void Dispose()
