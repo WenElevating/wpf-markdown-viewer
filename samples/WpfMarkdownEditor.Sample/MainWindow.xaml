@@ -98,22 +98,117 @@
                         Button.Click="OnPopupItemClick"
                         CornerRadius="8"
                         Effect="{StaticResource PopupShadowEffect}">
-                        <StackPanel MinWidth="200">
+                        <StackPanel x:Name="FileMenuItemsPanel" MinWidth="260">
                             <Button
                                 Click="OnNewFile"
                                 Content="{DynamicResource Loc.MainWindow.NewFile}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+N" />
                             <Button
+                                Click="OnNewWindow"
+                                Content="{DynamicResource Loc.MainWindow.NewWindow}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+N" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
                                 Click="OnOpenFile"
                                 Content="{DynamicResource Loc.MainWindow.OpenFile}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+O" />
                             <Button
+                                Click="OnOpenFolder"
+                                Content="{DynamicResource Loc.MainWindow.OpenFolder}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
+                                Click="OnQuickOpen"
+                                Content="{DynamicResource Loc.MainWindow.QuickOpen}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+P" />
+                            <Button
+                                Click="OnOpenRecentFile"
+                                Content="{DynamicResource Loc.MainWindow.OpenRecentFile}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag=">" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
                                 Click="OnSaveFile"
                                 Content="{DynamicResource Loc.MainWindow.SaveFile}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+S" />
+                            <Button
+                                Click="OnSaveFileAs"
+                                Content="{DynamicResource Loc.MainWindow.SaveAs}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+S" />
+                            <Button
+                                Click="OnMoveFile"
+                                Content="{DynamicResource Loc.MainWindow.MoveTo}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
+                                Click="OnShowFileProperties"
+                                Content="{DynamicResource Loc.MainWindow.Properties}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnOpenFileLocation"
+                                Content="{DynamicResource Loc.MainWindow.OpenFileLocation}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnShowInSidebar"
+                                Content="{DynamicResource Loc.MainWindow.ShowInSidebar}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnDeleteFile"
+                                Content="{DynamicResource Loc.MainWindow.DeleteFile}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
+                                Click="OnImportFile"
+                                Content="{DynamicResource Loc.MainWindow.Import}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnExportHtml"
+                                Content="{DynamicResource Loc.MainWindow.ExportHtml}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnPrintFile"
+                                Content="{DynamicResource Loc.MainWindow.Print}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Alt+Shift+P" />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
+                                Click="OnPreferences"
+                                Content="{DynamicResource Loc.MainWindow.Preferences}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+," />
+                            <Border
+                                Height="1"
+                                Margin="4,2"
+                                Background="{DynamicResource DividerBrush}" />
+                            <Button
+                                Click="OnCloseWindow"
+                                Content="{DynamicResource Loc.MainWindow.CloseWindow}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+W" />
                         </StackPanel>
                     </Border>
                 </Popup>
@@ -543,8 +638,28 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                            <TextBlock
+                                x:Name="TabFiles"
+                                Margin="0,0,0,6"
+                                Cursor="Hand"
+                                FontFamily="Segoe UI Variable, Segoe UI"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                MouseLeftButtonDown="OnTabFiles"
+                                Text="{DynamicResource Loc.MainWindow.Files}" />
+                            <Border
+                                x:Name="FilesUnderline"
+                                Width="20"
+                                Height="2"
+                                HorizontalAlignment="Center"
+                                Background="{DynamicResource AccentBrush}"
+                                CornerRadius="1"
+                                Visibility="Collapsed" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                             <TextBlock
                                 x:Name="TabHistory"
                                 Margin="0,0,0,6"
@@ -563,7 +678,7 @@
                                 Background="{DynamicResource AccentBrush}"
                                 CornerRadius="1" />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                             <TextBlock
                                 x:Name="TabOutline"
                                 Margin="0,0,0,6"
@@ -586,6 +701,23 @@
 
                     <!--  Tab Content  -->
                     <Grid Grid.Row="1">
+                        <TreeView
+                            x:Name="FilesTree"
+                            Padding="8"
+                            SelectedItemChanged="OnFilesTreeSelectedItemChanged"
+                            Visibility="Collapsed">
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <TextBlock Text="{Binding Name}" />
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
                         <ScrollViewer
                             x:Name="HistoryPanel"
                             Padding="8"

@@ -4,17 +4,18 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using WpfMarkdownEditor.Core.Translation;
 using WpfMarkdownEditor.Wpf.Controls;
 using WpfMarkdownEditor.Wpf.Dialogs;
 using WpfMarkdownEditor.Wpf.Localization;
 using WpfMarkdownEditor.Wpf.Services;
-using WpfMarkdownEditor.Wpf.Theming;
 using WpfMarkdownEditor.Wpf.Translation;
 using WpfMarkdownEditor.Wpf.Translation.Providers;
 
@@ -27,6 +28,11 @@ public partial class MainWindow : Window
 
     private readonly LocalizationService _localizationService;
     private readonly LocalizationSettingsService _localizationSettingsService;
+    private readonly RecentFilesService _recentFilesService;
+    private readonly FolderWorkspaceService _folderWorkspaceService = new();
+    private readonly FileOperationService _fileOperationService = new();
+    private readonly HtmlExportService _htmlExportService = new();
+    private readonly QuickOpenService _quickOpenService = new();
     private string _currentThemeName = "GitHub";
     private string _statusKey = "Status.Ready";
     private object[] _statusArgs = [];
@@ -38,6 +44,11 @@ public partial class MainWindow : Window
     private TranslationProgressOverlay? _progressOverlay;
     private bool _isTranslating;
     private TranslationLanguage _lastTargetLanguage;
+    private WorkspaceTreeNode? _workspaceRoot;
+    private string? _workspaceFolderPath;
+    private Dictionary<string, WorkspaceTreeNode> _workspaceIndex = new(StringComparer.OrdinalIgnoreCase);
+    private bool _selectingWorkspaceNode;
+    private CancellationTokenSource? _folderScanCts;
     private string? _currentFilePath;
     private bool _isDirty;
     private bool _loadingFile;
@@ -52,6 +63,7 @@ public partial class MainWindow : Window
         _localizationService = localizationService ?? new LocalizationService();
         _localizationSettingsService = localizationSettingsService
             ?? new LocalizationSettingsService(GetTranslationSettingsDirectory());
+        _recentFilesService = new RecentFilesService(GetTranslationSettingsDirectory());
 
         if (localizationService == null)
             _localizationService.SetLanguage(SupportedLanguage.English);
@@ -85,6 +97,7 @@ public partial class MainWindow : Window
             _currentFilePath = filePath;
             _isDirty = false;
             AddToHistory(filePath);
+            _recentFilesService.AddOrRefreshFile(filePath);
             SetStatus("Status.FileLoaded", filePath);
         }
         else
@@ -101,6 +114,8 @@ public partial class MainWindow : Window
             _localizationService,
             nameof(LocalizationService.LanguageChanged),
             OnLanguageChanged);
+        _folderScanCts?.Cancel();
+        _folderScanCts?.Dispose();
         base.OnClosed(e);
     }
 
@@ -112,6 +127,22 @@ public partial class MainWindow : Window
 
     private async void OnSaveFile(object sender, RoutedEventArgs e) => await SaveCurrentFileAsync();
 
+    private void OnNewWindow(object sender, RoutedEventArgs e) => NewWindow();
+    private void OnOpenFolder(object sender, RoutedEventArgs e) => OpenFolder();
+    private void OnQuickOpen(object sender, RoutedEventArgs e) => QuickOpen();
+    private void OnOpenRecentFile(object sender, RoutedEventArgs e) => OpenRecentFileMenu();
+    private async void OnSaveFileAs(object sender, RoutedEventArgs e) => await SaveCurrentFileAsAsync();
+    private void OnMoveFile(object sender, RoutedEventArgs e) => MoveCurrentFile();
+    private void OnShowFileProperties(object sender, RoutedEventArgs e) => ShowCurrentFileProperties();
+    private void OnOpenFileLocation(object sender, RoutedEventArgs e) => OpenCurrentFileLocation();
+    private void OnShowInSidebar(object sender, RoutedEventArgs e) => ShowCurrentFileInSidebar();
+    private void OnDeleteFile(object sender, RoutedEventArgs e) => DeleteCurrentFile();
+    private void OnImportFile(object sender, RoutedEventArgs e) => ImportFileIntoDocument();
+    private void OnExportHtml(object sender, RoutedEventArgs e) => ExportCurrentDocumentAsHtml();
+    private void OnPrintFile(object sender, RoutedEventArgs e) => PrintCurrentDocument();
+    private void OnPreferences(object sender, RoutedEventArgs e) => OpenPreferences();
+    private void OnCloseWindow(object sender, RoutedEventArgs e) => CloseCurrentWindow();
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         if (Keyboard.Modifiers == ModifierKeys.Control)
@@ -122,7 +153,23 @@ public partial class MainWindow : Window
                 case Key.O: e.Handled = true; OpenFile(); break;
                 case Key.S: e.Handled = true; _ = SaveCurrentFileAsync(); break;
                 case Key.F: e.Handled = true; ShowSearchPanel(); break;
+                case Key.P: e.Handled = true; QuickOpen(); break;
+                case Key.W: e.Handled = true; CloseCurrentWindow(); break;
+                case Key.OemComma: e.Handled = true; OpenPreferences(); break;
             }
+        }
+        else if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            switch (e.Key)
+            {
+                case Key.N: e.Handled = true; NewWindow(); break;
+                case Key.S: e.Handled = true; _ = SaveCurrentFileAsAsync(); break;
+            }
+        }
+        else if (Keyboard.Modifiers == (ModifierKeys.Alt | ModifierKeys.Shift) && e.Key == Key.P)
+        {
+            e.Handled = true;
+            PrintCurrentDocument();
         }
         base.OnPreviewKeyDown(e);
     }
@@ -161,6 +208,12 @@ public partial class MainWindow : Window
         SetStatus("Status.NewFile");
     }
 
+    private void NewWindow()
+    {
+        var window = new MainWindow(null, _localizationService, _localizationSettingsService);
+        window.Show();
+    }
+
     private void OpenFile()
     {
         if (!ConfirmSaveIfDirty()) return;
@@ -172,22 +225,32 @@ public partial class MainWindow : Window
         };
         if (dialog.ShowDialog() != true) return;
 
+        OpenFilePath(dialog.FileName, confirmIfDirty: false);
+    }
+
+    private bool OpenFilePath(string path, bool confirmIfDirty = true)
+    {
+        if (confirmIfDirty && !ConfirmSaveIfDirty()) return false;
+
         try
         {
             _loadingFile = true;
-            Editor.LoadFile(dialog.FileName);
+            Editor.LoadFile(path);
             _loadingFile = false;
-            _currentFilePath = dialog.FileName;
+            _currentFilePath = path;
             _isDirty = false;
-            AddToHistory(dialog.FileName);
+            AddToHistory(path);
+            _recentFilesService.AddOrRefreshFile(path);
             UpdateTitle();
-            SetStatus("Status.FileLoaded", dialog.FileName);
+            SetStatus("Status.FileLoaded", path);
+            return true;
         }
         catch (Exception ex)
         {
             _loadingFile = false;
             MessageBox.Show(_localizationService.Format("Error.LoadFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
     }
 
@@ -196,15 +259,7 @@ public partial class MainWindow : Window
         string? targetPath = _currentFilePath;
 
         if (targetPath == null)
-        {
-            var dialog = new SaveFileDialog
-            {
-                Filter = _localizationService.GetString("FileDialog.MarkdownFilter"),
-                DefaultExt = ".md"
-            };
-            if (dialog.ShowDialog() != true) return false;
-            targetPath = dialog.FileName;
-        }
+            return await SaveCurrentFileAsAsync();
 
         try
         {
@@ -212,6 +267,7 @@ public partial class MainWindow : Window
             _currentFilePath = targetPath;
             _isDirty = false;
             AddToHistory(targetPath);
+            _recentFilesService.AddOrRefreshFile(targetPath);
             UpdateTitle();
             SetStatus("Status.FileSaved", targetPath);
             return true;
@@ -222,6 +278,441 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
+    }
+
+    private async Task<bool> SaveCurrentFileAsAsync()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = _localizationService.GetString("FileDialog.MarkdownFilter"),
+            DefaultExt = ".md",
+            FileName = _currentFilePath != null ? System.IO.Path.GetFileName(_currentFilePath) : string.Empty,
+        };
+        if (dialog.ShowDialog() != true) return false;
+
+        try
+        {
+            await Editor.SaveFileAsync(dialog.FileName);
+            _currentFilePath = dialog.FileName;
+            _isDirty = false;
+            AddToHistory(dialog.FileName);
+            _recentFilesService.AddOrRefreshFile(dialog.FileName);
+            UpdateTitle();
+            SetStatus("Status.FileSaved", dialog.FileName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(_localizationService.Format("Error.SaveFile", ex.Message), _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
+
+    private async void OpenFolder()
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = _localizationService.GetString("MainWindow.OpenFolder")
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        _folderScanCts?.Cancel();
+        _folderScanCts?.Dispose();
+        var scanCts = new CancellationTokenSource();
+        _folderScanCts = scanCts;
+
+        try
+        {
+            var result = await _folderWorkspaceService.ScanAsync(dialog.FolderName, scanCts.Token);
+            if (scanCts.IsCancellationRequested)
+                return;
+
+            _workspaceFolderPath = dialog.FolderName;
+            _workspaceRoot = result.Root;
+            _workspaceIndex = BuildWorkspaceIndex(result.Root);
+            FilesTree.ItemsSource = result.Root.Children;
+            ShowFilesTab();
+            OpenSidebar();
+
+            if (result.IsTruncated)
+                SetStatus("Status.FolderScanTruncated", result.MarkdownFileCount);
+            else
+                SetStatus("Status.Ready");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (ReferenceEquals(_folderScanCts, scanCts))
+            {
+                _folderScanCts = null;
+                scanCts.Dispose();
+            }
+        }
+    }
+
+    private static Dictionary<string, WorkspaceTreeNode> BuildWorkspaceIndex(WorkspaceTreeNode root)
+    {
+        var index = new Dictionary<string, WorkspaceTreeNode>(StringComparer.OrdinalIgnoreCase);
+
+        void Visit(WorkspaceTreeNode node)
+        {
+            index[node.FullPath] = node;
+            foreach (var child in node.Children)
+                Visit(child);
+        }
+
+        Visit(root);
+        return index;
+    }
+
+    private void QuickOpen()
+    {
+        var items = _quickOpenService.BuildItems(
+            _recentFilesService.LoadFiles(removeMissingFiles: true),
+            _workspaceRoot);
+        ShowQuickOpenDialog(items);
+    }
+
+    private void OpenRecentFileMenu()
+    {
+        var items = _recentFilesService
+            .LoadFiles(removeMissingFiles: true)
+            .Select(entry => new QuickOpenItem(System.IO.Path.GetFileName(entry.Path), entry.Path, QuickOpenSource.Recent))
+            .ToList();
+        ShowQuickOpenDialog(items);
+    }
+
+    private void ShowQuickOpenDialog(IReadOnlyList<QuickOpenItem> items)
+    {
+        var dialog = new QuickOpenDialog(items) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.SelectedItem is not null)
+            OpenFilePath(dialog.SelectedItem.Path);
+
+        Editor.Focus();
+    }
+
+    private void MoveCurrentFile()
+    {
+        if (_currentFilePath is null)
+            return;
+
+        if (_isDirty && !SaveCurrentFileSync())
+            return;
+
+        var dialog = new SaveFileDialog
+        {
+            FileName = System.IO.Path.GetFileName(_currentFilePath),
+            Filter = _localizationService.GetString("FileDialog.MarkdownFilter"),
+            DefaultExt = ".md"
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var oldFullPath = System.IO.Path.GetFullPath(_currentFilePath);
+        var newFullPath = System.IO.Path.GetFullPath(dialog.FileName);
+        if (string.Equals(oldFullPath, newFullPath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var overwrite = false;
+        if (File.Exists(newFullPath))
+        {
+            overwrite = MessageBox.Show(
+                _localizationService.GetString("MainWindow.OverwriteFilePrompt"),
+                _localizationService.GetString("Common.Validation"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            if (!overwrite)
+                return;
+        }
+
+        try
+        {
+            var oldPath = _currentFilePath;
+            _fileOperationService.MoveFile(oldPath, dialog.FileName, overwrite);
+            _recentFilesService.RemoveFile(oldPath);
+            _recentFilesService.AddOrRefreshFile(dialog.FileName);
+            RemoveWorkspaceNode(oldPath);
+            _currentFilePath = dialog.FileName;
+            AddToHistory(dialog.FileName);
+            UpdateTitle();
+            SetStatus("Status.FileSaved", dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void ShowCurrentFileProperties()
+    {
+        if (_currentFilePath is null)
+            return;
+
+        try
+        {
+            var properties = _fileOperationService.GetProperties(_currentFilePath);
+            MessageBox.Show(
+                $"{properties.Path}{Environment.NewLine}{properties.SizeBytes:N0} bytes{Environment.NewLine}{properties.LastModifiedUtc:u}",
+                _localizationService.GetString("MainWindow.Properties"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void OpenCurrentFileLocation()
+    {
+        if (_currentFilePath is null)
+            return;
+
+        try
+        {
+            _fileOperationService.OpenFileLocation(_currentFilePath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void ShowCurrentFileInSidebar()
+    {
+        if (_currentFilePath is null || _workspaceFolderPath is null)
+            return;
+
+        var fullPath = System.IO.Path.GetFullPath(_currentFilePath);
+        if (!_workspaceIndex.TryGetValue(fullPath, out var node))
+            return;
+
+        _selectingWorkspaceNode = true;
+        try
+        {
+            foreach (var indexedNode in _workspaceIndex.Values)
+                indexedNode.IsSelected = false;
+
+            for (var current = node; current is not null; current = current.Parent)
+                current.IsExpanded = true;
+
+            node.IsSelected = true;
+        }
+        finally
+        {
+            _selectingWorkspaceNode = false;
+        }
+
+        ShowFilesTab();
+        OpenSidebar();
+        BringWorkspaceNodeIntoView(node);
+    }
+
+    private void BringWorkspaceNodeIntoView(WorkspaceTreeNode node)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            var item = FindTreeViewItem(FilesTree, node);
+            item?.BringIntoView();
+            item?.Focus();
+        }, DispatcherPriority.Background);
+    }
+
+    private static TreeViewItem? FindTreeViewItem(ItemsControl container, WorkspaceTreeNode target)
+    {
+        container.UpdateLayout();
+
+        foreach (var item in container.Items)
+        {
+            if (container.ItemContainerGenerator.ContainerFromItem(item) is not TreeViewItem treeViewItem)
+                continue;
+
+            if (ReferenceEquals(item, target))
+                return treeViewItem;
+
+            var childItem = FindTreeViewItem(treeViewItem, target);
+            if (childItem is not null)
+                return childItem;
+        }
+
+        return null;
+    }
+
+    private void DeleteCurrentFile()
+    {
+        if (_currentFilePath is null)
+            return;
+
+        var confirm = MessageBox.Show(
+            _localizationService.GetString("MainWindow.DeleteFilePrompt"),
+            _localizationService.GetString("MainWindow.DeleteFile"),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            var deletedPath = _currentFilePath;
+            _fileOperationService.DeleteFile(deletedPath);
+            _recentFilesService.RemoveFile(deletedPath);
+            RemoveWorkspaceNode(deletedPath);
+            _loadingFile = true;
+            Editor.Markdown = string.Empty;
+            _loadingFile = false;
+            _currentFilePath = null;
+            _isDirty = false;
+            UpdateTitle();
+            SetStatus("Status.NewFile");
+        }
+        catch (Exception ex)
+        {
+            _loadingFile = false;
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void ImportFileIntoDocument()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = _localizationService.GetString("FileDialog.ImportFilter"),
+            DefaultExt = ".md"
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            Editor.AppendMarkdown(File.ReadAllText(dialog.FileName));
+            _isDirty = true;
+            UpdateTitle();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportCurrentDocumentAsHtml()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = _localizationService.GetString("FileDialog.HtmlFilter"),
+            DefaultExt = ".html"
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var title = _currentFilePath is null
+                ? _localizationService.GetString("MainWindow.Untitled")
+                : System.IO.Path.GetFileNameWithoutExtension(_currentFilePath);
+            _htmlExportService.ExportHtmlToFile(Editor.Markdown, title, dialog.FileName);
+            SetStatus("Status.FileSaved", dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                _localizationService.Format("Error.FileOperation", ex.Message),
+                _localizationService.GetString("Common.Error"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void PrintCurrentDocument()
+    {
+        var dialog = new PrintDialog();
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var document = Editor.TryGetPrintablePreviewDocument(out var previewDocument)
+            ? previewDocument
+            : Editor.CreatePlainTextPrintDocument();
+        dialog.PrintDocument(((IDocumentPaginatorSource)document).DocumentPaginator, Title);
+    }
+
+    private void OpenPreferences()
+    {
+        var dialog = new PreferencesDialog(_localizationService, _localizationService.CurrentLanguage, _currentThemeName)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        _localizationService.SetLanguage(dialog.SelectedLanguage);
+        _localizationSettingsService.SaveLanguage(dialog.SelectedLanguage);
+        ApplyTheme(dialog.SelectedThemeName);
+
+        if (dialog.OpenTranslationSettingsRequested)
+            OpenTranslationSettings();
+    }
+
+    private void OpenTranslationSettings()
+    {
+        var settings = GetTranslationSettings();
+        var activeProvider = settings.GetActiveProvider() ?? "Baidu";
+        var existingConfig = settings.LoadConfig(activeProvider);
+        var dialog = new TranslationConfigDialog(
+            isFirstRun: false,
+            preselectedProvider: activeProvider,
+            existingConfig: existingConfig,
+            localizer: _localizationService)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            settings.SaveConfig(dialog.SavedConfig!);
+            settings.SetActiveProvider(dialog.SavedConfig!.ProviderName);
+        }
+    }
+
+    private void CloseCurrentWindow() => Close();
+
+    private void RemoveWorkspaceNode(string path)
+    {
+        var fullPath = System.IO.Path.GetFullPath(path);
+        if (!_workspaceIndex.Remove(fullPath, out var node))
+            return;
+
+        node.Parent?.Children.Remove(node);
     }
 
     private bool SaveCurrentFileSync()
@@ -245,6 +736,7 @@ public partial class MainWindow : Window
             _currentFilePath = targetPath;
             _isDirty = false;
             AddToHistory(targetPath);
+            _recentFilesService.AddOrRefreshFile(targetPath);
             UpdateTitle();
             return true;
         }
@@ -652,16 +1144,29 @@ public partial class MainWindow : Window
         SidebarPanel.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
+    private void OpenSidebar()
+    {
+        if (_sidebarOpen)
+            return;
+
+        _sidebarOpen = true;
+        AnimateSidebar(SidebarWidth);
+    }
+
     private void OnTabHistory(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        TabFiles.FontWeight = FontWeights.Normal;
+        TabFiles.Foreground = (Brush)FindResource("TextSecondaryBrush");
         TabHistory.FontWeight = FontWeights.SemiBold;
         TabHistory.Foreground = (Brush)FindResource("TextPrimaryBrush");
         TabOutline.FontWeight = FontWeights.Normal;
         TabOutline.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        FilesUnderline.Visibility = Visibility.Collapsed;
         HistoryUnderline.Visibility = Visibility.Visible;
         OutlineUnderline.Visibility = Visibility.Collapsed;
 
+        FilesTree.Visibility = Visibility.Collapsed;
         HistoryPanel.Visibility = Visibility.Visible;
         OutlinePanel.Visibility = Visibility.Collapsed;
     }
@@ -669,16 +1174,52 @@ public partial class MainWindow : Window
     private void OnTabOutline(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        TabFiles.FontWeight = FontWeights.Normal;
+        TabFiles.Foreground = (Brush)FindResource("TextSecondaryBrush");
         TabOutline.FontWeight = FontWeights.SemiBold;
         TabOutline.Foreground = (Brush)FindResource("TextPrimaryBrush");
         TabHistory.FontWeight = FontWeights.Normal;
         TabHistory.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        FilesUnderline.Visibility = Visibility.Collapsed;
         OutlineUnderline.Visibility = Visibility.Visible;
         HistoryUnderline.Visibility = Visibility.Collapsed;
 
+        FilesTree.Visibility = Visibility.Collapsed;
         OutlinePanel.Visibility = Visibility.Visible;
         HistoryPanel.Visibility = Visibility.Collapsed;
         UpdateOutline();
+    }
+
+    private void OnTabFiles(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        ShowFilesTab();
+    }
+
+    private void ShowFilesTab()
+    {
+        TabFiles.FontWeight = FontWeights.SemiBold;
+        TabFiles.Foreground = (Brush)FindResource("TextPrimaryBrush");
+        TabHistory.FontWeight = FontWeights.Normal;
+        TabHistory.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        TabOutline.FontWeight = FontWeights.Normal;
+        TabOutline.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        FilesUnderline.Visibility = Visibility.Visible;
+        HistoryUnderline.Visibility = Visibility.Collapsed;
+        OutlineUnderline.Visibility = Visibility.Collapsed;
+
+        FilesTree.Visibility = Visibility.Visible;
+        HistoryPanel.Visibility = Visibility.Collapsed;
+        OutlinePanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnFilesTreeSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (_selectingWorkspaceNode)
+            return;
+
+        if (e.NewValue is WorkspaceTreeNode { IsDirectory: false } node)
+            OpenFilePath(node.FullPath);
     }
 
     private void OnMarkdownChanged(object? sender, EventArgs e)
@@ -764,23 +1305,7 @@ public partial class MainWindow : Window
     private void OnHistoryItemClick(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not string path) return;
-        if (!ConfirmSaveIfDirty()) return;
-        try
-        {
-            _loadingFile = true;
-            Editor.LoadFile(path);
-            _loadingFile = false;
-            _currentFilePath = path;
-            _isDirty = false;
-            UpdateTitle();
-            SetStatus("Status.FileLoaded", path);
-        }
-        catch (Exception ex)
-        {
-            _loadingFile = false;
-            MessageBox.Show(_localizationService.Format("Error.LoadFile", ex.Message), _localizationService.GetString("Common.Error"),
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        OpenFilePath(path);
     }
 
     private void UpdateOutline()
@@ -907,20 +1432,7 @@ public partial class MainWindow : Window
     private void OnTranslationSettings(object sender, RoutedEventArgs e)
     {
         ToolsPopup.IsOpen = false;
-        var settings = GetTranslationSettings();
-        var activeProvider = settings.GetActiveProvider() ?? "Baidu";
-        var existingConfig = settings.LoadConfig(activeProvider);
-        var dialog = new TranslationConfigDialog(
-            isFirstRun: false,
-            preselectedProvider: activeProvider,
-            existingConfig: existingConfig,
-            localizer: _localizationService);
-        dialog.Owner = this;
-        if (dialog.ShowDialog() == true)
-        {
-            settings.SaveConfig(dialog.SavedConfig!);
-            settings.SetActiveProvider(dialog.SavedConfig!.ProviderName);
-        }
+        OpenTranslationSettings();
     }
 
     private async Task TranslateDocumentAsync(TranslationLanguage targetLanguage)
