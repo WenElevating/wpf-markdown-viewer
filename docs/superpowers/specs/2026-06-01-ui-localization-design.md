@@ -52,11 +52,13 @@ Proposed sample additions:
 | --- | --- |
 | `samples/WpfMarkdownEditor.Sample/LocalizationSettingsService.cs` | Reads and writes the selected language in local app data. |
 
+The settings service should persist the selected language code string, such as `en-US` or `zh-CN`. The backing file may be JSON or another simple local format, but malformed settings include unreadable content, a missing language code, or a code that is not in the supported language registry.
+
 The sample app initializes localization during startup, before showing `MainWindow`:
 
 1. Read the saved language setting.
 2. If missing or invalid, infer the default from `CultureInfo.CurrentUICulture`.
-3. Apply the language through `LocalizationService`.
+3. After `Application.Current` is available, apply the language through `LocalizationService`.
 4. Create the main window.
 
 `SupportedLanguage` should be a small immutable descriptor rather than a closed enum. It should expose a stable code such as `en-US` or `zh-CN`, a resource dictionary URI, and a display key. The initial registry contains only English and Chinese, but the rest of the design should depend on language codes instead of switch-heavy enum logic where practical.
@@ -178,6 +180,8 @@ Language changes follow this flow:
 
 `SetLanguage` must mutate `Application.Current.Resources` on the WPF UI thread. The service owns that responsibility: if `Application.Current` exists and the caller is not on the UI thread, `SetLanguage` should marshal the resource update and event raise through `Application.Current.Dispatcher.Invoke` or `InvokeAsync`. Callers may invoke `SetLanguage` from any thread, but subscribers should expect `LanguageChanged` to be raised on the UI thread when a WPF application exists. If no WPF application is available, the service may update only its current language and non-WPF string map.
 
+`SetLanguage` must be a no-op when the supplied language code equals the current language code. The no-op path must not replace resource dictionaries, must not raise `LanguageChanged`, and must not trigger dynamic UI refresh work.
+
 Controls must avoid strong-reference event leaks when subscribing to language changes. Use `WeakEventManager` for `LanguageChanged`, or explicitly unsubscribe in `Unloaded` or `Dispose` for controls that own a clear lifecycle. This requirement applies to windows, dialogs, overlays, and reusable controls.
 
 XAML text should use dynamic resources where practical:
@@ -223,7 +227,7 @@ Add focused tests for the service boundaries:
 - `LanguageChanged` includes old and new languages and is raised only when the effective language code changes.
 - `LocalizationSettingsService` persists and reads language choices, and falls back when the settings file is malformed.
 - `TranslationService` progress messages use the injected `IStringLocalizer`.
-- At least one UI-owner test covers language switching for a dynamic text owner, such as the translation progress overlay or a menu/list refresh method. If CI cannot run interactive WPF automation, expose the refresh method or a small presenter/helper so it can be tested without showing a real window.
+- At least one UI-owner test covers language switching for a dynamic text owner, such as the translation progress overlay or a menu/list refresh method. Prefer a small presenter/helper or directly testable refresh method so the behavior can be verified without showing a real window; use interactive WPF automation only if that lighter seam cannot cover the behavior.
 
 Run:
 
