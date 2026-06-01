@@ -94,7 +94,7 @@ public interface IStringLocalizer
 
 The fallback localizer must be independent from `Application.Current.Resources`. It should be an immutable, thread-safe singleton or an instance that owns a read-only English string map. It must not mutate WPF resources, subscribe to language changes, or share mutable state with the application-level localization service.
 
-The WPF application should use one application-level `LocalizationService` instance. The service can be exposed through an `Instance` property or created once in `App.xaml.cs` and passed to windows and services. There must not be multiple mutable services racing to modify `Application.Current.Resources`.
+The WPF application should use one application-level `LocalizationService` instance. Create it once in `App.xaml.cs`, keep ownership there, and pass it to windows and services that need localization. Avoid mixing this with a global static `Instance` access pattern; one ownership path keeps the mutable resource-dictionary state clear. There must not be multiple mutable services racing to modify `Application.Current.Resources`.
 
 Language changes use a typed event:
 
@@ -103,12 +103,14 @@ public event EventHandler<LanguageChangedEventArgs>? LanguageChanged;
 
 public sealed class LanguageChangedEventArgs : EventArgs
 {
-    public SupportedLanguage OldLanguage { get; }
+    public SupportedLanguage? OldLanguage { get; }
     public SupportedLanguage NewLanguage { get; }
 }
 ```
 
 Subscribers should use `args.NewLanguage` for selection state and refresh logic instead of rereading global state.
+
+On the first effective `SetLanguage` call, `OldLanguage` is `null`. Subsequent effective changes carry the previous language in `OldLanguage`.
 
 Expected usage:
 
@@ -225,6 +227,7 @@ Add focused tests for the service boundaries:
 - `LocalizationService` handles rapid repeated language changes without duplicate events or stale current language state.
 - `SupportedLanguage` equality is based on the language code, so two descriptors with the same code compare equal.
 - `LanguageChanged` includes old and new languages and is raised only when the effective language code changes.
+- The fallback English localizer can be constructed and called without a WPF application context, and doing so does not mutate or depend on application-level `LocalizationService` state.
 - `LocalizationSettingsService` persists and reads language choices, and falls back when the settings file is malformed.
 - `TranslationService` progress messages use the injected `IStringLocalizer`.
 - At least one UI-owner test covers language switching for a dynamic text owner, such as the translation progress overlay or a menu/list refresh method. Prefer a small presenter/helper or directly testable refresh method so the behavior can be verified without showing a real window; use interactive WPF automation only if that lighter seam cannot cover the behavior.
