@@ -176,6 +176,21 @@ public sealed class MainWindowFileMenuRoutingTests
         Assert.DoesNotContain("OnTabHistory", code);
     }
 
+    [Fact]
+    public void SidebarToggle_AnimatesRenderTransformInsteadOfLayoutWidth()
+    {
+        var xaml = LoadMainWindowXaml();
+        var code = LoadMainWindowCode();
+
+        Assert.Contains("x:Name=\"SidebarTranslateTransform\" X=\"-260\"", xaml);
+
+        var animateMethod = ExtractMethod(code, "AnimateSidebar");
+        Assert.Contains("TranslateTransform.XProperty", animateMethod);
+        Assert.Contains("SidebarPanel.Width =", animateMethod);
+        Assert.Contains("Completed +=", animateMethod);
+        Assert.DoesNotContain("FrameworkElement.WidthProperty", animateMethod);
+    }
+
     private static string LoadMainWindowXaml()
     {
         var directory = FindRepositoryRoot();

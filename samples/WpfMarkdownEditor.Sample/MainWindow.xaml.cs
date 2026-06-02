@@ -1472,14 +1472,26 @@ public partial class MainWindow : Window
 
     private void AnimateSidebar(double targetWidth)
     {
+        var isOpening = targetWidth > 0;
+        var currentOffset = SidebarTranslateTransform.X;
+        SidebarTranslateTransform.BeginAnimation(TranslateTransform.XProperty, null);
+        SidebarPanel.Width = SidebarWidth;
+
         var anim = new DoubleAnimation
         {
-            From = SidebarPanel.ActualWidth,
-            To = targetWidth,
+            From = currentOffset,
+            To = isOpening ? 0 : -SidebarWidth,
             Duration = TimeSpan.FromMilliseconds(SidebarAnimMs),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
         };
-        SidebarPanel.BeginAnimation(FrameworkElement.WidthProperty, anim);
+
+        anim.Completed += (_, _) =>
+        {
+            SidebarTranslateTransform.X = isOpening ? 0 : -SidebarWidth;
+            SidebarPanel.Width = isOpening ? SidebarWidth : 0;
+        };
+
+        SidebarTranslateTransform.BeginAnimation(TranslateTransform.XProperty, anim);
     }
 
     private void OpenSidebar()

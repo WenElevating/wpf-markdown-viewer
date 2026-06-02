@@ -573,6 +573,9 @@
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,0,1,0"
                 ClipToBounds="True">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="SidebarTranslateTransform" X="-260" />
+                </Border.RenderTransform>
                 <Border.Resources>
                     <Style x:Key="SidebarActionButtonStyle" TargetType="Button">
                         <Setter Property="MinHeight" Value="32" />
