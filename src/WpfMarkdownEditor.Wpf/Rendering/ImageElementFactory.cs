@@ -76,6 +76,7 @@ internal static class ImageElementFactory
             Source = bitmap,
             MaxHeight = maxHeight,
             HorizontalAlignment = alignLeft ? HorizontalAlignment.Left : HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 0, 6, 0),
             Stretch = Stretch.Uniform,
             StretchDirection = StretchDirection.DownOnly,
         };
@@ -283,7 +284,7 @@ internal static class ImageElementFactory
             var fontWeight = GetStyleValue(style, "font-weight");
             var fill = NormalizeCssColor(GetStyleValue(style, "color")) ?? "black";
             var textAnchor = GetTextAnchor(GetStyleValue(style, "text-align"));
-            var baselineY = y + fontSize;
+            var baselineY = y + fontSize * 0.85;
             var textX = textAnchor == "middle" && width is > 0
                 ? x + width.Value / 2
                 : x;

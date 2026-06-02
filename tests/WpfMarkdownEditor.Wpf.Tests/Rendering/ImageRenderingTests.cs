@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Threading;
+using System.Xml.Linq;
 using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
@@ -141,6 +142,36 @@ public sealed class ImageRenderingTests
     }
 
     [Fact]
+    public void RenderInline_RemoteImages_AddsReadableInlineSpacing()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var renderer = new InlineRenderer(EditorTheme.Light, resolver);
+            var paragraph = new Paragraph();
+
+            renderer.RenderInlines(paragraph,
+            [
+                new ImageInline { Url = "https://img.shields.io/badge/Quick_Start-blue", Alt = "Quick Start" },
+                new TextInline { Content = " " },
+                new ImageInline { Url = "https://img.shields.io/badge/License-MIT-yellow", Alt = "License" }
+            ]);
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            resolver.Complete(Png1x1);
+
+            Assert.True(WaitUntil(() => CountInlines<InlineUIContainer>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>()) == 2));
+            var elements = FlattenInlines(paragraph.Inlines.Cast<System.Windows.Documents.Inline>())
+                .OfType<InlineUIContainer>()
+                .Select(static container => Assert.IsAssignableFrom<FrameworkElement>(container.Child))
+                .ToList();
+
+            Assert.Equal(2, elements.Count);
+            Assert.All(elements, element => Assert.True(element.Margin.Right >= 4));
+        });
+    }
+
+    [Fact]
     public void NormalizeSvgForBrowser_ForeignObjectText_ConvertsToSvgText()
     {
         var svg = ImageElementFactory.NormalizeSvgForBrowser(ForeignObjectSvgBadge);
@@ -149,6 +180,11 @@ public sealed class ImageRenderingTests
         Assert.Contains("<text", svg);
         Assert.Contains("GITHUB TRENDING", svg);
         Assert.Contains("#1 Repository Of The Day", svg);
+
+        var label = XDocument.Parse(svg)
+            .Descendants()
+            .Single(element => element.Name.LocalName == "text" && element.Value == "#1 Repository Of The Day");
+        Assert.Equal("35.9", label.Attribute("y")?.Value);
     }
 
     [Fact]
@@ -394,6 +430,19 @@ public sealed class ImageRenderingTests
         }
 
         return count;
+    }
+
+    private static IEnumerable<System.Windows.Documents.Inline> FlattenInlines(IEnumerable<System.Windows.Documents.Inline> inlines)
+    {
+        foreach (var inline in inlines)
+        {
+            yield return inline;
+            if (inline is Span span)
+            {
+                foreach (var child in FlattenInlines(span.Inlines.Cast<System.Windows.Documents.Inline>()))
+                    yield return child;
+            }
+        }
     }
 
     private static void RunOnSta(Action action)
