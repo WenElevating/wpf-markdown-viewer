@@ -66,6 +66,29 @@ internal sealed class LineReader
         CurrentLine = savedLine;
         return result;
     }
+
+    /// <summary>
+    /// Peek at multiple lines without advancing.
+    /// </summary>
+    public List<LineInfo> PeekLines(int maxLines)
+    {
+        var savedPos = _position;
+        var savedLine = CurrentLine;
+        var lines = new List<LineInfo>();
+
+        while (lines.Count < maxLines)
+        {
+            var line = ReadLine();
+            if (line is null)
+                break;
+
+            lines.Add(line);
+        }
+
+        _position = savedPos;
+        CurrentLine = savedLine;
+        return lines;
+    }
 }
 
 internal sealed class LineInfo(string content, int lineNumber, int offset)

@@ -1,5 +1,6 @@
 using System.Text;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
+using WpfMarkdownEditor.Core.Parsing.Html;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 
 namespace WpfMarkdownEditor.Core.Parsing;
@@ -10,6 +11,7 @@ namespace WpfMarkdownEditor.Core.Parsing;
 internal sealed class BlockParser
 {
     private readonly InlineParser _inlineParser = new();
+    private readonly HtmlParsingFacade _htmlParser = new();
 
     /// <summary>
     /// Parse all blocks from the source text.
@@ -90,6 +92,14 @@ internal sealed class BlockParser
         if (indent >= 4)
         {
             return ParseIndentedCodeBlock(reader);
+        }
+
+        // HTML block subset: only promote when the tag starts the Markdown block.
+        if (stripped.Length > 0 && stripped[0] == '<')
+        {
+            var htmlBlock = TryParseHtmlBlock(reader, line, indent);
+            if (htmlBlock is not null)
+                return htmlBlock;
         }
 
         // Table (GFM): look ahead for separator line
@@ -563,6 +573,38 @@ internal sealed class BlockParser
             if (right) return TableBlock.TableAlignment.Right;
             return TableBlock.TableAlignment.Left;
         }).ToList();
+    }
+
+    #endregion
+
+    #region HTML
+
+    private Block? TryParseHtmlBlock(LineReader reader, LineInfo firstLine, int startIndex)
+    {
+        var lines = reader.PeekLines(200);
+        if (lines.Count == 0)
+            return null;
+
+        var candidate = string.Join("\n", lines.Select(line => line.Content));
+        if (!_htmlParser.TryParseBlockFragment(candidate, startIndex, out var fragment, out var consumedLineCount))
+            return null;
+
+        var endLine = firstLine.LineNumber;
+        for (var i = 0; i < consumedLineCount; i++)
+        {
+            var consumed = reader.ReadLine();
+            if (consumed is null)
+                break;
+            endLine = consumed.LineNumber;
+        }
+
+        return new HtmlBlock
+        {
+            Fragment = fragment,
+            LineStart = firstLine.LineNumber,
+            LineEnd = endLine,
+            ColumnStart = startIndex
+        };
     }
 
     #endregion

@@ -1,6 +1,7 @@
 using Xunit;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
+using WpfMarkdownEditor.Core.Parsing.Html;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 
 namespace WpfMarkdownEditor.Core.Tests.Parsing;
@@ -193,13 +194,15 @@ public class InlineParserTests
     }
 
     [Fact]
-    public void ParseInlines_AnchorWrappedHtmlImage_ReturnsImageInline()
+    public void ParseInlines_AnchorWrappedHtmlImage_ReturnsHtmlInline()
     {
         var result = _parser.ParseInlines(
             """<a href="https://996.icu" target='_blank'><img src="https://img.shields.io/badge/link-996.icu-red.svg"></a>""");
 
-        var img = Assert.IsType<ImageInline>(Assert.Single(result));
-        Assert.Equal("https://img.shields.io/badge/link-996.icu-red.svg", img.Url);
+        var html = Assert.IsType<HtmlInline>(Assert.Single(result));
+        var anchor = Assert.IsType<HtmlElementNode>(Assert.Single(html.Fragment.Children));
+        Assert.Equal("a", anchor.TagName);
+        Assert.Contains(anchor.Children, node => node is HtmlElementNode { TagName: "img" });
     }
 
     [Fact]
@@ -212,9 +215,9 @@ public class InlineParserTests
             """);
 
         var para = Assert.IsType<ParagraphBlock>(Assert.Single(blocks));
-        Assert.IsType<ImageInline>(para.Inlines[0]);
+        Assert.IsType<HtmlInline>(para.Inlines[0]);
         Assert.IsType<LineBreakInline>(para.Inlines[1]);
-        Assert.IsType<ImageInline>(para.Inlines[2]);
+        Assert.IsType<HtmlInline>(para.Inlines[2]);
     }
 
     [Fact]

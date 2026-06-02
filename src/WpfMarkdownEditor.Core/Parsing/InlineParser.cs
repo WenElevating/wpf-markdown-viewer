@@ -1,5 +1,5 @@
-using System.Net;
 using System.Text.RegularExpressions;
+using WpfMarkdownEditor.Core.Parsing.Html;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 
 namespace WpfMarkdownEditor.Core.Parsing;
@@ -9,12 +9,10 @@ namespace WpfMarkdownEditor.Core.Parsing;
 /// </summary>
 internal sealed class InlineParser
 {
-    private static readonly Regex HtmlAttributeRegex = new(
-        @"(?<name>[A-Za-z_:][A-Za-z0-9_:.-]*)\s*=\s*(?:""(?<double>[^""]*)""|'(?<single>[^']*)'|(?<bare>[^\s""'=<`>]+))",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex BareUrlRegex = new(
         @"https?://[^\s<]+",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    private readonly HtmlParsingFacade _htmlParser = new();
 
     public List<Inline> ParseInlines(string text) => ParseInlines(text, autoLink: true);
 
@@ -73,7 +71,7 @@ internal sealed class InlineParser
             '[' => TryParseLink(text, start, out inline),
             '~' => TryParseStrikethrough(text, start, out inline),
             '\n' => TryParseLineBreak(text, start, out inline),
-            '<' => TryParseHtmlImage(text, start, out inline),
+            '<' => TryParseHtmlInline(text, start, out inline),
             '*' or '_' => TryParseEmphasisMarker(text, start, out inline),
             _ => 0
         };
@@ -190,146 +188,44 @@ internal sealed class InlineParser
 
     #endregion
 
-    #region Raw HTML Images
+    #region Raw HTML
 
-    private static int TryParseHtmlImage(string text, int start, out Inline? inline)
+    private int TryParseHtmlInline(string text, int start, out Inline? inline)
     {
         inline = null;
-
-        if (StartsWithHtmlTag(text, start, "img"))
-            return TryParseHtmlImageTag(text, start, out inline, out _);
-
-        if (!StartsWithHtmlTag(text, start, "a"))
+        if (!_htmlParser.TryParseInlineFragment(text, start, out var fragment, out var consumedLength))
             return 0;
 
-        var anchorTagEnd = FindHtmlTagEnd(text, start);
-        if (anchorTagEnd < 0) return 0;
+        if (TryMapSingleImage(fragment, out var image))
+        {
+            inline = image;
+        }
+        else
+        {
+            inline = new HtmlInline { Fragment = fragment };
+        }
 
-        var imageStart = SkipWhitespace(text, anchorTagEnd + 1);
-        if (!StartsWithHtmlTag(text, imageStart, "img"))
-            return 0;
-
-        var imageConsumed = TryParseHtmlImageTag(text, imageStart, out inline, out var imageTagEnd);
-        if (imageConsumed == 0 || inline is null)
-            return 0;
-
-        var closeAnchorStart = SkipWhitespace(text, imageTagEnd + 1);
-        if (!StartsWithClosingHtmlTag(text, closeAnchorStart, "a", out var closeAnchorEnd))
-            return 0;
-
-        return closeAnchorEnd + 1 - start;
+        inline.SourceOffset = start;
+        inline.SourceLength = consumedLength;
+        return consumedLength;
     }
 
-    private static int TryParseHtmlImageTag(string text, int start, out Inline? inline, out int tagEnd)
+    private static bool TryMapSingleImage(HtmlFragment fragment, out ImageInline image)
     {
-        inline = null;
-        tagEnd = FindHtmlTagEnd(text, start);
-        if (tagEnd < 0) return 0;
+        image = new ImageInline();
+        if (fragment.Children is not [HtmlElementNode { TagName: "img" } element])
+            return false;
 
-        var tag = text[start..(tagEnd + 1)];
-        var src = ExtractHtmlAttribute(tag, "src");
-        if (string.IsNullOrWhiteSpace(src))
-            return 0;
+        if (!element.Attributes.TryGetValue("src", out var src) || string.IsNullOrWhiteSpace(src))
+            return false;
 
-        inline = new ImageInline
+        image = new ImageInline
         {
             Url = src,
-            Alt = ExtractHtmlAttribute(tag, "alt"),
-            Title = ExtractHtmlAttribute(tag, "title")
+            Alt = element.Attributes.TryGetValue("alt", out var alt) ? alt : null,
+            Title = element.Attributes.TryGetValue("title", out var title) ? title : null
         };
-        return tagEnd + 1 - start;
-    }
-
-    private static bool StartsWithHtmlTag(string text, int start, string tagName)
-    {
-        if (start < 0 || start >= text.Length || text[start] != '<')
-            return false;
-
-        var nameStart = start + 1;
-        if (nameStart + tagName.Length > text.Length)
-            return false;
-
-        if (string.Compare(text, nameStart, tagName, 0, tagName.Length, StringComparison.OrdinalIgnoreCase) != 0)
-            return false;
-
-        var afterName = nameStart + tagName.Length;
-        return afterName < text.Length && (char.IsWhiteSpace(text[afterName]) || text[afterName] is '>' or '/');
-    }
-
-    private static bool StartsWithClosingHtmlTag(string text, int start, string tagName, out int tagEnd)
-    {
-        tagEnd = -1;
-        if (start < 0 || start + tagName.Length + 3 > text.Length)
-            return false;
-
-        if (text[start] != '<' || text[start + 1] != '/')
-            return false;
-
-        var nameStart = start + 2;
-        if (string.Compare(text, nameStart, tagName, 0, tagName.Length, StringComparison.OrdinalIgnoreCase) != 0)
-            return false;
-
-        var i = nameStart + tagName.Length;
-        while (i < text.Length && char.IsWhiteSpace(text[i]))
-            i++;
-
-        if (i >= text.Length || text[i] != '>')
-            return false;
-
-        tagEnd = i;
         return true;
-    }
-
-    private static int FindHtmlTagEnd(string text, int start)
-    {
-        var quote = '\0';
-        for (var i = start + 1; i < text.Length; i++)
-        {
-            var c = text[i];
-            if (quote != '\0')
-            {
-                if (c == quote)
-                    quote = '\0';
-                continue;
-            }
-
-            if (c is '"' or '\'')
-            {
-                quote = c;
-                continue;
-            }
-
-            if (c == '>')
-                return i;
-        }
-
-        return -1;
-    }
-
-    private static int SkipWhitespace(string text, int start)
-    {
-        var i = start;
-        while (i < text.Length && char.IsWhiteSpace(text[i]))
-            i++;
-        return i;
-    }
-
-    private static string? ExtractHtmlAttribute(string tag, string name)
-    {
-        foreach (Match match in HtmlAttributeRegex.Matches(tag))
-        {
-            if (!string.Equals(match.Groups["name"].Value, name, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var value =
-                match.Groups["double"].Success ? match.Groups["double"].Value :
-                match.Groups["single"].Success ? match.Groups["single"].Value :
-                match.Groups["bare"].Value;
-
-            return WebUtility.HtmlDecode(value);
-        }
-
-        return null;
     }
 
     #endregion
