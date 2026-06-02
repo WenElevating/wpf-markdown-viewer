@@ -11,6 +11,7 @@ public sealed class FileMenuLocalizationTests
     [InlineData("MainWindow.QuickOpen")]
     [InlineData("MainWindow.OpenRecentFile")]
     [InlineData("MainWindow.NoRecentFiles")]
+    [InlineData("MainWindow.LoadingRecentFiles")]
     [InlineData("MainWindow.ClearRecentFiles")]
     [InlineData("MainWindow.SaveAs")]
     [InlineData("MainWindow.MoveTo")]

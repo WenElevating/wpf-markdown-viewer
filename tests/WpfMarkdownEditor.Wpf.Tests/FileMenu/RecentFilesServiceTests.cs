@@ -86,6 +86,21 @@ public sealed class RecentFilesServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadFilesAsync_ReturnsPersistedEntries()
+    {
+        Directory.CreateDirectory(_directory);
+        var service = new RecentFilesService(_directory, "RecentFilesServiceTests.LoadAsync");
+        var first = CreateFile("first.md");
+
+        service.AddOrRefreshFile(first);
+
+        var files = await service.LoadFilesAsync(removeMissingFiles: true);
+
+        Assert.Single(files);
+        Assert.Equal(first, files[0].Path);
+    }
+
+    [Fact]
     public async Task AddOrRefreshFile_SerializesConcurrentWrites()
     {
         Directory.CreateDirectory(_directory);

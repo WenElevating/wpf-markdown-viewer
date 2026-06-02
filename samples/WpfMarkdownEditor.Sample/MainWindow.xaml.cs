@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     private Dictionary<string, WorkspaceTreeNode> _workspaceIndex = new(StringComparer.OrdinalIgnoreCase);
     private bool _selectingWorkspaceNode;
     private CancellationTokenSource? _folderScanCts;
+    private CancellationTokenSource? _recentFilesLoadCts;
+    private CancellationTokenSource? _recentFilesHoverCts;
     private string? _currentFilePath;
     private bool _isDirty;
     private bool _loadingFile;
@@ -116,6 +118,8 @@ public partial class MainWindow : Window
             OnLanguageChanged);
         _folderScanCts?.Cancel();
         _folderScanCts?.Dispose();
+        _recentFilesHoverCts?.Cancel();
+        _recentFilesLoadCts?.Cancel();
         base.OnClosed(e);
     }
 
@@ -131,6 +135,8 @@ public partial class MainWindow : Window
     private void OnOpenFolder(object sender, RoutedEventArgs e) => OpenFolder();
     private void OnQuickOpen(object sender, RoutedEventArgs e) => QuickOpen();
     private void OnOpenRecentFile(object sender, RoutedEventArgs e) => OpenRecentFileMenu(e);
+    private async void OnOpenRecentFileMouseEnter(object sender, MouseEventArgs e) => await OpenRecentFileMenuAfterHoverDelayAsync();
+    private void OnOpenRecentFileMouseLeave(object sender, MouseEventArgs e) => CancelRecentFilesHover();
     private async void OnSaveFileAs(object sender, RoutedEventArgs e) => await SaveCurrentFileAsAsync();
     private void OnMoveFile(object sender, RoutedEventArgs e) => MoveCurrentFile();
     private void OnShowFileProperties(object sender, RoutedEventArgs e) => ShowCurrentFileProperties();
@@ -390,25 +396,81 @@ public partial class MainWindow : Window
         if (e is not null)
             e.Handled = true;
 
-        RefreshRecentFilesMenu();
+        CancelRecentFilesHover();
         RecentFilesPopup.IsOpen = true;
+        _ = LoadRecentFilesMenuAsync();
     }
 
-    private void RefreshRecentFilesMenu()
+    private async Task OpenRecentFileMenuAfterHoverDelayAsync()
+    {
+        CancelRecentFilesHover();
+        var hoverCts = new CancellationTokenSource();
+        _recentFilesHoverCts = hoverCts;
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(1200), hoverCts.Token);
+            if (!OpenRecentFileButton.IsMouseOver)
+                return;
+
+            OpenRecentFileMenu();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_recentFilesHoverCts, hoverCts))
+                _recentFilesHoverCts = null;
+
+            hoverCts.Dispose();
+        }
+    }
+
+    private void CancelRecentFilesHover()
+    {
+        _recentFilesHoverCts?.Cancel();
+    }
+
+    private async Task LoadRecentFilesMenuAsync()
+    {
+        _recentFilesLoadCts?.Cancel();
+        var loadCts = new CancellationTokenSource();
+        _recentFilesLoadCts = loadCts;
+
+        ShowRecentFilesLoadingState();
+        try
+        {
+            var entries = await _recentFilesService.LoadFilesAsync(removeMissingFiles: true, loadCts.Token);
+            if (loadCts.IsCancellationRequested)
+                return;
+
+            RenderRecentFilesMenu(entries);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_recentFilesLoadCts, loadCts))
+                _recentFilesLoadCts = null;
+
+            loadCts.Dispose();
+        }
+    }
+
+    private void ShowRecentFilesLoadingState()
     {
         RecentFileItemsPanel.Children.Clear();
+        RecentFileItemsPanel.Children.Add(CreateRecentFilesMessage("MainWindow.LoadingRecentFiles"));
+    }
 
-        var entries = _recentFilesService.LoadFiles(removeMissingFiles: true);
+    private void RenderRecentFilesMenu(IReadOnlyList<RecentFileEntry> entries)
+    {
+        RecentFileItemsPanel.Children.Clear();
         if (entries.Count == 0)
         {
-            RecentFileItemsPanel.Children.Add(new TextBlock
-            {
-                Text = _localizationService.GetString("MainWindow.NoRecentFiles"),
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
-                FontSize = 12,
-                Margin = new Thickness(16, 8, 16, 8),
-            });
+            RecentFileItemsPanel.Children.Add(CreateRecentFilesMessage("MainWindow.NoRecentFiles"));
             return;
         }
 
@@ -426,6 +488,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private TextBlock CreateRecentFilesMessage(string key)
+    {
+        return new TextBlock
+        {
+            Text = _localizationService.GetString(key),
+            Foreground = (Brush)FindResource("TextSecondaryBrush"),
+            FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
+            FontSize = 12,
+            Margin = new Thickness(16, 8, 16, 8),
+        };
+    }
+
     private void OnRecentFileItemClick(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
@@ -439,8 +513,9 @@ public partial class MainWindow : Window
     private void OnClearRecentFiles(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
+        _recentFilesLoadCts?.Cancel();
         _recentFilesService.ClearFiles();
-        RefreshRecentFilesMenu();
+        RenderRecentFilesMenu([]);
         RecentFilesPopup.IsOpen = false;
         FilePopup.IsOpen = false;
     }

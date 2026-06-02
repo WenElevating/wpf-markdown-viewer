@@ -135,7 +135,8 @@
                                 x:Name="OpenRecentFileButton"
                                 Click="OnOpenRecentFile"
                                 Content="{DynamicResource Loc.MainWindow.OpenRecentFile}"
-                                MouseEnter="OnOpenRecentFile"
+                                MouseEnter="OnOpenRecentFileMouseEnter"
+                                MouseLeave="OnOpenRecentFileMouseLeave"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag=">" />
                             <Popup

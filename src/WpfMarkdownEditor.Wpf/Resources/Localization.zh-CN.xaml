@@ -29,6 +29,7 @@
     <sys:String x:Key="Loc.MainWindow.QuickOpen">快速打开...</sys:String>
     <sys:String x:Key="Loc.MainWindow.OpenRecentFile">打开最近文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.NoRecentFiles">没有最近文件</sys:String>
+    <sys:String x:Key="Loc.MainWindow.LoadingRecentFiles">正在加载最近文件...</sys:String>
     <sys:String x:Key="Loc.MainWindow.ClearRecentFiles">清除最近文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.SaveFile">保存文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.SaveAs">另存为...</sys:String>

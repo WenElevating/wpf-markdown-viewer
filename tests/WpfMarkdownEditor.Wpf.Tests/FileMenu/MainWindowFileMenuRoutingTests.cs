@@ -1,4 +1,6 @@
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace WpfMarkdownEditor.Wpf.Tests.FileMenu;
@@ -28,6 +30,9 @@ public sealed class MainWindowFileMenuRoutingTests
         var code = LoadMainWindowCode();
 
         Assert.Contains("x:Name=\"OpenRecentFileButton\"", xaml);
+        Assert.DoesNotContain("MouseEnter=\"OnOpenRecentFile\"", xaml);
+        Assert.Contains("MouseEnter=\"OnOpenRecentFileMouseEnter\"", xaml);
+        Assert.Contains("MouseLeave=\"OnOpenRecentFileMouseLeave\"", xaml);
         Assert.Contains("x:Name=\"RecentFilesPopup\"", xaml);
         Assert.Contains("PlacementTarget=\"{Binding ElementName=OpenRecentFileButton}\"", xaml);
         Assert.Contains("x:Name=\"RecentFilesList\"", xaml);
@@ -39,6 +44,38 @@ public sealed class MainWindowFileMenuRoutingTests
         var method = ExtractMethod(code, "OpenRecentFileMenu");
         Assert.DoesNotContain("ShowQuickOpenDialog", method);
         Assert.DoesNotContain("QuickOpenDialog", method);
+    }
+
+    [Fact]
+    public void OpenRecentFile_LoadsRecentEntriesAsynchronously()
+    {
+        var code = LoadMainWindowCode();
+
+        var menuMethod = ExtractMethod(code, "OpenRecentFileMenu");
+        Assert.Contains("LoadRecentFilesMenuAsync", menuMethod);
+        Assert.DoesNotContain("LoadFiles(", menuMethod);
+
+        var asyncMethod = ExtractMethod(code, "LoadRecentFilesMenuAsync");
+        Assert.Contains("await _recentFilesService.LoadFilesAsync", asyncMethod);
+    }
+
+    [Fact]
+    public void OpenRecentFile_HoverUsesDelayedRouteOnly()
+    {
+        var code = LoadMainWindowCode();
+
+        var mouseEnterMethod = ExtractMethod(code, "OnOpenRecentFileMouseEnter");
+        Assert.Contains("OpenRecentFileMenuAfterHoverDelayAsync", mouseEnterMethod);
+        Assert.DoesNotContain("RecentFilesPopup.IsOpen = true", mouseEnterMethod);
+        Assert.DoesNotContain("LoadFiles(", mouseEnterMethod);
+
+        var delayedMethod = ExtractMethod(code, "OpenRecentFileMenuAfterHoverDelayAsync");
+        Assert.Contains("Task.Delay(TimeSpan.FromMilliseconds(1200)", delayedMethod);
+        Assert.Contains("OpenRecentFileMenu();", delayedMethod);
+        Assert.Contains("OpenRecentFileButton.IsMouseOver", delayedMethod);
+
+        var mouseLeaveMethod = ExtractMethod(code, "OnOpenRecentFileMouseLeave");
+        Assert.Contains("CancelRecentFilesHover", mouseLeaveMethod);
     }
 
     [Fact]
@@ -57,11 +94,7 @@ public sealed class MainWindowFileMenuRoutingTests
 
     private static string LoadMainWindowXaml()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WpfMarkdownEditor.sln")))
-            directory = directory.Parent;
-
-        Assert.NotNull(directory);
+        var directory = FindRepositoryRoot();
         return File.ReadAllText(Path.Combine(
             directory.FullName,
             "samples",
@@ -71,11 +104,7 @@ public sealed class MainWindowFileMenuRoutingTests
 
     private static string LoadMainWindowCode()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WpfMarkdownEditor.sln")))
-            directory = directory.Parent;
-
-        Assert.NotNull(directory);
+        var directory = FindRepositoryRoot();
         return File.ReadAllText(Path.Combine(
             directory.FullName,
             "samples",
@@ -83,9 +112,40 @@ public sealed class MainWindowFileMenuRoutingTests
             "MainWindow.xaml.cs"));
     }
 
+    private static DirectoryInfo FindRepositoryRoot([CallerFilePath] string sourcePath = "")
+    {
+        var directory = new DirectoryInfo(Environment.CurrentDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WpfMarkdownEditor.sln")))
+            directory = directory.Parent;
+
+        if (directory is not null)
+            return directory;
+
+        var sourceDirectory = Path.GetDirectoryName(sourcePath);
+        if (!string.IsNullOrWhiteSpace(sourceDirectory))
+        {
+            directory = new DirectoryInfo(sourceDirectory);
+            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WpfMarkdownEditor.sln")))
+                directory = directory.Parent;
+
+            if (directory is not null)
+                return directory;
+        }
+
+        directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WpfMarkdownEditor.sln")))
+            directory = directory.Parent;
+
+        Assert.NotNull(directory);
+        return directory;
+    }
+
     private static string ExtractMethod(string code, string methodName)
     {
-        var start = code.IndexOf($"private void {methodName}", StringComparison.Ordinal);
+        var match = Regex.Match(
+            code,
+            $@"private\s+(?:async\s+)?[\w<>]+\s+{Regex.Escape(methodName)}\s*\(");
+        var start = match.Success ? match.Index : -1;
         Assert.True(start >= 0, methodName);
 
         var brace = code.IndexOf('{', start);
