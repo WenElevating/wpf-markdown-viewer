@@ -1015,6 +1015,16 @@ public partial class MainWindow : Window
             ? System.IO.Path.GetFileName(_currentFilePath)
             : _localizationService.GetString("MainWindow.Untitled");
         Title = $"{fileName}{(_isDirty ? " *" : "")} - {_localizationService.GetString("MainWindow.TitleSuffix")}";
+        UpdateFileScopedMenuItems();
+    }
+
+    private void UpdateFileScopedMenuItems()
+    {
+        var hasCurrentFile = _currentFilePath is not null;
+        FilePropertiesButton.IsEnabled = hasCurrentFile;
+        OpenFileLocationButton.IsEnabled = hasCurrentFile;
+        ShowInSidebarButton.IsEnabled = hasCurrentFile;
+        DeleteFileButton.IsEnabled = hasCurrentFile;
     }
 
     #endregion
@@ -1087,16 +1097,18 @@ public partial class MainWindow : Window
     private void ApplyWindowTheme(bool dark)
     {
         var r = Application.Current.Resources;
-        SetBrushColor(r, "WindowBackgroundBrush", dark ? "#1E1E1E" : "#FFFFFF");
+        SetBrushColor(r, "WindowBackgroundBrush", dark ? "#1E1E1E" : "#F3F3F3");
         SetBrushColor(r, "SurfaceBackgroundBrush", dark ? "#282828" : "#FAFAFA");
-        SetBrushColor(r, "CardBackgroundBrush", dark ? "#2D2D2D" : "#FFFFFF");
-        SetBrushColor(r, "TextPrimaryBrush", dark ? "#FFFFFF" : "#1A1A1A");
-        SetBrushColor(r, "TextSecondaryBrush", dark ? "#9E9E9E" : "#616161");
+        SetBrushColor(r, "CardBackgroundBrush", dark ? "#2D2D2D" : "#FDFDFE");
+        SetBrushColor(r, "TextPrimaryBrush", dark ? "#F3F6F8" : "#15171A");
+        SetBrushColor(r, "TextSecondaryBrush", dark ? "#B5BBC4" : "#575D66");
+        SetBrushColor(r, "TextDisabledBrush", dark ? "#6F7680" : "#838A96");
         SetBrushColor(r, "AccentBrush", dark ? "#60CDFF" : "#005FB8");
-        SetBrushColor(r, "DividerBrush", dark ? "#3D3D3D" : "#E5E5E5");
-        SetBrushColor(r, "HoverBackgroundBrush", dark ? "#383838" : "#F5F5F5");
-        SetBrushColor(r, "PressedBackgroundBrush", dark ? "#434343" : "#E8E8E8");
+        SetBrushColor(r, "DividerBrush", dark ? "#3D3D3D" : "#DDE5F0");
+        SetBrushColor(r, "HoverBackgroundBrush", dark ? "#383838" : "#F2F6FB");
+        SetBrushColor(r, "PressedBackgroundBrush", dark ? "#434343" : "#E6EEF8");
         SetBrushColor(r, "SegmentBackgroundBrush", dark ? "#404040" : "#E0E0E0");
+        SetBrushColor(r, "MenuBorderBrush", dark ? "#4A4A4A" : "#D8E1EC");
     }
 
     private static void SetBrushColor(ResourceDictionary r, string key, string hex)

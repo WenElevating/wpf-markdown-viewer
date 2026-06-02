@@ -49,6 +49,7 @@ GEMINI.md
 
 # Local agent/runtime artifacts
 .firecrawl/
+.agents/
 .omx/
 .worktrees/
 

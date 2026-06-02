@@ -7,44 +7,53 @@ using WpfMarkdownEditor.Sample;
 using WpfMarkdownEditor.Wpf.Localization;
 using Xunit;
 
-namespace WpfMarkdownEditor.Wpf.Tests.Localization;
+namespace WpfMarkdownEditor.Wpf.Tests.FileMenu;
 
 [Collection("SampleMainWindow")]
-public sealed class MainWindowLocalizationTests : IDisposable
+public sealed class MainWindowFileMenuStateTests : IDisposable
 {
     private readonly string _directory = Path.Combine(
         Path.GetTempPath(),
-        "WpfMarkdownEditor.MainWindowLocalizationTests",
+        "WpfMarkdownEditor.MainWindowFileMenuStateTests",
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public void LanguageMenu_PersistsSelectionAndRefreshesSelectedState()
+    public void FileScopedMenuItems_DisabledForUntitledDocument()
     {
         RunOnSta(() =>
         {
             EnsureSampleApplication();
             var localizationService = new LocalizationService();
             var settingsService = new LocalizationSettingsService(_directory);
-            localizationService.SetLanguage(SupportedLanguage.English);
 
             var window = new MainWindow(null, localizationService, settingsService);
             try
             {
-                var languageList = Assert.IsType<StackPanel>(window.FindName("LanguageListPanel"));
-                var chineseItem = languageList.Children
-                    .OfType<RadioButton>()
-                    .Single(item => Equals(item.Tag, SupportedLanguage.Chinese));
+                AssertFileScopedMenuItems(window, isEnabled: false);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
 
-                chineseItem.IsChecked = true;
-                DrainDispatcher();
+    [Fact]
+    public void FileScopedMenuItems_EnabledWhenFileIsOpen()
+    {
+        RunOnSta(() =>
+        {
+            EnsureSampleApplication();
+            Directory.CreateDirectory(_directory);
+            var filePath = Path.Combine(_directory, "open.md");
+            File.WriteAllText(filePath, "# Open");
+            var localizationService = new LocalizationService();
+            var settingsService = new LocalizationSettingsService(_directory);
 
-                Assert.Equal(SupportedLanguage.Chinese, localizationService.CurrentLanguage);
-                Assert.Equal(SupportedLanguage.Chinese, settingsService.LoadLanguage());
-                Assert.All(languageList.Children.OfType<RadioButton>(), item =>
-                {
-                    var language = Assert.IsType<SupportedLanguage>(item.Tag);
-                    Assert.Equal(language.Equals(SupportedLanguage.Chinese), item.IsChecked == true);
-                });
+            var window = new MainWindow(filePath, localizationService, settingsService);
+            try
+            {
+                AssertFileScopedMenuItems(window, isEnabled: true);
             }
             finally
             {
@@ -58,6 +67,17 @@ public sealed class MainWindowLocalizationTests : IDisposable
         if (Directory.Exists(_directory))
             Directory.Delete(_directory, recursive: true);
     }
+
+    private static void AssertFileScopedMenuItems(MainWindow window, bool isEnabled)
+    {
+        Assert.Equal(isEnabled, FindButton(window, "FilePropertiesButton").IsEnabled);
+        Assert.Equal(isEnabled, FindButton(window, "OpenFileLocationButton").IsEnabled);
+        Assert.Equal(isEnabled, FindButton(window, "ShowInSidebarButton").IsEnabled);
+        Assert.Equal(isEnabled, FindButton(window, "DeleteFileButton").IsEnabled);
+    }
+
+    private static Button FindButton(MainWindow window, string name) =>
+        Assert.IsType<Button>(window.FindName(name));
 
     private static void EnsureSampleApplication()
     {
@@ -96,14 +116,5 @@ public sealed class MainWindowLocalizationTests : IDisposable
 
         if (exception is not null)
             throw exception;
-    }
-
-    private static void DrainDispatcher()
-    {
-        var frame = new DispatcherFrame();
-        Dispatcher.CurrentDispatcher.BeginInvoke(
-            DispatcherPriority.Background,
-            new Action(() => frame.Continue = false));
-        Dispatcher.PushFrame(frame);
     }
 }

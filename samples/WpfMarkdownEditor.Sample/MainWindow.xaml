@@ -10,6 +10,9 @@
     MinHeight="400"
     Background="{DynamicResource WindowBackgroundBrush}"
     Icon="app.ico"
+    TextOptions.TextFormattingMode="Display"
+    TextOptions.TextRenderingMode="ClearType"
+    TextOptions.TextHintingMode="Fixed"
     WindowStartupLocation="CenterScreen">
     <Grid>
         <Grid.RowDefinitions>
@@ -91,14 +94,8 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel x:Name="FileMenuItemsPanel" MinWidth="260">
                             <Button
                                 Click="OnNewFile"
@@ -110,10 +107,7 @@
                                 Content="{DynamicResource Loc.MainWindow.NewWindow}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+Shift+N" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnOpenFile"
                                 Content="{DynamicResource Loc.MainWindow.OpenFile}"
@@ -123,10 +117,7 @@
                                 Click="OnOpenFolder"
                                 Content="{DynamicResource Loc.MainWindow.OpenFolder}"
                                 Style="{StaticResource MenuItemStyle}" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnQuickOpen"
                                 Content="{DynamicResource Loc.MainWindow.QuickOpen}"
@@ -149,24 +140,14 @@
                                 PlacementTarget="{Binding ElementName=OpenRecentFileButton}"
                                 PopupAnimation="None"
                                 StaysOpen="True">
-                                <Border
-                                    Margin="0,0,0,0"
-                                    Padding="4"
-                                    Background="{DynamicResource CardBackgroundBrush}"
-                                    BorderBrush="{DynamicResource DividerBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Effect="{StaticResource PopupShadowEffect}">
+                                <Border Style="{StaticResource MenuPopupBorderStyle}">
                                     <StackPanel
                                         x:Name="RecentFilesList"
                                         MinWidth="430"
                                         MouseEnter="OnRecentFilesMenuMouseEnter"
                                         MouseLeave="OnRecentFilesMenuMouseLeave">
                                         <StackPanel x:Name="RecentFileItemsPanel" />
-                                        <Border
-                                            Height="1"
-                                            Margin="4,2"
-                                            Background="{DynamicResource DividerBrush}" />
+                                        <Border Style="{StaticResource MenuSeparatorStyle}" />
                                         <Button
                                             Click="OnClearRecentFiles"
                                             Content="{DynamicResource Loc.MainWindow.ClearRecentFiles}"
@@ -174,10 +155,7 @@
                                     </StackPanel>
                                 </Border>
                             </Popup>
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnSaveFile"
                                 Content="{DynamicResource Loc.MainWindow.SaveFile}"
@@ -192,30 +170,28 @@
                                 Click="OnMoveFile"
                                 Content="{DynamicResource Loc.MainWindow.MoveTo}"
                                 Style="{StaticResource MenuItemStyle}" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
+                                x:Name="FilePropertiesButton"
                                 Click="OnShowFileProperties"
                                 Content="{DynamicResource Loc.MainWindow.Properties}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
+                                x:Name="OpenFileLocationButton"
                                 Click="OnOpenFileLocation"
                                 Content="{DynamicResource Loc.MainWindow.OpenFileLocation}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
+                                x:Name="ShowInSidebarButton"
                                 Click="OnShowInSidebar"
                                 Content="{DynamicResource Loc.MainWindow.ShowInSidebar}"
                                 Style="{StaticResource MenuItemStyle}" />
                             <Button
+                                x:Name="DeleteFileButton"
                                 Click="OnDeleteFile"
                                 Content="{DynamicResource Loc.MainWindow.DeleteFile}"
                                 Style="{StaticResource MenuItemStyle}" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnImportFile"
                                 Content="{DynamicResource Loc.MainWindow.Import}"
@@ -229,19 +205,13 @@
                                 Content="{DynamicResource Loc.MainWindow.Print}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Alt+Shift+P" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnPreferences"
                                 Content="{DynamicResource Loc.MainWindow.Preferences}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+," />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnCloseWindow"
                                 Content="{DynamicResource Loc.MainWindow.CloseWindow}"
@@ -265,14 +235,8 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnUndo"
@@ -284,10 +248,7 @@
                                 Content="{DynamicResource Loc.MainWindow.Redo}"
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+Y" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnFind"
                                 Content="{DynamicResource Loc.MainWindow.Find}"
@@ -311,14 +272,8 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnHeading1"
@@ -332,10 +287,7 @@
                                 Click="OnHeading3"
                                 Content="{DynamicResource Loc.MainWindow.Heading3}"
                                 Style="{StaticResource MenuItemStyle}" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnQuote"
                                 Content="{DynamicResource Loc.MainWindow.Blockquote}"
@@ -366,14 +318,8 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnBold"
@@ -411,14 +357,8 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnLink"
@@ -454,41 +394,21 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel MinWidth="200">
                             <Button
                                 Click="OnToggleSidebarFromMenu"
                                 Content="{DynamicResource Loc.MainWindow.ToggleSidebar}"
                                 Style="{StaticResource MenuItemStyle}" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <TextBlock
-                                Padding="16,7,16,4"
-                                FontFamily="Segoe UI Variable, Segoe UI"
-                                FontSize="11"
-                                FontWeight="SemiBold"
-                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                Style="{StaticResource MenuSectionHeaderStyle}"
                                 Text="{DynamicResource Loc.MainWindow.Themes}" />
                             <StackPanel x:Name="ThemeListPanel" />
-                            <Border
-                                Height="1"
-                                Margin="4,2"
-                                Background="{DynamicResource DividerBrush}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <TextBlock
-                                Padding="16,7,16,4"
-                                FontFamily="Segoe UI Variable, Segoe UI"
-                                FontSize="11"
-                                FontWeight="SemiBold"
-                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                Style="{StaticResource MenuSectionHeaderStyle}"
                                 Text="{DynamicResource Loc.MainWindow.Language}" />
                             <StackPanel x:Name="LanguageListPanel" />
                         </StackPanel>
@@ -510,14 +430,8 @@
                     PopupAnimation="Slide"
                     StaysOpen="False">
                     <Border
-                        Margin="0,2,0,0"
-                        Padding="4"
-                        Background="{DynamicResource CardBackgroundBrush}"
-                        BorderBrush="{DynamicResource DividerBrush}"
-                        BorderThickness="1"
                         Button.Click="OnPopupItemClick"
-                        CornerRadius="8"
-                        Effect="{StaticResource PopupShadowEffect}">
+                        Style="{StaticResource MenuPopupBorderStyle}">
                         <StackPanel MinWidth="220">
                             <!--  Cancel translation (shown during translation)  -->
                             <Button
@@ -541,7 +455,7 @@
                                                     Foreground="{DynamicResource TextPrimaryBrush}"
                                                     Text="&#xE711;" />
                                                 <TextBlock
-                                                    FontFamily="Segoe UI Variable, Segoe UI"
+                                                    FontFamily="{StaticResource UIFont}"
                                                     FontSize="12"
                                                     Foreground="{DynamicResource TextPrimaryBrush}"
                                                     Text="{DynamicResource Loc.MainWindow.CancelTranslation}" />
@@ -578,7 +492,7 @@
                                                         Foreground="{DynamicResource AccentBrush}"
                                                         Text="&#xE711;" />
                                                     <TextBlock
-                                                        FontFamily="Segoe UI Variable, Segoe UI"
+                                                        FontFamily="{StaticResource UIFont}"
                                                         FontSize="12"
                                                         FontWeight="SemiBold"
                                                         Foreground="{DynamicResource AccentBrush}"
@@ -600,8 +514,8 @@
                                         Margin="0,0,12,0"
                                         Checked="OnEngineRadioChanged"
                                         Content="Baidu"
-                                        FontFamily="Segoe UI Variable, Segoe UI"
-                                        FontSize="11"
+                                        FontFamily="{StaticResource UIFont}"
+                                        FontSize="12"
                                         Foreground="{DynamicResource TextSecondaryBrush}"
                                         GroupName="TranslationEngine"
                                         IsChecked="True" />
@@ -609,15 +523,12 @@
                                         x:Name="EngineOpenAIRadio"
                                         Checked="OnEngineRadioChanged"
                                         Content="OpenAI"
-                                        FontFamily="Segoe UI Variable, Segoe UI"
-                                        FontSize="11"
+                                        FontFamily="{StaticResource UIFont}"
+                                        FontSize="12"
                                         Foreground="{DynamicResource TextSecondaryBrush}"
                                         GroupName="TranslationEngine" />
                                 </StackPanel>
-                                <Border
-                                    Height="1"
-                                    Margin="4,2"
-                                    Background="{DynamicResource DividerBrush}" />
+                                <Border Style="{StaticResource MenuSeparatorStyle}" />
                                 <Button
                                     Click="OnTranslateToEnglish"
                                     Content="{DynamicResource Loc.MainWindow.TranslateToEnglish}"
@@ -634,10 +545,7 @@
                                     Click="OnTranslateToKorean"
                                     Content="{DynamicResource Loc.MainWindow.TranslateToKorean}"
                                     Style="{StaticResource MenuItemStyle}" />
-                                <Border
-                                    Height="1"
-                                    Margin="4,2"
-                                    Background="{DynamicResource DividerBrush}" />
+                                <Border Style="{StaticResource MenuSeparatorStyle}" />
                                 <Button
                                     Click="OnTranslationSettings"
                                     Content="{DynamicResource Loc.MainWindow.TranslationSettings}"
@@ -795,7 +703,7 @@
                                 x:Name="TabFiles"
                                 Margin="0,0,0,6"
                                 Cursor="Hand"
-                                FontFamily="Segoe UI Variable, Segoe UI"
+                                FontFamily="{StaticResource UIFont}"
                                 FontSize="12"
                                 FontWeight="SemiBold"
                                 Foreground="{DynamicResource TextPrimaryBrush}"
@@ -814,7 +722,7 @@
                                 x:Name="TabOutline"
                                 Margin="0,0,0,6"
                                 Cursor="Hand"
-                                FontFamily="Segoe UI Variable, Segoe UI"
+                                FontFamily="{StaticResource UIFont}"
                                 FontSize="12"
                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                 MouseLeftButtonDown="OnTabOutline"
@@ -855,7 +763,7 @@
                                                 Text="&#xE8A5;" />
                                             <TextBlock
                                                 VerticalAlignment="Center"
-                                                FontFamily="Segoe UI Variable, Segoe UI"
+                                                FontFamily="{StaticResource UIFont}"
                                                 FontSize="12"
                                                 Text="{Binding Name}"
                                                 TextTrimming="CharacterEllipsis" />
@@ -880,7 +788,7 @@
                                 <TextBlock
                                     x:Name="FilesEmptyTitle"
                                     Margin="0,14,0,0"
-                                    FontFamily="Segoe UI Variable, Segoe UI"
+                                    FontFamily="{StaticResource UIFont}"
                                     FontSize="13"
                                     FontWeight="SemiBold"
                                     Foreground="{DynamicResource TextPrimaryBrush}"
@@ -888,7 +796,7 @@
                                 <TextBlock
                                     x:Name="FilesEmptyHint"
                                     Margin="0,6,0,10"
-                                    FontFamily="Segoe UI Variable, Segoe UI"
+                                    FontFamily="{StaticResource UIFont}"
                                     FontSize="12"
                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                     Text="{DynamicResource Loc.MainWindow.OpenFolderHint}"
@@ -922,7 +830,7 @@
                                 <TextBlock
                                     Margin="0,32,0,0"
                                     HorizontalAlignment="Center"
-                                    FontFamily="Segoe UI Variable, Segoe UI"
+                                    FontFamily="{StaticResource UIFont}"
                                     FontSize="12"
                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                     Text="{DynamicResource Loc.MainWindow.NoHeadingsFound}" />
@@ -989,7 +897,7 @@
                             Margin="6,0"
                             VerticalAlignment="Center"
                             DockPanel.Dock="Right"
-                            FontFamily="Segoe UI Variable, Segoe UI"
+                            FontFamily="{StaticResource UIFont}"
                             FontSize="11"
                             Foreground="{DynamicResource TextSecondaryBrush}"
                             Text="" />
@@ -1002,7 +910,7 @@
                             Background="Transparent"
                             BorderThickness="0"
                             CaretBrush="{DynamicResource TextPrimaryBrush}"
-                            FontFamily="Segoe UI Variable, Segoe UI"
+                            FontFamily="{StaticResource UIFont}"
                             FontSize="12"
                             Foreground="{DynamicResource TextPrimaryBrush}"
                             PreviewKeyDown="OnSearchInputKeyDown"
