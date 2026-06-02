@@ -281,6 +281,13 @@ public sealed class HtmlRenderer(
                 target.Add(InlineImageRenderer.Render(CreateImageInline(element), theme, imageResolver, requestLayoutRefresh));
                 break;
 
+            case HtmlElementNode { TagName: "picture" } element:
+                RenderPicture(target, element);
+                break;
+
+            case HtmlElementNode { TagName: "source" }:
+                break;
+
             case HtmlElementNode element:
                 target.Add(new Run(RenderTextFallback(element)));
                 break;
@@ -354,6 +361,15 @@ public sealed class HtmlRenderer(
         }
 
         return hyperlink;
+    }
+
+    private void RenderPicture(InlineCollection target, HtmlElementNode element)
+    {
+        var fallback = Descendants(element)
+            .OfType<HtmlElementNode>()
+            .FirstOrDefault(static node => node.TagName == "img");
+        if (fallback is not null)
+            target.Add(InlineImageRenderer.Render(CreateImageInline(fallback), theme, imageResolver, requestLayoutRefresh));
     }
 
     private static ImageInline CreateImageInline(HtmlElementNode element)

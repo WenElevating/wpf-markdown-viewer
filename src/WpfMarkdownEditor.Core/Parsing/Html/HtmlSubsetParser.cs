@@ -7,7 +7,7 @@ internal sealed class HtmlSubsetParser
         "div", "p", "center", "details", "summary",
         "h1", "h2", "h3", "h4", "h5", "h6",
         "table", "thead", "tbody", "tr", "td", "th",
-        "a", "img", "br", "b", "strong", "i", "em", "code"
+        "a", "picture", "source", "img", "br", "b", "strong", "i", "em", "code"
     };
 
     public HtmlFragment Parse(string html, HtmlFragmentKind kind)

@@ -196,7 +196,7 @@ internal sealed class HtmlTokenizer(string input)
         char.IsAsciiLetterOrDigit(c) || c is '_' or ':' or '-';
 
     private static bool IsVoidElement(string name) =>
-        name is "br" or "img" or "hr" or "input";
+        name is "br" or "img" or "source" or "hr" or "input";
 
     private static string DecodeEntities(string value) =>
         WebUtility.HtmlDecode(value) ?? value;

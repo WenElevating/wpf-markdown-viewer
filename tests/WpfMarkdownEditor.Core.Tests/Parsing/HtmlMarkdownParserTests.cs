@@ -123,6 +123,23 @@ public sealed class HtmlMarkdownParserTests
     }
 
     [Fact]
+    public void ParseInlines_AnchorWrappedPictureImage_ReturnsHtmlInline()
+    {
+        var result = _parser.ParseInlines(
+            """
+            <a href="https://www.star-history.com/?repos=Lum1104%2FUnderstand-Anything&type=date&legend=top-left"><picture><source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Lum1104/Understand-Anything&type=date&theme=dark&legend=top-left" /><img alt="Star History Chart" src="https://api.star-history.com/image?repos=Lum1104/Understand-Anything&type=date&legend=top-left" /></picture></a>
+            """);
+
+        var html = Assert.IsType<HtmlInline>(Assert.Single(result));
+        var anchor = Assert.IsType<HtmlElementNode>(Assert.Single(html.Fragment.Children));
+        var picture = Assert.IsType<HtmlElementNode>(Assert.Single(anchor.Children));
+
+        Assert.Equal("picture", picture.TagName);
+        Assert.Contains(picture.Children, node => node is HtmlElementNode { TagName: "source" });
+        Assert.Contains(picture.Children, node => node is HtmlElementNode { TagName: "img" });
+    }
+
+    [Fact]
     public void Parse_ConsecutiveAnchorWrappedHtmlImages_PreservesLineBreakBetweenHtmlInlines()
     {
         var blocks = _parser.Parse(

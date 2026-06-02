@@ -163,6 +163,34 @@ public sealed class HtmlRenderingTests
     }
 
     [Fact]
+    public void Render_AnchorWrappedPictureImage_RendersFallbackImage()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var document = Render(
+                """
+                <a href="https://www.star-history.com/?repos=Lum1104%2FUnderstand-Anything&type=date&legend=top-left"><picture>
+                  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Lum1104/Understand-Anything&type=date&theme=dark&legend=top-left" />
+                  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=Lum1104/Understand-Anything&type=date&legend=top-left" />
+                  <img alt="Star History Chart" src="https://api.star-history.com/image?repos=Lum1104/Understand-Anything&type=date&legend=top-left" />
+                </picture></a>
+                """,
+                resolver);
+
+            var text = GetDocumentText(document);
+
+            Assert.DoesNotContain("<picture", text);
+            Assert.DoesNotContain("<source", text);
+            Assert.DoesNotContain("</a>", text);
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            Assert.Equal(
+                "https://api.star-history.com/image?repos=Lum1104/Understand-Anything&type=date&legend=top-left",
+                resolver.ResolveStarted.Task.Result);
+        });
+    }
+
+    [Fact]
     public void Render_DetailsBlockWithMarkdownFencedCode_RendersCodeBlockInsteadOfRawFence()
     {
         RunOnSta(() =>

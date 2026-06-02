@@ -12,7 +12,7 @@ internal sealed class HtmlParsingFacade
 
     private static readonly HashSet<string> InlineStartTags = new(StringComparer.OrdinalIgnoreCase)
     {
-        "br", "b", "strong", "i", "em", "code", "a", "img"
+        "br", "b", "strong", "i", "em", "code", "a", "img", "picture", "source"
     };
 
     private static readonly HashSet<string> SupportedTags = new(StringComparer.OrdinalIgnoreCase)
@@ -20,12 +20,12 @@ internal sealed class HtmlParsingFacade
         "div", "p", "center", "details", "summary",
         "h1", "h2", "h3", "h4", "h5", "h6",
         "table", "thead", "tbody", "tr", "td", "th",
-        "a", "img", "br", "b", "strong", "i", "em", "code"
+        "a", "picture", "source", "img", "br", "b", "strong", "i", "em", "code"
     };
 
     private static readonly HashSet<string> VoidTags = new(StringComparer.OrdinalIgnoreCase)
     {
-        "br", "img", "hr", "input"
+        "br", "img", "source", "hr", "input"
     };
 
     public bool TryParseBlockFragment(
