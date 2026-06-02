@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using System.Windows.Documents;
 using WpfMarkdownEditor.Core.Parsing;
@@ -76,6 +77,35 @@ public sealed class HtmlRenderingTests
         });
     }
 
+    [Theory]
+    [InlineData("header.md", "Support Latest Version")]
+    [InlineData("details.md", "Auto Run Script")]
+    [InlineData("image-table.md", "coffee")]
+    public void Render_Fixture_DoesNotExposeRawHtmlTags(string fixtureName, string expectedText)
+    {
+        RunOnSta(() =>
+        {
+            var document = Render(ReadFixture(fixtureName));
+            var text = GetDocumentText(document);
+
+            Assert.Contains(expectedText, text);
+            Assert.DoesNotContain("<div", text);
+            Assert.DoesNotContain("<img", text);
+            Assert.DoesNotContain("<table", text);
+        });
+    }
+
+    [Fact]
+    public void Render_HtmlTable_CreatesWpfTable()
+    {
+        RunOnSta(() =>
+        {
+            var document = Render(ReadFixture("image-table.md"));
+
+            Assert.Contains(document.Blocks.Cast<WpfBlock>(), ContainsTable);
+        });
+    }
+
     private static FlowDocument Render(string markdown)
     {
         var parser = new MarkdownParser();
@@ -85,6 +115,36 @@ public sealed class HtmlRenderingTests
 
     private static string GetDocumentText(FlowDocument document) =>
         new TextRange(document.ContentStart, document.ContentEnd).Text;
+
+    private static string ReadFixture(string fixtureName)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(
+                directory.FullName,
+                "tests",
+                "WpfMarkdownEditor.Wpf.Tests",
+                "Fixtures",
+                "HtmlRendering",
+                fixtureName);
+
+            if (File.Exists(candidate))
+                return File.ReadAllText(candidate);
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find HTML rendering fixture '{fixtureName}'.");
+    }
+
+    private static bool ContainsTable(WpfBlock block) =>
+        block switch
+        {
+            Table => true,
+            Section section => section.Blocks.Cast<WpfBlock>().Any(ContainsTable),
+            _ => false
+        };
 
     private static bool ContainsInline<TInline>(
         IEnumerable<WpfInline> inlines,

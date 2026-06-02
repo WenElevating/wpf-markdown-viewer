@@ -69,6 +69,10 @@ public sealed class HtmlRenderer(
                     blocks.Add(section);
                 break;
 
+            case "table":
+                blocks.Add(CreateTable(element));
+                break;
+
             case "p":
                 blocks.Add(CreateParagraph(element.Children, alignment));
                 break;
@@ -144,6 +148,66 @@ public sealed class HtmlRenderer(
         };
         RenderInlineNodes(paragraph.Inlines, element.Children);
         return paragraph;
+    }
+
+    private Table CreateTable(HtmlElementNode tableNode)
+    {
+        var rows = Descendants(tableNode)
+            .OfType<HtmlElementNode>()
+            .Where(static node => node.TagName == "tr")
+            .Select(static row => new
+            {
+                Row = row,
+                Cells = row.Children
+                    .OfType<HtmlElementNode>()
+                    .Where(static cell => cell.TagName is "td" or "th")
+                    .ToList()
+            })
+            .Where(static item => item.Cells.Count > 0)
+            .ToList();
+
+        var table = new Table
+        {
+            CellSpacing = 0,
+            Margin = new Thickness(0, 8, 0, theme.ParagraphSpacing),
+            BorderBrush = new SolidColorBrush(theme.TableBorderColor),
+            BorderThickness = new Thickness(1),
+        };
+
+        var columnCount = rows.Count == 0 ? 0 : rows.Max(static row => row.Cells.Count);
+        for (var i = 0; i < columnCount; i++)
+            table.Columns.Add(new TableColumn());
+
+        var rowGroup = new TableRowGroup();
+        table.RowGroups.Add(rowGroup);
+
+        foreach (var rowNode in rows)
+        {
+            var row = new TableRow();
+            foreach (var cellNode in rowNode.Cells)
+            {
+                var paragraph = new Paragraph
+                {
+                    Margin = new Thickness(0),
+                    Padding = new Thickness(6),
+                    TextAlignment = GetAlignment(cellNode, TextAlignment.Left),
+                };
+                if (cellNode.TagName == "th")
+                    paragraph.FontWeight = FontWeights.Bold;
+
+                RenderInlineNodes(paragraph.Inlines, cellNode.Children);
+
+                row.Cells.Add(new TableCell(paragraph)
+                {
+                    BorderBrush = new SolidColorBrush(theme.TableBorderColor),
+                    BorderThickness = new Thickness(0, 0, 1, 1),
+                });
+            }
+
+            rowGroup.Rows.Add(row);
+        }
+
+        return table;
     }
 
     private void RenderInlineNode(InlineCollection target, HtmlNode node)
@@ -278,8 +342,21 @@ public sealed class HtmlRenderer(
     };
 
     private static bool IsBlockElement(string tagName) =>
-        tagName is "div" or "center" or "details" or "p" or "summary" or
+        tagName is "div" or "center" or "details" or "p" or "summary" or "table" or
             "h1" or "h2" or "h3" or "h4" or "h5" or "h6";
+
+    private static IEnumerable<HtmlNode> Descendants(HtmlElementNode node)
+    {
+        foreach (var child in node.Children)
+        {
+            yield return child;
+            if (child is HtmlElementNode element)
+            {
+                foreach (var descendant in Descendants(element))
+                    yield return descendant;
+            }
+        }
+    }
 
     private static bool HasVisibleContent(HtmlNode node) =>
         node switch
