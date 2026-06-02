@@ -295,7 +295,7 @@ public sealed class ImageRenderingTests
     }
 
     [Fact]
-    public void Render_StandaloneImageLines_RendersSeparateBlockContainers()
+    public void Render_AnchorWrappedHtmlImageLines_RendersInlineImageLinks()
     {
         RunOnSta(() =>
         {
@@ -308,14 +308,10 @@ public sealed class ImageRenderingTests
                 <a href="https://996.icu"><img src="https://camo.githubusercontent.com/image"></a>
                 """));
 
-            var section = Assert.IsType<Section>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
-            var imageBlocks = section.Blocks.Cast<WpfBlock>().ToList();
-            Assert.Equal(2, imageBlocks.Count);
-            Assert.All(imageBlocks, block =>
-            {
-                var container = Assert.IsType<BlockUIContainer>(block);
-                Assert.True(container.Margin.Bottom >= 20);
-            });
+            var paragraph = Assert.IsType<Paragraph>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+            Assert.Equal(2, CountInlines<Hyperlink>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>()));
+            Assert.True(WaitUntil(() =>
+                CountInlines<InlineUIContainer>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>()) == 2));
         });
     }
 
@@ -349,6 +345,22 @@ public sealed class ImageRenderingTests
             ResolveCount++;
             return Task.FromResult(imageData);
         }
+    }
+
+    private static int CountInlines<TInline>(IEnumerable<System.Windows.Documents.Inline> inlines)
+        where TInline : System.Windows.Documents.Inline
+    {
+        var count = 0;
+        foreach (var inline in inlines)
+        {
+            if (inline is TInline)
+                count++;
+
+            if (inline is Span span)
+                count += CountInlines<TInline>(span.Inlines.Cast<System.Windows.Documents.Inline>());
+        }
+
+        return count;
     }
 
     private static void RunOnSta(Action action)
