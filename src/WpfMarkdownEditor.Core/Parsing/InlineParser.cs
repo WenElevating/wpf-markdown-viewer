@@ -223,9 +223,61 @@ internal sealed class InlineParser
         {
             Url = src,
             Alt = element.Attributes.TryGetValue("alt", out var alt) ? alt : null,
-            Title = element.Attributes.TryGetValue("title", out var title) ? title : null
+            Title = element.Attributes.TryGetValue("title", out var title) ? title : null,
+            DisplayWidth = TryGetHtmlImageDimension(element, "width", out var width) ? width : null,
+            DisplayHeight = TryGetHtmlImageDimension(element, "height", out var height) ? height : null
         };
         return true;
+    }
+
+    private static bool TryGetHtmlImageDimension(HtmlElementNode element, string name, out double value)
+    {
+        value = 0;
+        var styleValue = TryGetStyleDeclaration(element, name, out var styleDeclaration)
+            ? styleDeclaration
+            : null;
+        if (TryParseCssLength(styleValue, out value))
+            return true;
+
+        return element.Attributes.TryGetValue(name, out var attributeValue) &&
+               TryParseCssLength(attributeValue, out value);
+    }
+
+    private static bool TryGetStyleDeclaration(HtmlElementNode element, string name, out string value)
+    {
+        value = string.Empty;
+        if (!element.Attributes.TryGetValue("style", out var style))
+            return false;
+
+        foreach (var declaration in style.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = declaration.IndexOf(':');
+            if (separator <= 0)
+                continue;
+
+            var propertyName = declaration[..separator].Trim();
+            if (!string.Equals(propertyName, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            value = declaration[(separator + 1)..].Trim();
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseCssLength(string? value, out double length)
+    {
+        length = 0;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var text = value.Trim();
+        if (text.EndsWith("px", StringComparison.OrdinalIgnoreCase))
+            text = text[..^2].Trim();
+
+        return double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out length) &&
+               length > 0;
     }
 
     #endregion

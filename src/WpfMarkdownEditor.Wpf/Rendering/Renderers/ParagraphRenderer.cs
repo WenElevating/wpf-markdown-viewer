@@ -121,7 +121,13 @@ public sealed class ParagraphRenderer(
 
     private BlockUIContainer CreateImageContainer(BitmapImage bitmap, ImageInline img)
     {
-        var imageControl = ImageElementFactory.CreateBitmapImageControl(bitmap, img.Alt, 400, alignLeft: true);
+        var imageControl = ImageElementFactory.CreateBitmapImageControl(
+            bitmap,
+            img.Alt,
+            400,
+            alignLeft: true,
+            img.DisplayWidth,
+            img.DisplayHeight);
         return CreateImageBlockContainer(imageControl);
     }
 
@@ -157,7 +163,12 @@ public sealed class ParagraphRenderer(
             {
                 await host.Dispatcher.InvokeAsync(() =>
                 {
-                    var svg = ImageElementFactory.CreateSvgBrowser(imageData, img.Alt, 400);
+                    var svg = ImageElementFactory.CreateSvgBrowser(
+                        imageData,
+                        img.Alt,
+                        400,
+                        img.DisplayWidth,
+                        img.DisplayHeight);
                     if (svg is not null)
                     {
                         RefreshLoadedImage(host, svg, requestLayoutRefresh);
@@ -180,7 +191,13 @@ public sealed class ParagraphRenderer(
 
             await host.Dispatcher.InvokeAsync(() =>
             {
-                var imageControl = ImageElementFactory.CreateBitmapImageControl(bitmap, img.Alt, 400, alignLeft: true);
+                var imageControl = ImageElementFactory.CreateBitmapImageControl(
+                    bitmap,
+                    img.Alt,
+                    400,
+                    alignLeft: true,
+                    img.DisplayWidth,
+                    img.DisplayHeight);
                 RefreshLoadedImage(host, imageControl, requestLayoutRefresh);
             });
         }

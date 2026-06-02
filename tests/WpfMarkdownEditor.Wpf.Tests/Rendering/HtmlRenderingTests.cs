@@ -118,6 +118,51 @@ public sealed class HtmlRenderingTests
     }
 
     [Fact]
+    public void Render_HtmlInlineWhitespaceBetweenImageLinks_DoesNotInsertLineBreaks()
+    {
+        RunOnSta(() =>
+        {
+            var document = Render(
+                """
+                <p align="center">
+                  <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue" alt="Quick Start" /></a>
+                  <a href="#license"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" /></a>
+                </p>
+                """);
+
+            var paragraph = Assert.Single(FindParagraphs(document));
+            var inlines = FlattenInlines(paragraph.Inlines.Cast<WpfInline>()).ToList();
+
+            Assert.Equal(2, inlines.OfType<Hyperlink>().Count());
+            Assert.DoesNotContain(inlines, inline => inline is LineBreak);
+        });
+    }
+
+    [Fact]
+    public void Render_HtmlImage_UsesDeclaredWidthAndHeightForSvg()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var document = Render(
+                """
+                <p align="center">
+                  <a href="https://trendshift.io/repositories/23482" target="_blank"><img src="https://trendshift.io/api/badge/repositories/23482" alt="Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+                </p>
+                """,
+                resolver);
+
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            resolver.Complete(SvgBadge, "svg");
+
+            Assert.True(WaitUntil(() => FindElement<WebBrowser>(document) is not null));
+            var browser = Assert.IsType<WebBrowser>(FindElement<WebBrowser>(document));
+            Assert.Equal(250, browser.Width);
+            Assert.Equal(55, browser.Height);
+        });
+    }
+
+    [Fact]
     public void Render_DetailsBlockWithMarkdownFencedCode_RendersCodeBlockInsteadOfRawFence()
     {
         RunOnSta(() =>
@@ -231,6 +276,43 @@ public sealed class HtmlRenderingTests
         where TElement : UIElement =>
         document.Blocks.Cast<WpfBlock>().Any(BlockContainsElement<TElement>);
 
+    private static TElement? FindElement<TElement>(FlowDocument document)
+        where TElement : UIElement =>
+        document.Blocks.Cast<WpfBlock>()
+            .Select(FindElement<TElement>)
+            .FirstOrDefault(static element => element is not null);
+
+    private static TElement? FindElement<TElement>(WpfBlock block)
+        where TElement : UIElement =>
+        block switch
+        {
+            BlockUIContainer { Child: TElement element } => element,
+            Paragraph paragraph => paragraph.Inlines.Cast<WpfInline>()
+                .Select(FindElement<TElement>)
+                .FirstOrDefault(static element => element is not null),
+            Section section => section.Blocks.Cast<WpfBlock>()
+                .Select(FindElement<TElement>)
+                .FirstOrDefault(static element => element is not null),
+            Table table => table.RowGroups
+                .SelectMany(static group => group.Rows)
+                .SelectMany(static row => row.Cells)
+                .SelectMany(static cell => cell.Blocks.Cast<WpfBlock>())
+                .Select(FindElement<TElement>)
+                .FirstOrDefault(static element => element is not null),
+            _ => null
+        };
+
+    private static TElement? FindElement<TElement>(WpfInline inline)
+        where TElement : UIElement =>
+        inline switch
+        {
+            InlineUIContainer { Child: TElement element } => element,
+            Span span => span.Inlines.Cast<WpfInline>()
+                .Select(FindElement<TElement>)
+                .FirstOrDefault(static element => element is not null),
+            _ => null
+        };
+
     private static bool BlockContainsElement<TElement>(WpfBlock block)
         where TElement : UIElement =>
         block switch
@@ -269,6 +351,35 @@ public sealed class HtmlRenderingTests
         }
 
         return false;
+    }
+
+    private static IEnumerable<Paragraph> FindParagraphs(FlowDocument document) =>
+        document.Blocks.Cast<WpfBlock>().SelectMany(FindParagraphs);
+
+    private static IEnumerable<Paragraph> FindParagraphs(WpfBlock block) =>
+        block switch
+        {
+            Paragraph paragraph => [paragraph],
+            Section section => section.Blocks.Cast<WpfBlock>().SelectMany(FindParagraphs),
+            Table table => table.RowGroups
+                .SelectMany(static group => group.Rows)
+                .SelectMany(static row => row.Cells)
+                .SelectMany(static cell => cell.Blocks.Cast<WpfBlock>())
+                .SelectMany(FindParagraphs),
+            _ => []
+        };
+
+    private static IEnumerable<WpfInline> FlattenInlines(IEnumerable<WpfInline> inlines)
+    {
+        foreach (var inline in inlines)
+        {
+            yield return inline;
+            if (inline is Span span)
+            {
+                foreach (var child in FlattenInlines(span.Inlines.Cast<WpfInline>()))
+                    yield return child;
+            }
+        }
     }
 
     private static void RunOnSta(Action action)

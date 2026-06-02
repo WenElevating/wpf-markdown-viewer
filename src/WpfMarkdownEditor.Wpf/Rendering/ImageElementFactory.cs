@@ -59,9 +59,19 @@ internal static class ImageElementFactory
         }
     }
 
-    public static Image CreateBitmapImageControl(BitmapImage bitmap, string? alt, double maxHeight, bool alignLeft)
+    public static Image CreateBitmapImageControl(
+        BitmapImage bitmap,
+        string? alt,
+        double maxHeight,
+        bool alignLeft,
+        double? displayWidth = null,
+        double? displayHeight = null)
     {
-        var image = new ResponsiveImage(bitmap.PixelWidth, bitmap.PixelHeight, maxHeight)
+        var displaySize = ResolveDisplaySize(
+            new Size(bitmap.PixelWidth, bitmap.PixelHeight),
+            displayWidth,
+            displayHeight);
+        var image = new ResponsiveImage(displaySize.Width, displaySize.Height, maxHeight)
         {
             Source = bitmap,
             MaxHeight = maxHeight,
@@ -76,11 +86,17 @@ internal static class ImageElementFactory
         return image;
     }
 
-    public static WebBrowser? CreateSvgBrowser(ImageData imageData, string? alt, double maxHeight)
+    public static WebBrowser? CreateSvgBrowser(
+        ImageData imageData,
+        string? alt,
+        double maxHeight,
+        double? displayWidth = null,
+        double? displayHeight = null)
     {
         try
         {
-            var size = ReadSvgSize(imageData.Data) ?? new Size(300, Math.Min(150, maxHeight));
+            var naturalSize = ReadSvgSize(imageData.Data) ?? new Size(300, Math.Min(150, maxHeight));
+            var size = ResolveDisplaySize(naturalSize, displayWidth, displayHeight);
             if (size.Height > maxHeight && maxHeight > 0)
             {
                 var scale = maxHeight / size.Height;
@@ -234,6 +250,31 @@ internal static class ImageElementFactory
             ? parsed
             : null;
     }
+
+    private static Size ResolveDisplaySize(Size naturalSize, double? displayWidth, double? displayHeight)
+    {
+        var naturalWidth = IsFinitePositive(naturalSize.Width) ? naturalSize.Width : 300;
+        var naturalHeight = IsFinitePositive(naturalSize.Height) ? naturalSize.Height : 150;
+        var width = IsFinitePositive(displayWidth) ? displayWidth!.Value : double.NaN;
+        var height = IsFinitePositive(displayHeight) ? displayHeight!.Value : double.NaN;
+
+        if (IsFinitePositive(width) && IsFinitePositive(height))
+            return new Size(width, height);
+
+        if (IsFinitePositive(width))
+            return new Size(width, Math.Max(1, naturalHeight * width / naturalWidth));
+
+        if (IsFinitePositive(height))
+            return new Size(Math.Max(1, naturalWidth * height / naturalHeight), height);
+
+        return new Size(naturalWidth, naturalHeight);
+    }
+
+    private static bool IsFinitePositive(double? value) =>
+        value is { } number && IsFinitePositiveNumber(number);
+
+    private static bool IsFinitePositiveNumber(double value) =>
+        !double.IsNaN(value) && !double.IsInfinity(value) && value > 0;
 
     private sealed class ResponsiveImage(double naturalWidth, double naturalHeight, double maxHeight) : Image
     {

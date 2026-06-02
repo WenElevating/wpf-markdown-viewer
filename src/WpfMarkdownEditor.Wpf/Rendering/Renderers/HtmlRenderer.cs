@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -21,6 +22,7 @@ public sealed class HtmlRenderer(
     SyntaxHighlighter? highlighter = null) : IBlockRenderer
 {
     private readonly MarkdownParser _markdownParser = new();
+    private static readonly char[] CssDeclarationSeparators = [';'];
 
     public WpfBlock Render(CoreBlock block)
     {
@@ -250,9 +252,9 @@ public sealed class HtmlRenderer(
         {
             case HtmlTextNode text:
                 if (parseMarkdownText)
-                    RenderMarkdownInlines(target, text.Text);
+                    RenderMarkdownInlines(target, NormalizeHtmlInlineText(text.Text));
                 else
-                    target.Add(new Run(text.Text));
+                    target.Add(new Run(NormalizeHtmlInlineText(text.Text)));
                 break;
 
             case HtmlElementNode { TagName: "br" }:
@@ -354,13 +356,80 @@ public sealed class HtmlRenderer(
         return hyperlink;
     }
 
-    private static ImageInline CreateImageInline(HtmlElementNode element) =>
-        new()
+    private static ImageInline CreateImageInline(HtmlElementNode element)
+    {
+        var width = GetImageDimension(element, "width");
+        var height = GetImageDimension(element, "height");
+        return new ImageInline
         {
             Url = element.Attributes.TryGetValue("src", out var src) ? src : string.Empty,
             Alt = element.Attributes.TryGetValue("alt", out var alt) ? alt : null,
-            Title = element.Attributes.TryGetValue("title", out var title) ? title : null
+            Title = element.Attributes.TryGetValue("title", out var title) ? title : null,
+            DisplayWidth = width,
+            DisplayHeight = height
         };
+    }
+
+    private static double? GetImageDimension(HtmlElementNode element, string name)
+    {
+        var styleValue = GetStyleDeclaration(element, name);
+        if (TryParseCssLength(styleValue, out var styleLength))
+            return styleLength;
+
+        return element.Attributes.TryGetValue(name, out var attributeValue) &&
+               TryParseCssLength(attributeValue, out var attributeLength)
+            ? attributeLength
+            : null;
+    }
+
+    private static string? GetStyleDeclaration(HtmlElementNode element, string name)
+    {
+        if (!element.Attributes.TryGetValue("style", out var style))
+            return null;
+
+        foreach (var declaration in style.Split(CssDeclarationSeparators, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = declaration.IndexOf(':');
+            if (separator <= 0)
+                continue;
+
+            var propertyName = declaration[..separator].Trim();
+            if (!string.Equals(propertyName, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return declaration[(separator + 1)..].Trim();
+        }
+
+        return null;
+    }
+
+    private static bool TryParseCssLength(string? value, out double length)
+    {
+        length = 0;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var text = value.Trim();
+        if (text.EndsWith("px", StringComparison.OrdinalIgnoreCase))
+            text = text[..^2].Trim();
+
+        return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out length) &&
+               length > 0;
+    }
+
+    private static string NormalizeHtmlInlineText(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        var normalized = string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (normalized.Length == 0)
+            return string.Empty;
+
+        var leading = char.IsWhiteSpace(text[0]) ? " " : string.Empty;
+        var trailing = char.IsWhiteSpace(text[^1]) ? " " : string.Empty;
+        return leading + normalized + trailing;
+    }
 
     private static string RenderTextFallback(HtmlElementNode element) =>
         string.Concat(element.Children.Select(RenderTextFallback));

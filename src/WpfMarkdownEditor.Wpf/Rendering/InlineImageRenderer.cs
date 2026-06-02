@@ -50,7 +50,12 @@ internal static class InlineImageRenderer
             {
                 await placeholder.Dispatcher.InvokeAsync(() =>
                 {
-                    var svg = ImageElementFactory.CreateSvgBrowser(imageData, image.Alt, 300);
+                    var svg = ImageElementFactory.CreateSvgBrowser(
+                        imageData,
+                        image.Alt,
+                        300,
+                        image.DisplayWidth,
+                        image.DisplayHeight);
                     if (svg is not null)
                     {
                         svg.InvalidateMeasure();
@@ -76,7 +81,13 @@ internal static class InlineImageRenderer
 
             await placeholder.Dispatcher.InvokeAsync(() =>
             {
-                var imageControl = ImageElementFactory.CreateBitmapImageControl(bitmap, image.Alt, 300, alignLeft: false);
+                var imageControl = ImageElementFactory.CreateBitmapImageControl(
+                    bitmap,
+                    image.Alt,
+                    300,
+                    alignLeft: false,
+                    image.DisplayWidth,
+                    image.DisplayHeight);
                 imageControl.InvalidateMeasure();
                 imageControl.InvalidateArrange();
                 ReplaceInline(placeholder, new InlineUIContainer(imageControl) { BaselineAlignment = BaselineAlignment.Bottom });

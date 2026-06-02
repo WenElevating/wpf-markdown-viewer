@@ -100,6 +100,17 @@ public sealed class HtmlMarkdownParserTests
     }
 
     [Fact]
+    public void ParseInlines_SingleHtmlImageWithStyleDimensions_ReturnsDisplaySize()
+    {
+        var result = _parser.ParseInlines("""<img src="logo.svg" style="width: 250px; height: 55px;" width="80" height="20">""");
+
+        var image = Assert.IsType<ImageInline>(Assert.Single(result));
+        Assert.Equal("logo.svg", image.Url);
+        Assert.Equal(250, image.DisplayWidth);
+        Assert.Equal(55, image.DisplayHeight);
+    }
+
+    [Fact]
     public void ParseInlines_AnchorWrappedHtmlImage_ReturnsHtmlInline()
     {
         var result = _parser.ParseInlines(
