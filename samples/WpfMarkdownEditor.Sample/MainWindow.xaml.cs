@@ -51,6 +51,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _folderScanCts;
     private CancellationTokenSource? _recentFilesLoadCts;
     private CancellationTokenSource? _recentFilesHoverCts;
+    private IReadOnlyList<RecentFileEntry> _recentFilesCache = [];
+    private bool _recentFilesCacheLoaded;
     private string? _currentFilePath;
     private bool _isDirty;
     private bool _loadingFile;
@@ -81,6 +83,7 @@ public partial class MainWindow : Window
         BuildLanguageList();
         ApplyTheme("GitHub");
         SetStatus("Status.Ready");
+        _ = RefreshRecentFilesCacheAsync();
 
         // Reposition search panel when editor layout changes
         Editor.TextBox.SizeChanged += (_, _) =>
@@ -100,6 +103,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(filePath);
             _recentFilesService.AddOrRefreshFile(filePath);
+            AddRecentFileToCache(filePath);
             SetStatus("Status.FileLoaded", filePath);
         }
         else
@@ -247,6 +251,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(path);
             _recentFilesService.AddOrRefreshFile(path);
+            AddRecentFileToCache(path);
             UpdateTitle();
             SetStatus("Status.FileLoaded", path);
             return true;
@@ -255,7 +260,10 @@ public partial class MainWindow : Window
         {
             _loadingFile = false;
             if (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
                 _recentFilesService.RemoveFile(path);
+                RemoveRecentFileFromCache(path);
+            }
 
             MessageBox.Show(_localizationService.Format("Error.LoadFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
@@ -277,6 +285,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(targetPath);
             _recentFilesService.AddOrRefreshFile(targetPath);
+            AddRecentFileToCache(targetPath);
             UpdateTitle();
             SetStatus("Status.FileSaved", targetPath);
             return true;
@@ -306,6 +315,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(dialog.FileName);
             _recentFilesService.AddOrRefreshFile(dialog.FileName);
+            AddRecentFileToCache(dialog.FileName);
             UpdateTitle();
             SetStatus("Status.FileSaved", dialog.FileName);
             return true;
@@ -402,7 +412,12 @@ public partial class MainWindow : Window
         CancelRecentFilesHover();
         SetOpenRecentFileButtonActive(isActive: true);
         RecentFilesPopup.IsOpen = true;
-        _ = LoadRecentFilesMenuAsync();
+        if (_recentFilesCacheLoaded)
+            RenderRecentFilesMenu(_recentFilesCache);
+        else
+            ShowRecentFilesLoadingState();
+
+        _ = RefreshRecentFilesCacheAsync(renderWhenOpen: true);
     }
 
     private async Task OpenRecentFileMenuAfterHoverDelayAsync()
@@ -413,7 +428,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(800), hoverCts.Token);
+            await Task.Delay(TimeSpan.FromMilliseconds(400), hoverCts.Token);
             if (!OpenRecentFileButton.IsMouseOver)
                 return;
 
@@ -436,20 +451,22 @@ public partial class MainWindow : Window
         _recentFilesHoverCts?.Cancel();
     }
 
-    private async Task LoadRecentFilesMenuAsync()
+    private async Task RefreshRecentFilesCacheAsync(bool renderWhenOpen = false)
     {
         _recentFilesLoadCts?.Cancel();
         var loadCts = new CancellationTokenSource();
         _recentFilesLoadCts = loadCts;
 
-        ShowRecentFilesLoadingState();
         try
         {
-            var entries = await _recentFilesService.LoadFilesAsync(cancellationToken: loadCts.Token);
+            var entries = await _recentFilesService.LoadFilesSnapshotAsync(loadCts.Token);
             if (loadCts.IsCancellationRequested)
                 return;
 
-            RenderRecentFilesMenu(entries);
+            _recentFilesCache = entries;
+            _recentFilesCacheLoaded = true;
+            if (renderWhenOpen && RecentFilesPopup.IsOpen)
+                RenderRecentFilesMenu(_recentFilesCache);
         }
         catch (OperationCanceledException)
         {
@@ -492,6 +509,24 @@ public partial class MainWindow : Window
         }
     }
 
+    private void AddRecentFileToCache(string path)
+    {
+        var fullPath = System.IO.Path.GetFullPath(path);
+        _recentFilesCache = _recentFilesCache
+            .Where(entry => !string.Equals(entry.Path, fullPath, StringComparison.OrdinalIgnoreCase))
+            .Prepend(new RecentFileEntry(fullPath, DateTime.UtcNow))
+            .Take(20)
+            .ToList();
+    }
+
+    private void RemoveRecentFileFromCache(string path)
+    {
+        var fullPath = System.IO.Path.GetFullPath(path);
+        _recentFilesCache = _recentFilesCache
+            .Where(entry => !string.Equals(entry.Path, fullPath, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
     private TextBlock CreateRecentFilesMessage(string key)
     {
         return new TextBlock
@@ -520,6 +555,8 @@ public partial class MainWindow : Window
         e.Handled = true;
         _recentFilesLoadCts?.Cancel();
         _recentFilesService.ClearFiles();
+        _recentFilesCache = [];
+        _recentFilesCacheLoaded = true;
         RenderRecentFilesMenu([]);
         SetOpenRecentFileButtonActive(isActive: false);
         RecentFilesPopup.IsOpen = false;
@@ -528,6 +565,12 @@ public partial class MainWindow : Window
 
     private void OnRecentFilesPopupClosed(object? sender, EventArgs e)
     {
+        SetOpenRecentFileButtonActive(isActive: false);
+    }
+
+    private void OnFilePopupClosed(object? sender, EventArgs e)
+    {
+        RecentFilesPopup.IsOpen = false;
         SetOpenRecentFileButtonActive(isActive: false);
     }
 
@@ -591,6 +634,8 @@ public partial class MainWindow : Window
             _fileOperationService.MoveFile(oldPath, dialog.FileName, overwrite);
             _recentFilesService.RemoveFile(oldPath);
             _recentFilesService.AddOrRefreshFile(dialog.FileName);
+            RemoveRecentFileFromCache(oldPath);
+            AddRecentFileToCache(dialog.FileName);
             RemoveWorkspaceNode(oldPath);
             _currentFilePath = dialog.FileName;
             AddToHistory(dialog.FileName);
@@ -728,6 +773,7 @@ public partial class MainWindow : Window
             var deletedPath = _currentFilePath;
             _fileOperationService.DeleteFile(deletedPath);
             _recentFilesService.RemoveFile(deletedPath);
+            RemoveRecentFileFromCache(deletedPath);
             RemoveWorkspaceNode(deletedPath);
             _loadingFile = true;
             Editor.Markdown = string.Empty;
@@ -885,6 +931,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             AddToHistory(targetPath);
             _recentFilesService.AddOrRefreshFile(targetPath);
+            AddRecentFileToCache(targetPath);
             UpdateTitle();
             return true;
         }

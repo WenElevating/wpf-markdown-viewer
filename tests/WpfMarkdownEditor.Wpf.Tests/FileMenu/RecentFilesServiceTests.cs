@@ -101,6 +101,49 @@ public sealed class RecentFilesServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadFilesSnapshotAsync_DoesNotWaitForGlobalMutex()
+    {
+        Directory.CreateDirectory(_directory);
+        var mutexName = "RecentFilesServiceTests.Snapshot.NoWait";
+        var service = new RecentFilesService(_directory, mutexName);
+        var first = CreateFile("first.md");
+        service.AddOrRefreshFile(first);
+
+        using var releaseMutex = new ManualResetEventSlim();
+        var mutexHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var mutexTask = Task.Run(() =>
+        {
+            using var mutex = new Mutex(false, $@"Local\{mutexName}");
+            Assert.True(mutex.WaitOne(TimeSpan.Zero));
+
+            try
+            {
+                mutexHeld.SetResult();
+                releaseMutex.Wait(TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                mutex.ReleaseMutex();
+            }
+        });
+
+        await mutexHeld.Task;
+        try
+        {
+            var files = await service.LoadFilesSnapshotAsync();
+
+            Assert.Single(files);
+            Assert.Equal(first, files[0].Path);
+        }
+        finally
+        {
+            releaseMutex.Set();
+        }
+
+        await mutexTask;
+    }
+
+    [Fact]
     public async Task AddOrRefreshFile_SerializesConcurrentWrites()
     {
         Directory.CreateDirectory(_directory);

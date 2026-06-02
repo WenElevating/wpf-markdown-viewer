@@ -46,6 +46,15 @@ public sealed class RecentFilesService
         return files;
     }
 
+    public async Task<IReadOnlyList<RecentFileEntry>> LoadFilesSnapshotAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var files = await Task.Run(LoadRaw, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return files;
+    }
+
     public void AddOrRefreshFile(string path)
     {
         if (!File.Exists(path))

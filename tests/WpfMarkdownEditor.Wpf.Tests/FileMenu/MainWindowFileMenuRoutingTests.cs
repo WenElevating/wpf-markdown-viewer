@@ -35,6 +35,8 @@ public sealed class MainWindowFileMenuRoutingTests
         Assert.Contains("MouseLeave=\"OnOpenRecentFileMouseLeave\"", xaml);
         Assert.Contains("x:Name=\"RecentFilesPopup\"", xaml);
         Assert.Contains("PlacementTarget=\"{Binding ElementName=OpenRecentFileButton}\"", xaml);
+        Assert.Contains("PopupAnimation=\"None\"", xaml);
+        Assert.Contains("StaysOpen=\"True\"", xaml);
         Assert.Contains("x:Name=\"RecentFilesList\"", xaml);
         Assert.Contains("x:Name=\"RecentFileItemsPanel\"", xaml);
         Assert.Contains("Click=\"OnClearRecentFiles\"", xaml);
@@ -47,18 +49,21 @@ public sealed class MainWindowFileMenuRoutingTests
     }
 
     [Fact]
-    public void OpenRecentFile_LoadsRecentEntriesAsynchronously()
+    public void OpenRecentFile_RendersRecentEntriesFromFastSnapshot()
     {
         var code = LoadMainWindowCode();
 
         var menuMethod = ExtractMethod(code, "OpenRecentFileMenu");
-        Assert.Contains("LoadRecentFilesMenuAsync", menuMethod);
+        Assert.Contains("_recentFilesCacheLoaded", menuMethod);
+        Assert.Contains("ShowRecentFilesLoadingState()", menuMethod);
+        Assert.Contains("RenderRecentFilesMenu(_recentFilesCache)", menuMethod);
+        Assert.Contains("RefreshRecentFilesCacheAsync", menuMethod);
         Assert.DoesNotContain("LoadFiles(", menuMethod);
+        Assert.DoesNotContain("await", menuMethod);
 
-        var asyncMethod = ExtractMethod(code, "LoadRecentFilesMenuAsync");
-        Assert.Contains("await _recentFilesService.LoadFilesAsync", asyncMethod);
-        Assert.Contains("cancellationToken: loadCts.Token", asyncMethod);
-        Assert.DoesNotContain("removeMissingFiles: true", asyncMethod);
+        var refreshMethod = ExtractMethod(code, "RefreshRecentFilesCacheAsync");
+        Assert.Contains("await _recentFilesService.LoadFilesSnapshotAsync", refreshMethod);
+        Assert.DoesNotContain("removeMissingFiles: true", refreshMethod);
     }
 
     [Fact]
@@ -72,7 +77,7 @@ public sealed class MainWindowFileMenuRoutingTests
         Assert.DoesNotContain("LoadFiles(", mouseEnterMethod);
 
         var delayedMethod = ExtractMethod(code, "OpenRecentFileMenuAfterHoverDelayAsync");
-        Assert.Contains("Task.Delay(TimeSpan.FromMilliseconds(800)", delayedMethod);
+        Assert.Contains("Task.Delay(TimeSpan.FromMilliseconds(400)", delayedMethod);
         Assert.Contains("OpenRecentFileMenu();", delayedMethod);
         Assert.Contains("OpenRecentFileButton.IsMouseOver", delayedMethod);
 
@@ -87,6 +92,7 @@ public sealed class MainWindowFileMenuRoutingTests
         var code = LoadMainWindowCode();
 
         Assert.Contains("Closed=\"OnRecentFilesPopupClosed\"", xaml);
+        Assert.Contains("Closed=\"OnFilePopupClosed\"", xaml);
 
         var menuMethod = ExtractMethod(code, "OpenRecentFileMenu");
         Assert.Contains("SetOpenRecentFileButtonActive(isActive: true)", menuMethod);
@@ -97,6 +103,9 @@ public sealed class MainWindowFileMenuRoutingTests
         var activeMethod = ExtractMethod(code, "SetOpenRecentFileButtonActive");
         Assert.Contains("HoverBackgroundBrush", activeMethod);
         Assert.Contains("ClearValue(BackgroundProperty)", activeMethod);
+
+        var fileClosedMethod = ExtractMethod(code, "OnFilePopupClosed");
+        Assert.Contains("RecentFilesPopup.IsOpen = false", fileClosedMethod);
     }
 
     [Fact]
