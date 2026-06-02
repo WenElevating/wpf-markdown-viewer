@@ -146,13 +146,21 @@ public sealed class ImageLoader : IImageResolver, IDisposable
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return null;
 
-        if (!string.Equals(uri.Host, "img.shields.io", StringComparison.OrdinalIgnoreCase) ||
-            !uri.AbsolutePath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(uri.Host, "img.shields.io", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var path = uri.AbsolutePath;
+        if (path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
             return null;
 
         var builder = new UriBuilder(uri)
         {
-            Path = uri.AbsolutePath[..^4] + ".png"
+            Path = path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
+                ? path[..^4] + ".png"
+                : path + ".png"
         };
         return builder.Uri.ToString();
     }

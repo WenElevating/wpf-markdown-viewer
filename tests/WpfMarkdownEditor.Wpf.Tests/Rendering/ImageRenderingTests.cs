@@ -35,6 +35,19 @@ public sealed class ImageRenderingTests
     private static readonly byte[] SvgBadge = Encoding.UTF8.GetBytes(
         """<svg xmlns="http://www.w3.org/2000/svg" width="80" height="20"><rect width="80" height="20" fill="#d73a49"/></svg>""");
 
+    private static readonly byte[] ForeignObjectSvgBadge = Encoding.UTF8.GetBytes(
+        """
+        <svg xmlns="http://www.w3.org/2000/svg" width="250" height="55" viewBox="0 0 250 53">
+          <rect stroke="#4a0e99" stroke-width="1" fill="#FFFFFF" x="0.5" y="0.5" width="249" height="53" rx="10"/>
+          <foreignObject width="198" height="17" style="font-size: 9px;color: rgb(67, 39, 135);font-family: Arial;font-weight: 400;text-align: center;line-height: 1.5;" x="6" y="10">
+            <div xmlns="http://www.w3.org/1999/xhtml">GITHUB TRENDING</div>
+          </foreignObject>
+          <foreignObject width="230" height="35" style="font-size: 14px;color: rgb(67, 39, 135);font-family: Arial;font-weight: 700;text-align: left;line-height: 1.5;" x="64" y="24">
+            <div xmlns="http://www.w3.org/1999/xhtml">#1 Repository Of The Day</div>
+          </foreignObject>
+        </svg>
+        """);
+
     [Fact]
     public void Render_LocalImagePathWithSpaces_CreatesImageControl()
     {
@@ -125,6 +138,17 @@ public sealed class ImageRenderingTests
             Assert.Equal(80, browser.Width);
             Assert.Equal(20, browser.Height);
         });
+    }
+
+    [Fact]
+    public void NormalizeSvgForBrowser_ForeignObjectText_ConvertsToSvgText()
+    {
+        var svg = ImageElementFactory.NormalizeSvgForBrowser(ForeignObjectSvgBadge);
+
+        Assert.DoesNotContain("foreignObject", svg, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<text", svg);
+        Assert.Contains("GITHUB TRENDING", svg);
+        Assert.Contains("#1 Repository Of The Day", svg);
     }
 
     [Fact]

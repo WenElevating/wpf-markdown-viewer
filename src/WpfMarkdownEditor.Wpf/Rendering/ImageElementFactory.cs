@@ -114,7 +114,8 @@ internal static class ImageElementFactory
             if (alt is not null)
                 browser.ToolTip = alt;
 
-            var base64 = Convert.ToBase64String(imageData.Data);
+            var svg = NormalizeSvgForBrowser(imageData.Data);
+            var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(svg));
             browser.NavigateToString(
                 $$"""
                 <!doctype html>
@@ -239,6 +240,121 @@ internal static class ImageElementFactory
             return null;
         }
     }
+
+    internal static string NormalizeSvgForBrowser(byte[] data)
+    {
+        var xml = Encoding.UTF8.GetString(data);
+        try
+        {
+            var document = XDocument.Parse(xml);
+            ReplaceForeignObjectText(document);
+            return document.ToString(SaveOptions.DisableFormatting);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            return xml;
+        }
+    }
+
+    private static void ReplaceForeignObjectText(XDocument document)
+    {
+        XNamespace svgNamespace = "http://www.w3.org/2000/svg";
+        var foreignObjects = document
+            .Descendants()
+            .Where(static element => string.Equals(element.Name.LocalName, "foreignObject", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var foreignObject in foreignObjects)
+        {
+            var text = string.Join(
+                " ",
+                foreignObject.DescendantNodes()
+                    .OfType<XText>()
+                    .Select(static node => node.Value.Trim())
+                    .Where(static value => value.Length > 0));
+            if (text.Length == 0)
+                continue;
+
+            var style = ParseStyle(foreignObject.Attribute("style")?.Value);
+            var x = ParseSvgLength(foreignObject.Attribute("x")?.Value) ?? 0;
+            var y = ParseSvgLength(foreignObject.Attribute("y")?.Value) ?? 0;
+            var width = ParseSvgLength(foreignObject.Attribute("width")?.Value);
+            var fontSize = ParseSvgLength(GetStyleValue(style, "font-size")) ?? 12;
+            var fontWeight = GetStyleValue(style, "font-weight");
+            var fill = NormalizeCssColor(GetStyleValue(style, "color")) ?? "black";
+            var textAnchor = GetTextAnchor(GetStyleValue(style, "text-align"));
+            var baselineY = y + fontSize;
+            var textX = textAnchor == "middle" && width is > 0
+                ? x + width.Value / 2
+                : x;
+
+            var replacement = new XElement(svgNamespace + "text",
+                new XAttribute("x", FormatSvgNumber(textX)),
+                new XAttribute("y", FormatSvgNumber(baselineY)),
+                new XAttribute("fill", fill),
+                new XAttribute("font-family", GetStyleValue(style, "font-family") ?? "Arial"),
+                new XAttribute("font-size", FormatSvgNumber(fontSize)),
+                new XAttribute("text-anchor", textAnchor),
+                new XText(text));
+
+            if (!string.IsNullOrWhiteSpace(fontWeight))
+                replacement.SetAttributeValue("font-weight", fontWeight);
+
+            foreignObject.ReplaceWith(replacement);
+        }
+    }
+
+    private static Dictionary<string, string> ParseStyle(string? style)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(style))
+            return values;
+
+        foreach (var declaration in style.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = declaration.IndexOf(':');
+            if (separator <= 0)
+                continue;
+
+            values[declaration[..separator].Trim()] = declaration[(separator + 1)..].Trim();
+        }
+
+        return values;
+    }
+
+    private static string? GetStyleValue(IReadOnlyDictionary<string, string> style, string name) =>
+        style.TryGetValue(name, out var value) ? value : null;
+
+    private static string GetTextAnchor(string? textAlign) =>
+        textAlign?.Trim().ToLowerInvariant() switch
+        {
+            "center" => "middle",
+            "right" => "end",
+            _ => "start"
+        };
+
+    private static string? NormalizeCssColor(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+            return null;
+
+        var text = color.Trim();
+        var match = Regex.Match(
+            text,
+            @"^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (!match.Success)
+            return text;
+
+        static int Clamp(int value) => Math.Max(0, Math.Min(255, value));
+        var r = Clamp(int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture));
+        var g = Clamp(int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture));
+        var b = Clamp(int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture));
+        return FormattableString.Invariant($"#{r:X2}{g:X2}{b:X2}");
+    }
+
+    private static string FormatSvgNumber(double value) =>
+        value.ToString("0.###", CultureInfo.InvariantCulture);
 
     private static double? ParseSvgLength(string? value)
     {
