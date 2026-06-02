@@ -58,6 +58,27 @@ public sealed class FolderWorkspaceServiceTests : IDisposable
         Assert.Empty(two.Children);
     }
 
+    [Fact]
+    public async Task ScanShallowAsync_ReturnsOnlyDirectChildrenAndLeavesDirectoriesUnloaded()
+    {
+        CreateFile("root.md");
+        CreateFile("nested\\deep.md");
+        CreateFile("deepOnly\\child\\deep.md");
+        CreateFile("empty\\ignore.txt");
+        var service = new FolderWorkspaceService();
+
+        var result = await service.ScanShallowAsync(_root);
+
+        Assert.False(result.IsTruncated);
+        Assert.Equal(1, result.MarkdownFileCount);
+        Assert.Equal(new[] { "nested", "root.md" }, result.Root.Children.Select(node => node.Name).ToArray());
+
+        var nested = Assert.Single(result.Root.Children.Where(node => node.Name == "nested"));
+        Assert.True(nested.IsDirectory);
+        Assert.Empty(nested.Children);
+        Assert.False(nested.ChildrenLoaded);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

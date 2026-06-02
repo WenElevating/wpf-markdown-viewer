@@ -66,7 +66,7 @@ public partial class MainWindow : Window
         _localizationService = localizationService ?? new LocalizationService();
         _localizationSettingsService = localizationSettingsService
             ?? new LocalizationSettingsService(GetTranslationSettingsDirectory());
-        _recentFilesService = new RecentFilesService(GetTranslationSettingsDirectory());
+        _recentFilesService = new RecentFilesService(_localizationSettingsService.SettingsDirectory);
 
         if (localizationService == null)
             _localizationService.SetLanguage(SupportedLanguage.English);
@@ -103,6 +103,7 @@ public partial class MainWindow : Window
             _recentFilesService.AddOrRefreshFile(filePath);
             AddRecentFileToCache(filePath);
             SetStatus("Status.FileLoaded", filePath);
+            _ = LoadCurrentFileDirectoryTreeAsync(filePath);
         }
         else
         {
@@ -151,7 +152,7 @@ public partial class MainWindow : Window
     private void OnMoveFile(object sender, RoutedEventArgs e) => MoveCurrentFile();
     private void OnShowFileProperties(object sender, RoutedEventArgs e) => ShowCurrentFileProperties();
     private void OnOpenFileLocation(object sender, RoutedEventArgs e) => OpenCurrentFileLocation();
-    private void OnShowInSidebar(object sender, RoutedEventArgs e) => ShowCurrentFileInSidebar();
+    private async void OnShowInSidebar(object sender, RoutedEventArgs e) => await ShowCurrentFileInSidebarAsync();
     private void OnDeleteFile(object sender, RoutedEventArgs e) => DeleteCurrentFile();
     private void OnImportFile(object sender, RoutedEventArgs e) => ImportFileIntoDocument();
     private void OnExportHtml(object sender, RoutedEventArgs e) => ExportCurrentDocumentAsHtml();
@@ -258,6 +259,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(path);
             AddRecentFileToCache(path);
+            _ = LoadCurrentFileDirectoryTreeAsync(path);
             UpdateTitle();
             SetStatus("Status.FileLoaded", path);
             return true;
@@ -292,6 +294,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(targetPath);
             AddRecentFileToCache(targetPath);
+            _ = LoadCurrentFileDirectoryTreeAsync(targetPath);
             UpdateTitle();
             SetStatus("Status.FileSaved", targetPath);
             return true;
@@ -322,6 +325,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(dialog.FileName);
             AddRecentFileToCache(dialog.FileName);
+            _ = LoadCurrentFileDirectoryTreeAsync(dialog.FileName);
             UpdateTitle();
             SetStatus("Status.FileSaved", dialog.FileName);
             return true;
@@ -343,6 +347,15 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true)
             return;
 
+        if (await LoadWorkspaceFolderAsync(dialog.FolderName))
+        {
+            ShowFilesTab();
+            OpenSidebar();
+        }
+    }
+
+    private async Task<bool> LoadWorkspaceFolderAsync(string folderPath)
+    {
         _folderScanCts?.Cancel();
         _folderScanCts?.Dispose();
         var scanCts = new CancellationTokenSource();
@@ -350,24 +363,22 @@ public partial class MainWindow : Window
 
         try
         {
-            var result = await _folderWorkspaceService.ScanAsync(dialog.FolderName, scanCts.Token);
+            var result = await _folderWorkspaceService.ScanShallowAsync(folderPath, scanCts.Token);
             if (scanCts.IsCancellationRequested)
-                return;
+                return false;
 
-            _workspaceFolderPath = dialog.FolderName;
-            _workspaceRoot = result.Root;
-            _workspaceIndex = BuildWorkspaceIndex(result.Root);
-            FilesTree.ItemsSource = result.Root.Children;
-            ShowFilesTab();
-            OpenSidebar();
+            ApplyWorkspaceResult(folderPath, result);
 
             if (result.IsTruncated)
                 SetStatus("Status.FolderScanTruncated", result.MarkdownFileCount);
             else
                 SetStatus("Status.Ready");
+
+            return true;
         }
         catch (OperationCanceledException)
         {
+            return false;
         }
         catch (Exception ex)
         {
@@ -376,6 +387,7 @@ public partial class MainWindow : Window
                 _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+            return false;
         }
         finally
         {
@@ -385,6 +397,50 @@ public partial class MainWindow : Window
                 scanCts.Dispose();
             }
         }
+    }
+
+    private void ApplyWorkspaceResult(string folderPath, FolderWorkspaceResult result)
+    {
+        _workspaceFolderPath = System.IO.Path.GetFullPath(folderPath);
+        _workspaceRoot = result.Root;
+        _workspaceIndex = BuildWorkspaceIndex(result.Root);
+        FilesTree.ItemsSource = result.Root.Children;
+        UpdateFilesPanelState();
+    }
+
+    private async Task<WorkspaceTreeNode?> LoadCurrentFileDirectoryTreeAsync(string filePath)
+    {
+        var fullPath = System.IO.Path.GetFullPath(filePath);
+        if (_workspaceIndex.TryGetValue(fullPath, out var existingNode))
+        {
+            SelectWorkspaceNode(existingNode);
+            return existingNode;
+        }
+
+        var directory = System.IO.Path.GetDirectoryName(fullPath);
+        if (string.IsNullOrWhiteSpace(directory) || !await LoadWorkspaceFolderAsync(directory))
+            return null;
+
+        if (!_workspaceIndex.TryGetValue(fullPath, out var node))
+            return null;
+
+        SelectWorkspaceNode(node);
+        return node;
+    }
+
+    private async Task LoadWorkspaceNodeChildrenAsync(WorkspaceTreeNode node)
+    {
+        if (!node.IsDirectory || node.ChildrenLoaded)
+            return;
+
+        var result = await _folderWorkspaceService.ScanShallowAsync(node.FullPath);
+        node.Children.Clear();
+        foreach (var child in result.Root.Children)
+            node.Children.Add(child);
+
+        node.ChildrenLoaded = true;
+        MergeWorkspaceIndex(node);
+        UpdateFilesPanelState();
     }
 
     private static Dictionary<string, WorkspaceTreeNode> BuildWorkspaceIndex(WorkspaceTreeNode root)
@@ -400,6 +456,18 @@ public partial class MainWindow : Window
 
         Visit(root);
         return index;
+    }
+
+    private void MergeWorkspaceIndex(WorkspaceTreeNode node)
+    {
+        void Visit(WorkspaceTreeNode current)
+        {
+            _workspaceIndex[current.FullPath] = current;
+            foreach (var child in current.Children)
+                Visit(child);
+        }
+
+        Visit(node);
     }
 
     private void QuickOpen()
@@ -696,6 +764,7 @@ public partial class MainWindow : Window
             RemoveWorkspaceNode(oldPath);
             _currentFilePath = dialog.FileName;
             Editor.DocumentPath = dialog.FileName;
+            _ = LoadCurrentFileDirectoryTreeAsync(dialog.FileName);
             UpdateTitle();
             SetStatus("Status.FileSaved", dialog.FileName);
         }
@@ -752,15 +821,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowCurrentFileInSidebar()
+    private async Task ShowCurrentFileInSidebarAsync()
     {
-        if (_currentFilePath is null || _workspaceFolderPath is null)
+        if (_currentFilePath is null)
             return;
 
-        var fullPath = System.IO.Path.GetFullPath(_currentFilePath);
-        if (!_workspaceIndex.TryGetValue(fullPath, out var node))
+        var node = await LoadCurrentFileDirectoryTreeAsync(_currentFilePath);
+        if (node is null)
             return;
 
+        ShowFilesTab();
+        OpenSidebar();
+        BringWorkspaceNodeIntoView(node);
+    }
+
+    private void SelectWorkspaceNode(WorkspaceTreeNode node)
+    {
         _selectingWorkspaceNode = true;
         try
         {
@@ -776,10 +852,6 @@ public partial class MainWindow : Window
         {
             _selectingWorkspaceNode = false;
         }
-
-        ShowFilesTab();
-        OpenSidebar();
-        BringWorkspaceNodeIntoView(node);
     }
 
     private void BringWorkspaceNodeIntoView(WorkspaceTreeNode node)
@@ -990,6 +1062,7 @@ public partial class MainWindow : Window
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(targetPath);
             AddRecentFileToCache(targetPath);
+            _ = LoadCurrentFileDirectoryTreeAsync(targetPath);
             UpdateTitle();
             return true;
         }
@@ -1477,6 +1550,12 @@ public partial class MainWindow : Window
 
         if (e.NewValue is WorkspaceTreeNode { IsDirectory: false } node)
             OpenFilePath(node.FullPath);
+    }
+
+    private async void OnFilesTreeItemExpanded(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is TreeViewItem { DataContext: WorkspaceTreeNode node })
+            await LoadWorkspaceNodeChildrenAsync(node);
     }
 
     private void OnMarkdownChanged(object? sender, EventArgs e)

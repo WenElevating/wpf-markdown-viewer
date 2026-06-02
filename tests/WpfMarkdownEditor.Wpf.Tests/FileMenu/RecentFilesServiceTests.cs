@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using WpfMarkdownEditor.Sample;
 using Xunit;
 
@@ -101,46 +102,61 @@ public sealed class RecentFilesServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadFilesSnapshotAsync_DoesNotWaitForGlobalMutex()
+    public async Task LoadFilesSnapshotAsync_ReturnsPersistedEntries()
     {
         Directory.CreateDirectory(_directory);
-        var mutexName = "RecentFilesServiceTests.Snapshot.NoWait";
-        var service = new RecentFilesService(_directory, mutexName);
+        var service = new RecentFilesService(_directory, "RecentFilesServiceTests.Snapshot.Load");
         var first = CreateFile("first.md");
         service.AddOrRefreshFile(first);
 
-        using var releaseMutex = new ManualResetEventSlim();
-        var mutexHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var mutexTask = Task.Run(() =>
-        {
-            using var mutex = new Mutex(false, $@"Local\{mutexName}");
-            Assert.True(mutex.WaitOne(TimeSpan.Zero));
+        var files = await service.LoadFilesSnapshotAsync();
 
-            try
+        Assert.Single(files);
+        Assert.Equal(first, files[0].Path);
+    }
+
+    [Fact]
+    public async Task LoadFilesSnapshotAsync_DeduplicatesPersistedPaths()
+    {
+        Directory.CreateDirectory(_directory);
+        var file = CreateFile("open.md");
+        var older = DateTime.UtcNow.AddMinutes(-5);
+        var newer = DateTime.UtcNow;
+        File.WriteAllText(
+            Path.Combine(_directory, "recent-files.json"),
+            JsonSerializer.Serialize(new
             {
-                mutexHeld.SetResult();
-                releaseMutex.Wait(TimeSpan.FromSeconds(5));
-            }
-            finally
-            {
-                mutex.ReleaseMutex();
-            }
-        });
+                Files = new[]
+                {
+                    new RecentFileEntry(file, older),
+                    new RecentFileEntry(file, newer),
+                },
+            }));
+        var service = new RecentFilesService(_directory, "RecentFilesServiceTests.Snapshot.Deduplicate");
 
-        await mutexHeld.Task;
-        try
-        {
-            var files = await service.LoadFilesSnapshotAsync();
+        var files = await service.LoadFilesSnapshotAsync();
 
-            Assert.Single(files);
-            Assert.Equal(first, files[0].Path);
-        }
-        finally
-        {
-            releaseMutex.Set();
-        }
+        var entry = Assert.Single(files);
+        Assert.Equal(file, entry.Path);
+        Assert.Equal(newer, entry.OpenedAt);
+    }
 
-        await mutexTask;
+    [Fact]
+    public async Task LoadFilesSnapshotAsync_RemovesMissingFilesAndPersistsCleanList()
+    {
+        Directory.CreateDirectory(_directory);
+        var service = new RecentFilesService(_directory, "RecentFilesServiceTests.Snapshot.Missing");
+        var existing = CreateFile("existing.md");
+        var missing = CreateFile("missing.md");
+        service.AddOrRefreshFile(existing);
+        service.AddOrRefreshFile(missing);
+        File.Delete(missing);
+
+        var files = await service.LoadFilesSnapshotAsync();
+
+        var entry = Assert.Single(files);
+        Assert.Equal(existing, entry.Path);
+        Assert.DoesNotContain("missing.md", File.ReadAllText(Path.Combine(_directory, "recent-files.json")));
     }
 
     [Fact]

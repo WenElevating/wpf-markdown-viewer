@@ -50,7 +50,7 @@ public sealed class RecentFilesService
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var files = await Task.Run(LoadRaw, cancellationToken);
+        var files = await Task.Run(() => LoadFiles(removeMissingFiles: true), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         return files;
     }
@@ -141,6 +141,7 @@ public sealed class RecentFilesService
             return model?.Files?
                 .Where(entry => !string.IsNullOrWhiteSpace(entry.Path))
                 .OrderByDescending(entry => entry.OpenedAt)
+                .DistinctBy(entry => System.IO.Path.GetFullPath(entry.Path), StringComparer.OrdinalIgnoreCase)
                 .Take(MaxEntries)
                 .ToList() ?? [];
         }

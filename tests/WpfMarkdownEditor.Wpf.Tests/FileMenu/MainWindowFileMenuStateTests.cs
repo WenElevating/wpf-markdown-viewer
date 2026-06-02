@@ -64,6 +64,152 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     }
 
     [Fact]
+    public void Constructor_WithInjectedSettingsDirectory_StoresRecentFilesInThatDirectory()
+    {
+        RunOnSta(() =>
+        {
+            EnsureSampleApplication();
+            Directory.CreateDirectory(_directory);
+            var filePath = Path.Combine(_directory, "open.md");
+            File.WriteAllText(filePath, "# Open");
+            var localizationService = new LocalizationService();
+            var settingsService = new LocalizationSettingsService(_directory);
+
+            var window = new MainWindow(filePath, localizationService, settingsService);
+            try
+            {
+                var recentFilesService = GetPrivateField<RecentFilesService>(window, "_recentFilesService");
+                var files = recentFilesService.LoadFiles();
+
+                var entry = Assert.Single(files);
+                Assert.Equal(Path.GetFullPath(filePath), entry.Path);
+                Assert.True(File.Exists(Path.Combine(_directory, "recent-files.json")));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void Constructor_WithOpenFile_LoadsCurrentFileDirectoryTreeAsynchronously()
+    {
+        RunOnSta(() =>
+        {
+            EnsureSampleApplication();
+            Directory.CreateDirectory(_directory);
+            var filePath = Path.Combine(_directory, "open.md");
+            File.WriteAllText(filePath, "# Open");
+            File.WriteAllText(Path.Combine(_directory, "other.md"), "# Other");
+            Directory.CreateDirectory(Path.Combine(_directory, "nested"));
+            var nestedFilePath = Path.Combine(_directory, "nested", "deep.md");
+            File.WriteAllText(nestedFilePath, "# Deep");
+            var localizationService = new LocalizationService();
+            var settingsService = new LocalizationSettingsService(_directory);
+
+            var window = new MainWindow(filePath, localizationService, settingsService);
+            try
+            {
+                WaitFor(() => GetPrivateField<string?>(window, "_workspaceFolderPath") is not null);
+
+                Assert.Equal(Path.GetFullPath(_directory), GetPrivateField<string?>(window, "_workspaceFolderPath"));
+                Assert.Equal(Visibility.Visible, Assert.IsType<TreeView>(window.FindName("FilesTree")).Visibility);
+                Assert.Equal(Visibility.Collapsed, Assert.IsType<StackPanel>(window.FindName("FilesEmptyPanel")).Visibility);
+
+                var index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
+                var node = Assert.Contains(Path.GetFullPath(filePath), index);
+                Assert.False(node.IsDirectory);
+                Assert.True(node.IsSelected);
+                Assert.DoesNotContain(Path.GetFullPath(nestedFilePath), index.Keys);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void LoadWorkspaceNodeChildren_LoadsExpandedDirectoryOneLevel()
+    {
+        RunOnSta(() =>
+        {
+            EnsureSampleApplication();
+            Directory.CreateDirectory(_directory);
+            var filePath = Path.Combine(_directory, "open.md");
+            File.WriteAllText(filePath, "# Open");
+            var nestedDirectory = Path.Combine(_directory, "nested");
+            Directory.CreateDirectory(nestedDirectory);
+            var nestedFilePath = Path.Combine(nestedDirectory, "deep.md");
+            File.WriteAllText(nestedFilePath, "# Deep");
+            var localizationService = new LocalizationService();
+            var settingsService = new LocalizationSettingsService(_directory);
+
+            var window = new MainWindow(filePath, localizationService, settingsService);
+            try
+            {
+                WaitFor(() => GetPrivateField<string?>(window, "_workspaceFolderPath") is not null);
+
+                var index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
+                var nested = Assert.Contains(Path.GetFullPath(nestedDirectory), index);
+                Assert.True(nested.IsDirectory);
+                Assert.False(nested.ChildrenLoaded);
+                Assert.DoesNotContain(Path.GetFullPath(nestedFilePath), index.Keys);
+
+                InvokePrivateTask(window, "LoadWorkspaceNodeChildrenAsync", nested);
+
+                index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
+                Assert.True(nested.ChildrenLoaded);
+                var file = Assert.Contains(Path.GetFullPath(nestedFilePath), index);
+                Assert.False(file.IsDirectory);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ShowInSidebarButton_ClickedWithoutOpenWorkspace_LoadsCurrentFileDirectoryAndSelectsFile()
+    {
+        RunOnSta(() =>
+        {
+            EnsureSampleApplication();
+            Directory.CreateDirectory(_directory);
+            var filePath = Path.Combine(_directory, "open.md");
+            File.WriteAllText(filePath, "# Open");
+            File.WriteAllText(Path.Combine(_directory, "other.md"), "# Other");
+            var localizationService = new LocalizationService();
+            var settingsService = new LocalizationSettingsService(_directory);
+
+            var window = new MainWindow(filePath, localizationService, settingsService);
+            try
+            {
+                FindButton(window, "ShowInSidebarButton")
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                WaitFor(() => GetPrivateField<string?>(window, "_workspaceFolderPath") is not null);
+
+                Assert.True(GetPrivateField<bool>(window, "_sidebarOpen"));
+                Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("FilesPanel")).Visibility);
+                Assert.Equal(Visibility.Collapsed, Assert.IsType<StackPanel>(window.FindName("FilesEmptyPanel")).Visibility);
+                Assert.Equal(Path.GetFullPath(_directory), GetPrivateField<string?>(window, "_workspaceFolderPath"));
+
+                var index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
+                var node = Assert.Contains(Path.GetFullPath(filePath), index);
+                Assert.False(node.IsDirectory);
+                Assert.True(node.IsSelected);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void RecentFilesMenu_UsesSingleShortDisplayPathWithoutShortcutText()
     {
         RunOnSta(() =>
@@ -113,6 +259,17 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     private static Button FindButton(MainWindow window, string name) =>
         Assert.IsType<Button>(window.FindName(name));
 
+    private static T GetPrivateField<T>(MainWindow window, string name)
+    {
+        var field = typeof(MainWindow).GetField(
+            name,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(field);
+        var value = field.GetValue(window);
+        return value is null ? default! : Assert.IsType<T>(value);
+    }
+
     private static void RenderRecentFilesMenu(MainWindow window, IReadOnlyList<RecentFileEntry> entries)
     {
         var method = typeof(MainWindow).GetMethod(
@@ -121,6 +278,25 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
 
         Assert.NotNull(method);
         method.Invoke(window, [entries]);
+    }
+
+    private static void InvokePrivateTask(MainWindow window, string name, params object[] args)
+    {
+        var method = typeof(MainWindow).GetMethod(
+            name,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+        var task = Assert.IsAssignableFrom<Task>(method.Invoke(window, args));
+        while (!task.IsCompleted)
+        {
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.Background);
+            Thread.Sleep(20);
+        }
+
+        task.GetAwaiter().GetResult();
     }
 
     private static void EnsureSampleApplication()
@@ -160,5 +336,22 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
 
         if (exception is not null)
             throw exception;
+    }
+
+    private static void WaitFor(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+                return;
+
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.Background);
+            Thread.Sleep(20);
+        }
+
+        Assert.True(condition(), "Condition was not met before the timeout.");
     }
 }

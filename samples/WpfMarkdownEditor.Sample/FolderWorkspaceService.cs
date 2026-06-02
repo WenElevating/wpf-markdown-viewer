@@ -41,6 +41,11 @@ public sealed class FolderWorkspaceService
         return Task.Run(() => Scan(folderPath, cancellationToken), cancellationToken);
     }
 
+    public Task<FolderWorkspaceResult> ScanShallowAsync(string folderPath, CancellationToken cancellationToken = default)
+    {
+        return Task.Run(() => ScanShallow(folderPath, cancellationToken), cancellationToken);
+    }
+
     private FolderWorkspaceResult Scan(string folderPath, CancellationToken cancellationToken)
     {
         var fullPath = Path.GetFullPath(folderPath);
@@ -48,10 +53,31 @@ public sealed class FolderWorkspaceService
         {
             Name = Path.GetFileName(fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
             FullPath = fullPath,
-            IsDirectory = true
+            IsDirectory = true,
+            ChildrenLoaded = true
         };
         var context = new ScanContext();
         ScanDirectory(root, fullPath, depth: 0, context, cancellationToken);
+        return new FolderWorkspaceResult(
+            root,
+            context.IsTruncated,
+            context.MarkdownFileCount,
+            context.InspectedEntryCount,
+            context.SkippedDirectoryCount);
+    }
+
+    private FolderWorkspaceResult ScanShallow(string folderPath, CancellationToken cancellationToken)
+    {
+        var fullPath = Path.GetFullPath(folderPath);
+        var root = new WorkspaceTreeNode
+        {
+            Name = Path.GetFileName(fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
+            FullPath = fullPath,
+            IsDirectory = true,
+            ChildrenLoaded = true
+        };
+        var context = new ScanContext();
+        ScanDirectoryLevel(root, fullPath, context, cancellationToken);
         return new FolderWorkspaceResult(
             root,
             context.IsTruncated,
@@ -113,6 +139,7 @@ public sealed class FolderWorkspaceService
                     Name = Path.GetFileName(entry),
                     FullPath = Path.GetFullPath(entry),
                     IsDirectory = true,
+                    ChildrenLoaded = true,
                     Parent = parent
                 };
                 if (ScanDirectory(node, entry, depth + 1, context, cancellationToken))
@@ -144,7 +171,118 @@ public sealed class FolderWorkspaceService
         foreach (var node in files.OrderBy(node => node.Name, StringComparer.OrdinalIgnoreCase))
             parent.Children.Add(node);
 
+        parent.ChildrenLoaded = true;
         return parent.Children.Count > 0;
+    }
+
+    private void ScanDirectoryLevel(
+        WorkspaceTreeNode parent,
+        string directory,
+        ScanContext context,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        IEnumerable<string> entries;
+        try
+        {
+            entries = Directory.EnumerateFileSystemEntries(directory);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            context.SkippedDirectoryCount++;
+            return;
+        }
+        catch (IOException)
+        {
+            context.SkippedDirectoryCount++;
+            return;
+        }
+
+        var directories = new List<WorkspaceTreeNode>();
+        var files = new List<WorkspaceTreeNode>();
+
+        foreach (var entry in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            context.InspectedEntryCount++;
+            if (context.InspectedEntryCount > _options.MaxEntries)
+            {
+                context.IsTruncated = true;
+                break;
+            }
+
+            if (Directory.Exists(entry))
+            {
+                if (ShouldSkipDirectory(entry))
+                    continue;
+
+                if (!DirectoryHasDirectMarkdownFile(entry, cancellationToken))
+                    continue;
+
+                directories.Add(new WorkspaceTreeNode
+                {
+                    Name = Path.GetFileName(entry),
+                    FullPath = Path.GetFullPath(entry),
+                    IsDirectory = true,
+                    ChildrenLoaded = false,
+                    Parent = parent
+                });
+                continue;
+            }
+
+            if (!MarkdownExtensions.Contains(Path.GetExtension(entry)))
+                continue;
+
+            if (context.MarkdownFileCount >= _options.MaxMarkdownFiles)
+            {
+                context.IsTruncated = true;
+                break;
+            }
+
+            context.MarkdownFileCount++;
+            files.Add(new WorkspaceTreeNode
+            {
+                Name = Path.GetFileName(entry),
+                FullPath = Path.GetFullPath(entry),
+                IsDirectory = false,
+                ChildrenLoaded = true,
+                Parent = parent
+            });
+        }
+
+        foreach (var node in directories.OrderBy(node => node.Name, StringComparer.OrdinalIgnoreCase))
+            parent.Children.Add(node);
+        foreach (var node in files.OrderBy(node => node.Name, StringComparer.OrdinalIgnoreCase))
+            parent.Children.Add(node);
+
+        parent.ChildrenLoaded = true;
+    }
+
+    private static bool DirectoryHasDirectMarkdownFile(string directory, CancellationToken cancellationToken)
+    {
+        IEnumerable<string> files;
+        try
+        {
+            files = Directory.EnumerateFiles(directory);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (MarkdownExtensions.Contains(Path.GetExtension(file)))
+                return true;
+        }
+
+        return false;
     }
 
     private static bool ShouldSkipDirectory(string path)

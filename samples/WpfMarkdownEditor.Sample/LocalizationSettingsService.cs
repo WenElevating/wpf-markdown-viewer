@@ -14,6 +14,8 @@ public sealed class LocalizationSettingsService
         _settingsDirectory = settingsDirectory;
     }
 
+    public string SettingsDirectory => _settingsDirectory;
+
     public SupportedLanguage? LoadLanguage()
     {
         var path = GetSettingsPath();

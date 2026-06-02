@@ -8,6 +8,7 @@ public sealed class WorkspaceTreeNode : INotifyPropertyChanged
 {
     private bool _isExpanded;
     private bool _isSelected;
+    private bool _childrenLoaded;
 
     public required string Name { get; init; }
 
@@ -18,6 +19,12 @@ public sealed class WorkspaceTreeNode : INotifyPropertyChanged
     public ObservableCollection<WorkspaceTreeNode> Children { get; } = [];
 
     public WorkspaceTreeNode? Parent { get; init; }
+
+    public bool ChildrenLoaded
+    {
+        get => _childrenLoaded;
+        set => SetField(ref _childrenLoaded, value);
+    }
 
     public bool IsExpanded
     {
