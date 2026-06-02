@@ -87,10 +87,10 @@ The model stores tag name, attributes, children, source line range, text content
 
 Add a parser facade with two explicit entry points:
 
-- `TryParseBlockFragment(string source, out HtmlFragment fragment, out int consumedLineCount)`
+- `TryParseBlockFragment(string source, int startIndex, out HtmlFragment fragment, out int consumedLineCount)`
 - `TryParseInlineFragment(string source, int startIndex, out HtmlFragment fragment, out int consumedLength)`
 
-The facade must use the handwritten tokenizer/parser internally. `BlockParser` and `InlineParser` depend only on the facade.
+The facade must use the handwritten tokenizer/parser internally. `BlockParser` and `InlineParser` depend only on the facade. Both entry points accept `startIndex` for symmetry; `BlockParser` normally passes the start offset of the first non-space character in the current line, while `InlineParser` passes the current inline scan offset.
 
 Tokenizer design:
 
@@ -137,8 +137,11 @@ Known parser limits:
 `BlockParser` owns block-vs-inline classification:
 
 - At the start of a block, if the first non-space token is an approved block tag (`div`, `p`, `center`, `details`, `summary`, `table`, `h1` to `h6`), call `TryParseBlockFragment`.
-- A block fragment consumes lines until its tag stack is balanced, a blank line terminates an unbalanced recoverable fragment, or EOF is reached.
+- A block fragment consumes lines until its tag stack returns to the root after at least one block tag was parsed, or EOF is reached.
+- Blank lines inside an open HTML tag stack are part of the fragment and are tokenized as text/spacing. They must not terminate the fragment.
+- A blank line only terminates HTML block parsing when the parser is at root stack depth and the current fragment is already balanced.
 - A block-level tag in the middle of an already-started Markdown paragraph is not promoted to `HtmlBlock`; it is treated as inline/fallback content by `InlineParser`.
+- Mixed lines such as `Some text <div align="center">logo</div> more text` deliberately degrade the block-level tag to text. This is not an error condition; block-level HTML is supported only when it starts a block.
 
 `InlineParser` owns only inline HTML inside Markdown text:
 
@@ -252,6 +255,13 @@ WPF renderer tests:
 - Renders HTML images through the existing image element path.
 - Resolves relative image paths from the opened Markdown file directory.
 - Re-renders relative images from the new directory after Save As changes `DocumentPath`.
+
+WPF test execution requirements:
+
+- Tests that instantiate `FlowDocument`, `Paragraph`, `Table`, image containers, or `MarkdownEditor` must run on an STA thread with a WPF `Dispatcher`.
+- The WPF test project should use an explicit STA helper or test attribute rather than relying on the default xUnit worker thread.
+- Initialize `Application.Current` only when a test requires application resources; renderer-level structural tests should avoid unnecessary app startup.
+- If a renderer behavior can be verified before WPF object creation, prefer Core AST or renderer-helper tests to reduce Dispatcher coupling.
 
 Sample regression fixture and automated coverage:
 
