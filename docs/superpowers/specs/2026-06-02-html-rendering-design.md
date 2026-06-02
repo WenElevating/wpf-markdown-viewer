@@ -4,7 +4,7 @@
 
 Improve Markdown preview rendering for GitHub-style README files that mix Markdown with safe, common HTML. The implementation adds dedicated HTML handling in Core and a dedicated WPF `HtmlRenderer` so HTML rendering stays isolated from normal paragraph rendering.
 
-The first version targets the common README HTML subset found in `D:\Test\cursor-free-vip-1.11.03\README.md`: centered logo/header blocks, inline line breaks, linked images, default-open details sections, and simple image tables.
+The first version targets the common README HTML subset observed in `D:\Test\cursor-free-vip-1.11.03\README.md`: centered logo/header blocks, inline line breaks, linked images, default-open details sections, and simple image tables. That local file is an investigation source only; committed tests must use project-owned fixtures.
 
 ## Current State
 
@@ -167,6 +167,20 @@ Add `WpfMarkdownEditor.Wpf.Rendering.Renderers.HtmlRenderer`. `FlowDocumentRende
 
 Unknown nodes fall back to rendering visible text content without raw tag markup.
 
+### Inline HTML Rendering
+
+`HtmlInline` is rendered from the existing `InlineRenderer`, not from `FlowDocumentRenderer`.
+
+`InlineRenderer` should add an `HtmlInline` case to its inline switch. That case delegates to a shared HTML inline rendering helper owned by `HtmlRenderer`, for example `HtmlRenderer.RenderInlineNodes(...)`, so block and inline HTML use the same tag mapping rules.
+
+Ownership is:
+
+- `FlowDocumentRenderer`: dispatches `HtmlBlock` to `HtmlRenderer`.
+- `InlineRenderer`: detects `HtmlInline` and asks the HTML inline helper to append WPF inline elements into the current `Paragraph` or `Span`.
+- `HtmlRenderer`: contains shared tag mapping for both block and inline contexts.
+
+Inline-only tags (`br`, `b`, `strong`, `i`, `em`, `code`, `a`, inline `img`) must be supported through this path. If a block-level tag reaches `HtmlInline` because it appeared in a mixed Markdown line, it should render as plain text fallback rather than becoming a block inside a paragraph.
+
 ### Existing Raw Image Logic
 
 The current `InlineParser` special cases for raw `<img>` and `<a><img></a>` should be retired or made a thin compatibility wrapper over `TryParseInlineFragment`.
@@ -209,9 +223,10 @@ If no base directory is available, existing behavior is preserved.
 1. The editor loads Markdown text and, when available, records the current file path.
 2. `MarkdownParser` parses Markdown into block AST nodes, including `HtmlBlock` for supported block HTML.
 3. `FlowDocumentRenderer` dispatches normal Markdown blocks to existing renderers and HTML blocks to `HtmlRenderer`.
-4. `HtmlRenderer` renders safe HTML nodes into WPF document blocks and inlines.
-5. Image nodes resolve through `ImageLoader`, which uses the current document base directory for relative paths.
-6. If the current document path changes through Save As or Move, the editor updates image resolution context and rerenders the preview.
+4. `InlineRenderer` dispatches `HtmlInline` to the shared HTML inline rendering helper.
+5. `HtmlRenderer` renders safe HTML nodes into WPF document blocks and inlines.
+6. Image nodes resolve through `ImageLoader`, which uses the current document base directory for relative paths.
+7. If the current document path changes through Save As or Move, the editor updates image resolution context and rerenders the preview.
 
 ## Error Handling and Degradation
 
@@ -250,6 +265,8 @@ Core parser tests:
 WPF renderer tests:
 
 - Renders centered header/logo HTML without raw tag text.
+- Renders `HtmlInline` through `InlineRenderer`, including `<br>`, `<strong>`, `<code>`, `<a>`, and inline `<img>`.
+- Keeps block-level tags that arrive through `HtmlInline` as text fallback inside the paragraph.
 - Renders `<summary>` as bold visible text and includes details body text.
 - Renders HTML table as a WPF table-like block.
 - Renders HTML images through the existing image element path.
@@ -265,7 +282,9 @@ WPF test execution requirements:
 
 Sample regression fixture and automated coverage:
 
-- Use representative snippets from `D:\Test\cursor-free-vip-1.11.03\README.md` covering logo/header, feature list `<br>`, details sections, contributor image link, and donation image table.
+- Add project-owned test fixtures under `tests/WpfMarkdownEditor.Wpf.Tests/Fixtures/HtmlRendering/`.
+- Extract representative snippets into committed fixture files covering logo/header, feature list `<br>`, details sections, contributor image link, and donation image table.
+- The local file `D:\Test\cursor-free-vip-1.11.03\README.md` may be cited in comments or docs as the inspiration source, but tests must not depend on that absolute path.
 - Add deterministic structural tests over the rendered `FlowDocument` for those snippets: no raw HTML tag text, expected block count shape, expected summary text, expected table cell count, and expected image loading containers.
 - Add optional screenshot or XAML snapshot coverage only if it is deterministic in this test environment. Prefer structural assertions for CI stability.
 
@@ -273,4 +292,4 @@ Verification:
 
 - Run focused Core and WPF test projects.
 - Run `dotnet test WpfMarkdownEditor.sln -v minimal`.
-- Manually open the sample app with `D:\Test\cursor-free-vip-1.11.03\README.md` and inspect the preview as a final human check, not as the only regression guard.
+- Manually open the sample app with the local README investigation file, when available, and inspect the preview as a final human check, not as the only regression guard.
