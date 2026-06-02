@@ -63,3 +63,4 @@ installer-output/
 
 # Build tools
 tools/
+/docs
