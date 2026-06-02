@@ -48,7 +48,7 @@ public sealed class FlowDocumentRenderer
             [typeof(HeadingBlock)] = new HeadingRenderer(theme, cachedImageResolver, requestLayoutRefresh),
             [typeof(ParagraphBlock)] = new ParagraphRenderer(theme, cachedImageResolver, requestLayoutRefresh),
             [typeof(CodeBlock)] = new CodeBlockRenderer(theme, highlighter),
-            [typeof(HtmlBlock)] = new HtmlRenderer(theme, cachedImageResolver, requestLayoutRefresh),
+            [typeof(HtmlBlock)] = new HtmlRenderer(theme, cachedImageResolver, requestLayoutRefresh, highlighter),
             [typeof(TableBlock)] = new TableRenderer(theme, cachedImageResolver, requestLayoutRefresh),
             [typeof(ListBlock)] = new ListRenderer(theme, cachedImageResolver, requestLayoutRefresh),
             [typeof(ThematicBreakBlock)] = new ThematicBreakRenderer(theme),

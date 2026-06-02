@@ -3,9 +3,11 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using WpfMarkdownEditor.Core;
+using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
 using WpfMarkdownEditor.Core.Parsing.Html;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
+using WpfMarkdownEditor.Wpf.SyntaxHighlighting;
 using WpfMarkdownEditor.Wpf.Theming;
 using CoreBlock = WpfMarkdownEditor.Core.Parsing.Block;
 using WpfBlock = System.Windows.Documents.Block;
@@ -15,8 +17,11 @@ namespace WpfMarkdownEditor.Wpf.Rendering.Renderers;
 public sealed class HtmlRenderer(
     EditorTheme theme,
     IImageResolver? imageResolver = null,
-    Action? requestLayoutRefresh = null) : IBlockRenderer
+    Action? requestLayoutRefresh = null,
+    SyntaxHighlighter? highlighter = null) : IBlockRenderer
 {
+    private readonly MarkdownParser _markdownParser = new();
+
     public WpfBlock Render(CoreBlock block)
     {
         var html = (HtmlBlock)block;
@@ -28,7 +33,7 @@ public sealed class HtmlRenderer(
     public void RenderInlineNodes(InlineCollection target, IReadOnlyList<HtmlNode> nodes)
     {
         foreach (var node in nodes)
-            RenderInlineNode(target, node);
+            RenderInlineNode(target, node, parseMarkdownText: true);
     }
 
     private void RenderBlockNodes(BlockCollection blocks, IReadOnlyList<HtmlNode> nodes, TextAlignment alignment)
@@ -107,8 +112,37 @@ public sealed class HtmlRenderer(
             return;
         }
 
-        blocks.Add(CreateParagraph(inlineBuffer, alignment));
+        if (!TryRenderMarkdownTextBlocks(blocks, inlineBuffer, alignment))
+            blocks.Add(CreateParagraph(inlineBuffer, alignment));
+
         inlineBuffer.Clear();
+    }
+
+    private bool TryRenderMarkdownTextBlocks(BlockCollection blocks, IReadOnlyList<HtmlNode> nodes, TextAlignment alignment)
+    {
+        if (!nodes.All(static node => node is HtmlTextNode))
+            return false;
+
+        var markdown = string.Concat(nodes.Cast<HtmlTextNode>().Select(static node => node.Text));
+        if (string.IsNullOrWhiteSpace(markdown))
+            return true;
+
+        var markdownBlocks = _markdownParser.Parse(markdown);
+        if (markdownBlocks.Count == 0)
+            return true;
+
+        var markdownRenderer = new FlowDocumentRenderer(theme, imageResolver, highlighter, requestLayoutRefresh);
+        foreach (var markdownBlock in markdownBlocks)
+        {
+            var rendered = markdownRenderer.RenderBlock(markdownBlock);
+            if (rendered is null)
+                continue;
+
+            ApplyInheritedAlignment(rendered, alignment);
+            blocks.Add(rendered);
+        }
+
+        return true;
     }
 
     private Paragraph CreateParagraph(IReadOnlyList<HtmlNode> nodes, TextAlignment alignment)
@@ -210,12 +244,15 @@ public sealed class HtmlRenderer(
         return table;
     }
 
-    private void RenderInlineNode(InlineCollection target, HtmlNode node)
+    private void RenderInlineNode(InlineCollection target, HtmlNode node, bool parseMarkdownText)
     {
         switch (node)
         {
             case HtmlTextNode text:
-                target.Add(new Run(text.Text));
+                if (parseMarkdownText)
+                    RenderMarkdownInlines(target, text.Text);
+                else
+                    target.Add(new Run(text.Text));
                 break;
 
             case HtmlElementNode { TagName: "br" }:
@@ -271,8 +308,25 @@ public sealed class HtmlRenderer(
             Background = new SolidColorBrush(theme.InlineCodeBackground),
             Foreground = new SolidColorBrush(theme.InlineCodeForeground),
         };
-        RenderInlineNodes(span.Inlines, children);
+        foreach (var child in children)
+            RenderInlineNode(span.Inlines, child, parseMarkdownText: false);
         return span;
+    }
+
+    private void RenderMarkdownInlines(InlineCollection target, string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        var span = new Span();
+        var inlineRenderer = new InlineRenderer(theme, imageResolver, requestLayoutRefresh);
+        inlineRenderer.RenderInlines(span, _markdownParser.ParseInlines(text));
+
+        while (span.Inlines.FirstInline is { } inline)
+        {
+            span.Inlines.Remove(inline);
+            target.Add(inline);
+        }
     }
 
     private Hyperlink CreateHyperlink(HtmlElementNode element)
@@ -344,6 +398,27 @@ public sealed class HtmlRenderer(
     private static bool IsBlockElement(string tagName) =>
         tagName is "div" or "center" or "details" or "p" or "summary" or "table" or
             "h1" or "h2" or "h3" or "h4" or "h5" or "h6";
+
+    private static void ApplyInheritedAlignment(WpfBlock block, TextAlignment alignment)
+    {
+        block.TextAlignment = alignment;
+
+        if (block is Section section)
+        {
+            foreach (var child in section.Blocks.Cast<WpfBlock>())
+                ApplyInheritedAlignment(child, alignment);
+        }
+        else if (block is Table table)
+        {
+            foreach (var cellBlock in table.RowGroups
+                         .SelectMany(static group => group.Rows)
+                         .SelectMany(static row => row.Cells)
+                         .SelectMany(static cell => cell.Blocks.Cast<WpfBlock>()))
+            {
+                ApplyInheritedAlignment(cellBlock, alignment);
+            }
+        }
+    }
 
     private static IEnumerable<HtmlNode> Descendants(HtmlElementNode node)
     {

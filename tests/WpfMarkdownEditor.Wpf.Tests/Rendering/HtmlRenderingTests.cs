@@ -1,6 +1,13 @@
 using System.IO;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Threading;
+using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Wpf.Rendering;
 using WpfMarkdownEditor.Wpf.Theming;
@@ -12,6 +19,9 @@ namespace WpfMarkdownEditor.Wpf.Tests.Rendering;
 
 public sealed class HtmlRenderingTests
 {
+    private static readonly byte[] SvgBadge = Encoding.UTF8.GetBytes(
+        """<svg xmlns="http://www.w3.org/2000/svg" width="80" height="20"><rect width="80" height="20" fill="#d73a49"/></svg>""");
+
     [Fact]
     public void Render_HtmlBlock_DoesNotExposeRawHtmlTags()
     {
@@ -77,6 +87,66 @@ public sealed class HtmlRenderingTests
         });
     }
 
+    [Fact]
+    public void Render_HtmlParagraphWithMarkdownSvgBadge_RendersImageInsteadOfRawSyntax()
+    {
+        RunOnSta(() =>
+        {
+            var resolver = new DeferredImageResolver();
+            var document = Render(
+                """
+                <p align="center">
+
+                ![Release](https://img.shields.io/github/v/release/yeongpin/cursor-free-vip?style=flat-square&logo=github&color=blue)
+
+                </p>
+                """,
+                resolver);
+
+            var text = GetDocumentText(document);
+
+            Assert.DoesNotContain("![Release]", text);
+            Assert.True(WaitUntil(() => resolver.ResolveStarted.Task.IsCompleted));
+            Assert.Equal(
+                "https://img.shields.io/github/v/release/yeongpin/cursor-free-vip?style=flat-square&logo=github&color=blue",
+                resolver.ResolveStarted.Task.Result);
+
+            resolver.Complete(SvgBadge, "svg");
+
+            Assert.True(WaitUntil(() => DocumentContainsElement<WebBrowser>(document)));
+        });
+    }
+
+    [Fact]
+    public void Render_DetailsBlockWithMarkdownFencedCode_RendersCodeBlockInsteadOfRawFence()
+    {
+        RunOnSta(() =>
+        {
+            var document = Render(
+                """
+                <details open>
+                <summary><b>Auto Run Script | 脚本自动化运行</b></summary>
+
+                **Linux/macOS**
+
+                ```bash
+                curl -fsSL https://raw.githubusercontent.com/yeongpin/cursor-free-vip/main/scripts/install.sh -o install.sh
+                ```
+
+                </details>
+                """);
+
+            var text = GetDocumentText(document);
+
+            Assert.Contains("Auto Run Script", text);
+            Assert.Contains("Linux/macOS", text);
+            Assert.Contains("curl -fsSL", text);
+            Assert.DoesNotContain("```bash", text);
+            Assert.DoesNotContain("**Linux", text);
+            Assert.Contains(document.Blocks.Cast<WpfBlock>(), ContainsCodeBlock);
+        });
+    }
+
     [Theory]
     [InlineData("header.md", "Support Latest Version")]
     [InlineData("details.md", "Auto Run Script")]
@@ -106,10 +176,10 @@ public sealed class HtmlRenderingTests
         });
     }
 
-    private static FlowDocument Render(string markdown)
+    private static FlowDocument Render(string markdown, IImageResolver? imageResolver = null)
     {
         var parser = new MarkdownParser();
-        var renderer = new FlowDocumentRenderer(EditorTheme.Light);
+        var renderer = new FlowDocumentRenderer(EditorTheme.Light, imageResolver);
         return renderer.Render(parser.Parse(markdown));
     }
 
@@ -143,6 +213,44 @@ public sealed class HtmlRenderingTests
         {
             Table => true,
             Section section => section.Blocks.Cast<WpfBlock>().Any(ContainsTable),
+            _ => false
+        };
+
+    private static bool ContainsCodeBlock(WpfBlock block) =>
+        block switch
+        {
+            Section section => BrushMatches(section.Background, EditorTheme.Light.CodeBackground) ||
+                               section.Blocks.Cast<WpfBlock>().Any(ContainsCodeBlock),
+            _ => false
+        };
+
+    private static bool BrushMatches(Brush? brush, Color color) =>
+        brush is SolidColorBrush solidColorBrush && solidColorBrush.Color == color;
+
+    private static bool DocumentContainsElement<TElement>(FlowDocument document)
+        where TElement : UIElement =>
+        document.Blocks.Cast<WpfBlock>().Any(BlockContainsElement<TElement>);
+
+    private static bool BlockContainsElement<TElement>(WpfBlock block)
+        where TElement : UIElement =>
+        block switch
+        {
+            BlockUIContainer container => container.Child is TElement,
+            Paragraph paragraph => paragraph.Inlines.Cast<WpfInline>().Any(InlineContainsElement<TElement>),
+            Section section => section.Blocks.Cast<WpfBlock>().Any(BlockContainsElement<TElement>),
+            Table table => table.RowGroups
+                .SelectMany(static group => group.Rows)
+                .SelectMany(static row => row.Cells)
+                .Any(cell => cell.Blocks.Cast<WpfBlock>().Any(BlockContainsElement<TElement>)),
+            _ => false
+        };
+
+    private static bool InlineContainsElement<TElement>(WpfInline inline)
+        where TElement : UIElement =>
+        inline switch
+        {
+            InlineUIContainer container => container.Child is TElement,
+            Span span => span.Inlines.Cast<WpfInline>().Any(InlineContainsElement<TElement>),
             _ => false
         };
 
@@ -184,5 +292,40 @@ public sealed class HtmlRenderingTests
 
         if (exception is not null)
             throw exception;
+    }
+
+    private static bool WaitUntil(Func<bool> condition, int timeoutMs = 2000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition()) return true;
+
+            var frame = new DispatcherFrame();
+            Dispatcher.CurrentDispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => frame.Continue = false));
+            Dispatcher.PushFrame(frame);
+            Thread.Sleep(10);
+        }
+
+        return condition();
+    }
+
+    private sealed class DeferredImageResolver : IImageResolver
+    {
+        private readonly TaskCompletionSource<ImageData?> _imageData = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<string> ResolveStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<ImageData?> ResolveImageAsync(string url, CancellationToken ct)
+        {
+            ResolveStarted.TrySetResult(url);
+            return _imageData.Task;
+        }
+
+        public void Complete(byte[]? data, string format = "png") =>
+            _imageData.TrySetResult(data is null ? null : new ImageData { Data = data, Format = format });
     }
 }
