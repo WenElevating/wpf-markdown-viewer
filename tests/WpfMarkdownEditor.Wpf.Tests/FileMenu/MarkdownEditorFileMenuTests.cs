@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using System.Windows.Documents;
 using System.Windows.Threading;
@@ -32,6 +33,29 @@ public sealed class MarkdownEditorFileMenuTests
             var document = editor.CreatePlainTextPrintDocument();
 
             Assert.Contains("# Existing", new TextRange(document.ContentStart, document.ContentEnd).Text);
+        });
+    }
+
+    [Fact]
+    public void LoadFile_SetsDocumentPath()
+    {
+        RunOnSta(() =>
+        {
+            var path = Path.Combine(Path.GetTempPath(), $"wpf-md-{Guid.NewGuid():N}.md");
+            File.WriteAllText(path, "# Title");
+
+            try
+            {
+                using var editor = new MarkdownEditor();
+
+                editor.LoadFile(path);
+
+                Assert.Equal(path, editor.DocumentPath);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         });
     }
 

@@ -216,6 +216,7 @@ public partial class MainWindow : Window
         if (!ConfirmSaveIfDirty()) return;
         _loadingFile = true;
         Editor.Markdown = string.Empty;
+        Editor.DocumentPath = null;
         _loadingFile = false;
         _currentFilePath = null;
         _isDirty = false;
@@ -286,6 +287,7 @@ public partial class MainWindow : Window
         {
             await Editor.SaveFileAsync(targetPath);
             _currentFilePath = targetPath;
+            Editor.DocumentPath = targetPath;
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(targetPath);
             AddRecentFileToCache(targetPath);
@@ -315,6 +317,7 @@ public partial class MainWindow : Window
         {
             await Editor.SaveFileAsync(dialog.FileName);
             _currentFilePath = dialog.FileName;
+            Editor.DocumentPath = dialog.FileName;
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(dialog.FileName);
             AddRecentFileToCache(dialog.FileName);
@@ -676,6 +679,7 @@ public partial class MainWindow : Window
             AddRecentFileToCache(dialog.FileName);
             RemoveWorkspaceNode(oldPath);
             _currentFilePath = dialog.FileName;
+            Editor.DocumentPath = dialog.FileName;
             UpdateTitle();
             SetStatus("Status.FileSaved", dialog.FileName);
         }
@@ -814,6 +818,7 @@ public partial class MainWindow : Window
             RemoveWorkspaceNode(deletedPath);
             _loadingFile = true;
             Editor.Markdown = string.Empty;
+            Editor.DocumentPath = null;
             _loadingFile = false;
             _currentFilePath = null;
             _isDirty = false;
@@ -965,6 +970,7 @@ public partial class MainWindow : Window
         {
             File.WriteAllText(targetPath, Editor.Markdown);
             _currentFilePath = targetPath;
+            Editor.DocumentPath = targetPath;
             _isDirty = false;
             _recentFilesService.AddOrRefreshFile(targetPath);
             AddRecentFileToCache(targetPath);

@@ -25,7 +25,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     private readonly MarkdownParser _parser = new();
     private readonly DispatcherTimer _debounceTimer;
-    private readonly ImageLoader _imageLoader;
+    private ImageLoader _imageLoader;
     private readonly SyntaxHighlighter _highlighter = new();
     private FlowDocumentRenderer? _renderer;
     private CancellationTokenSource? _cts;
@@ -65,6 +65,13 @@ public partial class MarkdownEditor : UserControl, IDisposable
             typeof(MarkdownEditor),
             new PropertyMetadata(new GridLength(1, GridUnitType.Star)));
 
+    public static readonly DependencyProperty DocumentPathProperty =
+        DependencyProperty.Register(
+            nameof(DocumentPath),
+            typeof(string),
+            typeof(MarkdownEditor),
+            new PropertyMetadata(null, OnDocumentPathChanged));
+
     #endregion
 
     #region Public API
@@ -91,6 +98,12 @@ public partial class MarkdownEditor : UserControl, IDisposable
     {
         get => (GridLength)GetValue(PreviewWidthProperty);
         set => SetValue(PreviewWidthProperty, value);
+    }
+
+    public string? DocumentPath
+    {
+        get => (string?)GetValue(DocumentPathProperty);
+        set => SetValue(DocumentPathProperty, value);
     }
 
     public event EventHandler<MarkdownChangedEventArgs>? MarkdownChanged;
@@ -120,7 +133,12 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     #region Methods
 
-    public void LoadFile(string path) => Markdown = File.ReadAllText(path);
+    public void LoadFile(string path)
+    {
+        var markdown = File.ReadAllText(path);
+        DocumentPath = path;
+        Markdown = markdown;
+    }
 
     public async Task SaveFileAsync(string path)
     {
@@ -379,6 +397,14 @@ public partial class MarkdownEditor : UserControl, IDisposable
             isDark ? Color.FromRgb(0x66, 0x66, 0x66) : Color.FromRgb(0xb0, 0xb0, 0xb0));
     }
 
+    private static void OnDocumentPathChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var editor = (MarkdownEditor)d;
+        editor.UpdateImageLoaderBaseDirectory();
+        editor.UpdateRenderer();
+        editor.SchedulePreviewRender();
+    }
+
     private static SolidColorBrush Frozen(Color color)
     {
         var brush = new SolidColorBrush(color);
@@ -408,6 +434,29 @@ public partial class MarkdownEditor : UserControl, IDisposable
     {
         _previewDocument = null;
         _renderer = new FlowDocumentRenderer(Theme, _imageLoader, _highlighter, RequestPreviewLayoutRefresh);
+    }
+
+    private void UpdateImageLoaderBaseDirectory()
+    {
+        var previous = _imageLoader;
+        _imageLoader = new ImageLoader(GetDocumentBaseDirectory());
+        previous.Dispose();
+    }
+
+    private string GetDocumentBaseDirectory()
+    {
+        if (string.IsNullOrWhiteSpace(DocumentPath))
+            return AppContext.BaseDirectory;
+
+        try
+        {
+            var fullPath = System.IO.Path.GetFullPath(DocumentPath);
+            return System.IO.Path.GetDirectoryName(fullPath) ?? AppContext.BaseDirectory;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            return AppContext.BaseDirectory;
+        }
     }
 
     private void OnEditorTextChanged(object sender, TextChangedEventArgs e)
