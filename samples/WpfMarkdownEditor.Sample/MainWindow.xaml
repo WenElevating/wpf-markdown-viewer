@@ -560,7 +560,7 @@
         <!--  Editor Area  -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="SidebarColumn" Width="0" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -568,7 +568,7 @@
             <Border
                 x:Name="SidebarPanel"
                 Grid.Column="0"
-                Width="0"
+                Width="260"
                 Background="{DynamicResource SurfaceBackgroundBrush}"
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,0,1,0"

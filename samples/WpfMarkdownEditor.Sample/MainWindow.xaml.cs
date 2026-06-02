@@ -1475,7 +1475,7 @@ public partial class MainWindow : Window
         var isOpening = targetWidth > 0;
         var currentOffset = SidebarTranslateTransform.X;
         SidebarTranslateTransform.BeginAnimation(TranslateTransform.XProperty, null);
-        SidebarPanel.Width = SidebarWidth;
+        SidebarColumn.Width = new GridLength(isOpening ? SidebarWidth : 0);
 
         var anim = new DoubleAnimation
         {
@@ -1488,7 +1488,7 @@ public partial class MainWindow : Window
         anim.Completed += (_, _) =>
         {
             SidebarTranslateTransform.X = isOpening ? 0 : -SidebarWidth;
-            SidebarPanel.Width = isOpening ? SidebarWidth : 0;
+            SidebarColumn.Width = new GridLength(isOpening ? SidebarWidth : 0);
         };
 
         SidebarTranslateTransform.BeginAnimation(TranslateTransform.XProperty, anim);

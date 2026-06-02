@@ -182,11 +182,12 @@ public sealed class MainWindowFileMenuRoutingTests
         var xaml = LoadMainWindowXaml();
         var code = LoadMainWindowCode();
 
+        Assert.Contains("x:Name=\"SidebarColumn\" Width=\"0\"", xaml);
         Assert.Contains("x:Name=\"SidebarTranslateTransform\" X=\"-260\"", xaml);
 
         var animateMethod = ExtractMethod(code, "AnimateSidebar");
+        Assert.Contains("SidebarColumn.Width = new GridLength(isOpening ? SidebarWidth : 0)", animateMethod);
         Assert.Contains("TranslateTransform.XProperty", animateMethod);
-        Assert.Contains("SidebarPanel.Width =", animateMethod);
         Assert.Contains("Completed +=", animateMethod);
         Assert.DoesNotContain("FrameworkElement.WidthProperty", animateMethod);
     }
