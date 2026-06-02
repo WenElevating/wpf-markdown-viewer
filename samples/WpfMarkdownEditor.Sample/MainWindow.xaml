@@ -142,6 +142,7 @@
                             <Popup
                                 x:Name="RecentFilesPopup"
                                 AllowsTransparency="True"
+                                Closed="OnRecentFilesPopupClosed"
                                 HorizontalOffset="-4"
                                 Placement="Right"
                                 PlacementTarget="{Binding ElementName=OpenRecentFileButton}"

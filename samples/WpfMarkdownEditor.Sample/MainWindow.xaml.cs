@@ -254,6 +254,9 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _loadingFile = false;
+            if (ex is FileNotFoundException or DirectoryNotFoundException)
+                _recentFilesService.RemoveFile(path);
+
             MessageBox.Show(_localizationService.Format("Error.LoadFile", ex.Message), _localizationService.GetString("Common.Error"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
@@ -397,6 +400,7 @@ public partial class MainWindow : Window
             e.Handled = true;
 
         CancelRecentFilesHover();
+        SetOpenRecentFileButtonActive(isActive: true);
         RecentFilesPopup.IsOpen = true;
         _ = LoadRecentFilesMenuAsync();
     }
@@ -409,7 +413,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(1200), hoverCts.Token);
+            await Task.Delay(TimeSpan.FromMilliseconds(800), hoverCts.Token);
             if (!OpenRecentFileButton.IsMouseOver)
                 return;
 
@@ -441,7 +445,7 @@ public partial class MainWindow : Window
         ShowRecentFilesLoadingState();
         try
         {
-            var entries = await _recentFilesService.LoadFilesAsync(removeMissingFiles: true, loadCts.Token);
+            var entries = await _recentFilesService.LoadFilesAsync(cancellationToken: loadCts.Token);
             if (loadCts.IsCancellationRequested)
                 return;
 
@@ -506,6 +510,7 @@ public partial class MainWindow : Window
         if (sender is Button { Tag: string path })
             OpenFilePath(path);
 
+        SetOpenRecentFileButtonActive(isActive: false);
         RecentFilesPopup.IsOpen = false;
         FilePopup.IsOpen = false;
     }
@@ -516,8 +521,25 @@ public partial class MainWindow : Window
         _recentFilesLoadCts?.Cancel();
         _recentFilesService.ClearFiles();
         RenderRecentFilesMenu([]);
+        SetOpenRecentFileButtonActive(isActive: false);
         RecentFilesPopup.IsOpen = false;
         FilePopup.IsOpen = false;
+    }
+
+    private void OnRecentFilesPopupClosed(object? sender, EventArgs e)
+    {
+        SetOpenRecentFileButtonActive(isActive: false);
+    }
+
+    private void SetOpenRecentFileButtonActive(bool isActive)
+    {
+        if (isActive)
+        {
+            OpenRecentFileButton.Background = (Brush)FindResource("HoverBackgroundBrush");
+            return;
+        }
+
+        OpenRecentFileButton.ClearValue(BackgroundProperty);
     }
 
     private void ShowQuickOpenDialog(IReadOnlyList<QuickOpenItem> items)
