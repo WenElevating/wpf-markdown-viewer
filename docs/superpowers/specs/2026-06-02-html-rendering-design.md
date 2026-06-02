@@ -31,7 +31,8 @@ This explains the poor preview for READMEs containing `<div align="center">`, `<
   - `src`, `alt`, `title`, and `href` are used for image/link rendering.
 - Resolve relative image paths from the Markdown file's directory when the editor opened a file.
 - Keep Core independent from WPF APIs.
-- Preserve the project's dependency posture unless a deliberate parser dependency decision is made before implementation.
+- Do not add external package dependencies.
+- Implement the HTML parser as a handwritten supported-subset parser based on `docs/html-subset-parser.md`.
 
 ## Non-goals
 
@@ -39,7 +40,8 @@ This explains the poor preview for READMEs containing `<div align="center">`, `<
 - Do not support `iframe`, `script`, `style`, embedded forms, arbitrary CSS layout, or remote HTML execution.
 - Do not implement collapsible `details` interactivity in the first version.
 - Do not try to match a browser pixel-for-pixel.
-- Do not introduce an external HTML parser package without an explicit implementation-time decision and package review.
+- Do not introduce `HtmlAgilityPack` or another external HTML parser package.
+- Do not use `System.Xml.Linq.XDocument` as the ingestion path for README HTML fragments.
 - Do not change the behavior of normal Markdown blocks except where mixed HTML currently renders incorrectly.
 
 ## Architecture
@@ -48,18 +50,17 @@ This explains the poor preview for READMEs containing `<div align="center">`, `<
 
 HTML parsing has real edge cases: quoted and unquoted attributes, mixed casing, void tags, nested same-name elements, comments, document declarations, and malformed markup. The implementation should not pretend a tiny parser is a general HTML parser.
 
-The parser decision is:
+The parser decision is fixed for this feature: do not add external dependencies. Implement a handwritten HTML subset parser using the two-layer design in `docs/html-subset-parser.md`:
 
-- `System.Xml.Linq.XDocument` is not the default choice because README HTML is often not well-formed XML. Examples include `<br>`, `<img ...>`, mixed fragments without a single root, and bare attributes. It can be used only for already-normalized internal fragments, not as the public HTML ingestion path.
-- `HtmlAgilityPack` is the strongest general-purpose option and should be re-evaluated at implementation start. If accepted, add it to Core or a parser-specific project only after confirming package size, license, transitive dependencies, and the project's zero-dependency positioning.
-- If no external parser is accepted, implement a deliberately limited `HtmlFragmentParser`, not a full HTML parser. It must cover only the approved README subset and must document its recovery rules.
+```text
+raw string
+   -> HtmlTokenizer: character scanner that produces tokens
+   -> HtmlSubsetParser: token stream to HtmlElementNode tree
+```
 
-The first implementation plan must choose one of these two supported paths:
+This is acceptable only because the supported input is a GitHub README subset, not arbitrary web HTML. The parser must be documented and tested as a subset parser, not a general HTML parser.
 
-1. Use `HtmlAgilityPack` for fragment parsing, then map its nodes into Core HTML AST nodes.
-2. Implement `HtmlFragmentParser` with explicit support for approved tags, void tags, quoted/unquoted attributes, comments/declarations skipping, case-insensitive tag names, and stack-based nested tag recovery.
-
-The zero-dependency path is acceptable only because the supported input is a README subset, not arbitrary web HTML.
+`System.Xml.Linq.XDocument` is excluded because README HTML is often not well-formed XML. Examples include `<br>`, `<img ...>`, mixed fragments without a single root, and bare attributes.
 
 ### Core HTML Model
 
@@ -84,23 +85,54 @@ The model stores tag name, attributes, children, source line range, text content
 
 ### Core HTML Parser
 
-Add one parser facade with two explicit entry points:
+Add a parser facade with two explicit entry points:
 
 - `TryParseBlockFragment(string source, out HtmlFragment fragment, out int consumedLineCount)`
 - `TryParseInlineFragment(string source, int startIndex, out HtmlFragment fragment, out int consumedLength)`
 
-The facade may wrap `HtmlAgilityPack` or the limited `HtmlFragmentParser`, but the rest of Core should not depend on that choice.
+The facade must use the handwritten tokenizer/parser internally. `BlockParser` and `InlineParser` depend only on the facade.
 
-Parser behavior:
+Tokenizer design:
 
-- Tag and attribute names are case-insensitive and normalized to lowercase.
+- `HtmlTokenKind.Text`
+- `HtmlTokenKind.OpenTag`
+- `HtmlTokenKind.CloseTag`
+- `HtmlTokenKind.SelfClose`
+
+`HtmlToken` carries `Kind`, normalized lowercase `Name`, decoded case-insensitive attributes, and optional decoded text.
+
+Tokenizer behavior:
+
+- Character-level scanner, no regex-driven HTML parsing.
+- `ReadName` accepts `[a-zA-Z0-9_:-]` and stops on any other character.
 - Attribute values support double quotes, single quotes, and unquoted values.
-- Void tags include `br`, `img`, `hr`, `meta`, `link`, and `input`; only approved void tags are rendered.
-- Comments, `<!doctype ...>`, and CDATA sections are skipped unless their text is needed for recovery.
-- Nested same-name tags are handled with a stack.
-- Unsupported tags are parsed as transparent containers when possible.
-- Script/style/iframe/object/embed content is not rendered.
-- HTML entities in text and attributes are decoded.
+- Attribute keys use a case-insensitive dictionary.
+- `br`, `img`, `hr`, and `input` are hard-coded void elements and produce `SelfClose`.
+- `<br>`, `<br/>`, and `<br />` are equivalent.
+- Malformed tags skip to the next `>` and degrade instead of throwing.
+- `<!-- ... -->` comments are skipped.
+- `<!doctype ...>` and declarations are skipped.
+- Entity decoding supports at least `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;`, and `&#39;`; numeric entities may be added if needed by tests.
+
+Parser design:
+
+- Parse tokens with a stack rooted at an internal `__root__` node.
+- Supported tags are exactly the approved subset unless this spec is updated.
+- Supported open tags are added as `HtmlElementNode` children and pushed onto the stack.
+- Supported self-closing tags are added as leaf `HtmlElementNode` children.
+- Unsupported open tags are not pushed; their recoverable text falls through to the current parent.
+- Closing tags pop only when they match the current stack top; mismatched closing tags are ignored.
+- Unclosed tags left on the stack at EOF are treated as completed.
+- Tag names are normalized with `ToLowerInvariant()`.
+- Opening a new `<p>` while the stack top is `<p>` implicitly closes the previous paragraph before pushing the new one.
+- `<details>` and `<summary>` receive no parser special case; the renderer finds the first summary child.
+
+Known parser limits:
+
+- This parser does not support arbitrary HTML, CSS, scripts, forms, or browser layout.
+- `<script>` and `<style>` are outside the supported subset and should not render executable or styled content.
+- `<pre>` whitespace preservation is not supported in the first version.
+- Attribute values containing `>` are not a supported edge case unless covered by tokenizer tests.
 
 `BlockParser` owns block-vs-inline classification:
 
@@ -190,10 +222,16 @@ If no base directory is available, existing behavior is preserved.
 
 Use test-first implementation.
 
-Parser decision tests:
+Tokenizer/parser tests:
 
-- If using `HtmlAgilityPack`, add a parser adapter test proving it handles `<br>`, `<br/>`, `<IMG SRC=...>`, single-quoted attributes, comments, and nested same-name tags.
-- If using the limited parser, add the same tests to define its supported recovery behavior.
+- Tokenizes text, open tags, close tags, and self-closing tags.
+- Tokenizes `<br>`, `<br/>`, and `<br />` as self-closing `br`.
+- Tokenizes `<IMG SRC=...>`, mixed-case tag names, single-quoted attributes, double-quoted attributes, and unquoted attributes.
+- Skips comments and declarations.
+- Decodes supported HTML entities in text and attributes.
+- Builds nested same-name tags using stack behavior.
+- Handles implicit `<p>` close when a new `<p>` opens inside a current `<p>`.
+- Ignores mismatched closing tags without throwing.
 - Add a test proving malformed unsupported HTML degrades to text rather than throwing.
 
 Core parser tests:
