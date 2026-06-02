@@ -667,7 +667,7 @@
                                         <Trigger Property="HasItems" Value="False">
                                             <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
                                         </Trigger>
-                                        <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                        <DataTrigger Binding="{Binding ChildrenLoaded}" Value="False">
                                             <Setter TargetName="Expander" Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                         <Trigger Property="IsExpanded" Value="False">
@@ -751,7 +751,10 @@
                                 BorderThickness="0"
                                 TreeViewItem.Expanded="OnFilesTreeItemExpanded"
                                 ItemContainerStyle="{StaticResource WorkspaceTreeItemStyle}"
+                                ScrollViewer.CanContentScroll="True"
                                 SelectedItemChanged="OnFilesTreeSelectedItemChanged"
+                                VirtualizingStackPanel.IsVirtualizing="True"
+                                VirtualizingStackPanel.VirtualizationMode="Recycling"
                                 Visibility="Collapsed">
                                 <TreeView.ItemTemplate>
                                     <HierarchicalDataTemplate ItemsSource="{Binding Children}">

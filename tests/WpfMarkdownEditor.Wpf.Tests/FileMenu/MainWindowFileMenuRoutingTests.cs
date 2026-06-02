@@ -141,6 +141,9 @@ public sealed class MainWindowFileMenuRoutingTests
         Assert.Contains("x:Name=\"FilesTree\"", xaml);
         Assert.Contains("SelectedItemChanged=\"OnFilesTreeSelectedItemChanged\"", xaml);
         Assert.Contains("ItemsSource=\"{Binding Children}\"", xaml);
+        Assert.Contains("VirtualizingStackPanel.IsVirtualizing=\"True\"", xaml);
+        Assert.Contains("VirtualizingStackPanel.VirtualizationMode=\"Recycling\"", xaml);
+        Assert.Contains("ScrollViewer.CanContentScroll=\"True\"", xaml);
         Assert.Contains("IsExpanded, Mode=TwoWay", xaml);
         Assert.Contains("IsSelected, Mode=TwoWay", xaml);
         Assert.Contains("x:Name=\"FilesEmptyPanel\"", xaml);

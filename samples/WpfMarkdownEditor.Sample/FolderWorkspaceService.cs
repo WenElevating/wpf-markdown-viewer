@@ -20,6 +20,12 @@ public sealed class FolderWorkspaceService
         ".mdown"
     };
 
+    private static readonly HashSet<string> MarkdownFileNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "README",
+        "LICENSE"
+    };
+
     private static readonly HashSet<string> SkippedDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
     {
         ".git",
@@ -147,7 +153,7 @@ public sealed class FolderWorkspaceService
                 continue;
             }
 
-            if (!MarkdownExtensions.Contains(Path.GetExtension(entry)))
+            if (!IsMarkdownFile(entry))
                 continue;
 
             if (context.MarkdownFileCount >= _options.MaxMarkdownFiles)
@@ -217,9 +223,6 @@ public sealed class FolderWorkspaceService
                 if (ShouldSkipDirectory(entry))
                     continue;
 
-                if (!DirectoryHasDirectMarkdownFile(entry, cancellationToken))
-                    continue;
-
                 directories.Add(new WorkspaceTreeNode
                 {
                     Name = Path.GetFileName(entry),
@@ -231,7 +234,7 @@ public sealed class FolderWorkspaceService
                 continue;
             }
 
-            if (!MarkdownExtensions.Contains(Path.GetExtension(entry)))
+            if (!IsMarkdownFile(entry))
                 continue;
 
             if (context.MarkdownFileCount >= _options.MaxMarkdownFiles)
@@ -259,35 +262,18 @@ public sealed class FolderWorkspaceService
         parent.ChildrenLoaded = true;
     }
 
-    private static bool DirectoryHasDirectMarkdownFile(string directory, CancellationToken cancellationToken)
+    private static bool IsMarkdownFile(string path)
     {
-        IEnumerable<string> files;
-        try
-        {
-            files = Directory.EnumerateFiles(directory);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-
-        foreach (var file in files)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (MarkdownExtensions.Contains(Path.GetExtension(file)))
-                return true;
-        }
-
-        return false;
+        return MarkdownExtensions.Contains(Path.GetExtension(path))
+            || MarkdownFileNames.Contains(Path.GetFileName(path));
     }
 
     private static bool ShouldSkipDirectory(string path)
     {
         var name = Path.GetFileName(path);
+        if (name.StartsWith(".", StringComparison.Ordinal))
+            return true;
+
         if (SkippedDirectoryNames.Contains(name))
             return true;
 

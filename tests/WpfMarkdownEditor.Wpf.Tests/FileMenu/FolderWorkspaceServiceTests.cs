@@ -59,24 +59,33 @@ public sealed class FolderWorkspaceServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ScanShallowAsync_ReturnsOnlyDirectChildrenAndLeavesDirectoriesUnloaded()
+    public async Task ScanShallowAsync_ReturnsDirectoriesWithoutPreScanningAndSkipsDotDirectories()
     {
         CreateFile("root.md");
+        CreateFile("LICENSE");
         CreateFile("nested\\deep.md");
         CreateFile("deepOnly\\child\\deep.md");
         CreateFile("empty\\ignore.txt");
+        CreateFile(".github\\README.md");
+        CreateFile(".hidden\\hidden.md");
+        CreateFile("plain.txt");
         var service = new FolderWorkspaceService();
 
         var result = await service.ScanShallowAsync(_root);
 
         Assert.False(result.IsTruncated);
-        Assert.Equal(1, result.MarkdownFileCount);
-        Assert.Equal(new[] { "nested", "root.md" }, result.Root.Children.Select(node => node.Name).ToArray());
+        Assert.Equal(2, result.MarkdownFileCount);
+        Assert.Equal(
+            new[] { "deepOnly", "empty", "nested", "LICENSE", "root.md" },
+            result.Root.Children.Select(node => node.Name).ToArray());
 
         var nested = Assert.Single(result.Root.Children.Where(node => node.Name == "nested"));
         Assert.True(nested.IsDirectory);
         Assert.Empty(nested.Children);
         Assert.False(nested.ChildrenLoaded);
+
+        Assert.DoesNotContain(result.Root.Children, node => node.Name.StartsWith(".", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Root.Children, node => node.Name == "plain.txt");
     }
 
     public void Dispose()
