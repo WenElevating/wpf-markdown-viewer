@@ -25,6 +25,7 @@ public partial class MainWindow : Window
 {
     private const double SidebarWidth = 260;
     private const int SidebarAnimMs = 200;
+    private const int RecentFileDisplayPathMaxLength = 56;
 
     private readonly LocalizationService _localizationService;
     private readonly LocalizationSettingsService _localizationSettingsService;
@@ -540,8 +541,10 @@ public partial class MainWindow : Window
         {
             var button = new Button
             {
-                Content = entry.Path,
-                Tag = entry.Path,
+                Content = FormatRecentFileDisplayPath(entry.Path),
+                CommandParameter = entry.Path,
+                Tag = string.Empty,
+                ToolTip = entry.Path,
                 Style = (Style)FindResource("MenuItemStyle"),
                 HorizontalContentAlignment = HorizontalAlignment.Left,
             };
@@ -583,12 +586,25 @@ public partial class MainWindow : Window
     private void OnRecentFileItemClick(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
-        if (sender is Button { Tag: string path })
+        if (sender is Button { CommandParameter: string path })
             OpenFilePath(path);
 
         SetOpenRecentFileButtonActive(isActive: false);
         RecentFilesPopup.IsOpen = false;
         FilePopup.IsOpen = false;
+    }
+
+    private static string FormatRecentFileDisplayPath(string path)
+    {
+        if (path.Length <= RecentFileDisplayPathMaxLength)
+            return path;
+
+        var root = System.IO.Path.GetPathRoot(path);
+        var fileName = System.IO.Path.GetFileName(path);
+        if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(fileName))
+            return path;
+
+        return $"{root}...{System.IO.Path.DirectorySeparatorChar}{fileName}";
     }
 
     private void OnClearRecentFiles(object sender, RoutedEventArgs e)

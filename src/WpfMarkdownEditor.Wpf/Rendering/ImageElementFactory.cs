@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -60,12 +61,9 @@ internal static class ImageElementFactory
 
     public static Image CreateBitmapImageControl(BitmapImage bitmap, string? alt, double maxHeight, bool alignLeft)
     {
-        var size = ConstrainSize(bitmap.PixelWidth, bitmap.PixelHeight, maxHeight);
-        var image = new Image
+        var image = new ResponsiveImage(bitmap.PixelWidth, bitmap.PixelHeight, maxHeight)
         {
             Source = bitmap,
-            Width = size.Width,
-            Height = size.Height,
             MaxHeight = maxHeight,
             HorizontalAlignment = alignLeft ? HorizontalAlignment.Left : HorizontalAlignment.Stretch,
             Stretch = Stretch.Uniform,
@@ -237,17 +235,69 @@ internal static class ImageElementFactory
             : null;
     }
 
-    private static Size ConstrainSize(double width, double height, double maxHeight)
+    private sealed class ResponsiveImage(double naturalWidth, double naturalHeight, double maxHeight) : Image
     {
-        if (width <= 0 || height <= 0)
-            return new Size(double.NaN, double.NaN);
-
-        if (maxHeight > 0 && height > maxHeight)
+        protected override Size MeasureOverride(Size constraint)
         {
-            var scale = maxHeight / height;
-            return new Size(width * scale, maxHeight);
+            var desired = ConstrainSize(naturalWidth, naturalHeight, ResolveAvailableWidth(constraint.Width), maxHeight);
+            base.MeasureOverride(desired);
+            return desired;
         }
 
-        return new Size(width, height);
+        protected override Size ArrangeOverride(Size arrangeSize)
+        {
+            var desired = ConstrainSize(naturalWidth, naturalHeight, ResolveAvailableWidth(arrangeSize.Width), maxHeight);
+            return base.ArrangeOverride(desired);
+        }
+
+        protected override void OnVisualParentChanged(DependencyObject oldParent)
+        {
+            base.OnVisualParentChanged(oldParent);
+            Dispatcher.BeginInvoke(new Action(InvalidateMeasure), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private double ResolveAvailableWidth(double constraintWidth)
+        {
+            if (IsFinitePositive(constraintWidth))
+                return constraintWidth;
+
+            var viewer = FindAncestor<FlowDocumentScrollViewer>();
+            if (viewer?.Document is null || !IsFinitePositive(viewer.ActualWidth))
+                return double.PositiveInfinity;
+
+            var padding = viewer.Document.PagePadding;
+            return Math.Max(1, viewer.ActualWidth - padding.Left - padding.Right);
+        }
+
+        private static Size ConstrainSize(double width, double height, double maxWidth, double maxHeight)
+        {
+            if (width <= 0 || height <= 0)
+                return new Size(double.NaN, double.NaN);
+
+            var scale = 1d;
+            if (IsFinitePositive(maxWidth) && width * scale > maxWidth)
+                scale = maxWidth / width;
+
+            if (IsFinitePositive(maxHeight) && height * scale > maxHeight)
+                scale = Math.Min(scale, maxHeight / height);
+
+            return new Size(Math.Max(1, width * scale), Math.Max(1, height * scale));
+        }
+
+        private T? FindAncestor<T>() where T : DependencyObject
+        {
+            DependencyObject? current = this;
+            while (current is not null)
+            {
+                current = VisualTreeHelper.GetParent(current) ?? LogicalTreeHelper.GetParent(current);
+                if (current is T match)
+                    return match;
+            }
+
+            return null;
+        }
+
+        private static bool IsFinitePositive(double value) =>
+            !double.IsNaN(value) && !double.IsInfinity(value) && value > 0;
     }
 }

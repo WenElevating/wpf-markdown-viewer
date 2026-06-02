@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WpfMarkdownEditor.Core;
 using WpfMarkdownEditor.Core.Parsing.Blocks;
+using WpfMarkdownEditor.Core.Parsing.Html;
 using WpfMarkdownEditor.Core.Parsing.Inlines;
 using WpfMarkdownEditor.Wpf.Theming;
 
@@ -22,8 +23,8 @@ public sealed class ParagraphRenderer(
     {
         var para = (ParagraphBlock)block;
 
-        if (imageResolver is not null && TryGetStandaloneImages(para.Inlines, out var images))
-            return RenderStandaloneImages(images);
+        if (imageResolver is not null && TryGetStandaloneImageLines(para.Inlines, out var imageLines))
+            return RenderStandaloneImageLines(imageLines);
 
         var paragraph = new Paragraph
         {
@@ -37,10 +38,10 @@ public sealed class ParagraphRenderer(
         return paragraph;
     }
 
-    private System.Windows.Documents.Block RenderStandaloneImages(IReadOnlyList<ImageInline> images)
+    private System.Windows.Documents.Block RenderStandaloneImageLines(IReadOnlyList<StandaloneImageLine> imageLines)
     {
-        if (images.Count == 1)
-            return RenderStandaloneImage(images[0]);
+        if (imageLines.Count == 1)
+            return RenderStandaloneImageLine(imageLines[0]);
 
         var section = new Section
         {
@@ -48,10 +49,32 @@ public sealed class ParagraphRenderer(
             TextAlignment = TextAlignment.Left,
         };
 
-        foreach (var image in images)
-            section.Blocks.Add(RenderStandaloneImage(image));
+        foreach (var imageLine in imageLines)
+            section.Blocks.Add(RenderStandaloneImageLine(imageLine));
 
         return section;
+    }
+
+    private System.Windows.Documents.Block RenderStandaloneImageLine(StandaloneImageLine imageLine) =>
+        imageLine.Inline switch
+        {
+            ImageInline image => RenderStandaloneImage(image),
+            HtmlInline html => RenderStandaloneLinkedHtmlImage(html),
+            _ => throw new InvalidOperationException("Unsupported standalone image inline.")
+        };
+
+    private Paragraph RenderStandaloneLinkedHtmlImage(HtmlInline html)
+    {
+        var paragraph = new Paragraph
+        {
+            FontFamily = theme.BodyFont,
+            Foreground = new SolidColorBrush(theme.ForegroundColor),
+            TextAlignment = TextAlignment.Left,
+            Margin = CreateImageMargin(),
+        };
+
+        _inlineRenderer.RenderInlines(paragraph, [html]);
+        return paragraph;
     }
 
     private System.Windows.Documents.Block RenderStandaloneImage(ImageInline img)
@@ -175,28 +198,46 @@ public sealed class ParagraphRenderer(
         TextAlignment = TextAlignment.Left,
     };
 
-    private static bool TryGetStandaloneImages(IReadOnlyList<Core.Parsing.Inline> inlines, out List<ImageInline> images)
+    private static bool TryGetStandaloneImageLines(IReadOnlyList<Core.Parsing.Inline> inlines, out List<StandaloneImageLine> imageLines)
     {
-        images = [];
+        imageLines = [];
         foreach (var inline in inlines)
         {
             switch (inline)
             {
                 case ImageInline image:
-                    images.Add(image);
+                    imageLines.Add(new StandaloneImageLine(image));
+                    break;
+                case HtmlInline html when IsStandaloneLinkedHtmlImage(html):
+                    imageLines.Add(new StandaloneImageLine(html));
                     break;
                 case LineBreakInline:
                     break;
                 case TextInline text when string.IsNullOrWhiteSpace(text.Content):
                     break;
                 default:
-                    images.Clear();
+                    imageLines.Clear();
                     return false;
             }
         }
 
-        return images.Count > 0;
+        return imageLines.Count > 0;
     }
+
+    private static bool IsStandaloneLinkedHtmlImage(HtmlInline html) =>
+        html.Fragment.Children is [HtmlElementNode { TagName: "a" } anchor] &&
+        anchor.Children.Any(static child => child is HtmlElementNode { TagName: "img" }) &&
+        anchor.Children.All(IsImageOrWhitespace);
+
+    private static bool IsImageOrWhitespace(HtmlNode node) =>
+        node switch
+        {
+            HtmlElementNode { TagName: "img" } => true,
+            HtmlTextNode text => string.IsNullOrWhiteSpace(text.Text),
+            _ => false
+        };
+
+    private sealed record StandaloneImageLine(Core.Parsing.Inline Inline);
 
     private static void RefreshLoadedImage(ContentControl host, FrameworkElement element, Action? requestLayoutRefresh)
     {

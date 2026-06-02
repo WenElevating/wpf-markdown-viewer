@@ -1,8 +1,11 @@
 using System.ComponentModel;
 using System.IO;
 using System.Threading;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WpfMarkdownEditor.Wpf.Controls;
 using Xunit;
@@ -100,6 +103,51 @@ public sealed class MarkdownEditorRenderingTests
         });
     }
 
+    [Fact]
+    public void PreviewImage_WiderThanPreviewPane_ShrinksToAvailableWidth()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            var imagePath = Path.Combine(root, "wide.png");
+            var markdownPath = Path.Combine(root, "readme.md");
+            Directory.CreateDirectory(root);
+            WritePng(imagePath, width: 1200, height: 300);
+            File.WriteAllText(markdownPath, "![wide](wide.png)");
+
+            try
+            {
+                using var editor = new MarkdownEditor
+                {
+                    Width = 700,
+                    Height = 500,
+                };
+
+                editor.LoadFile(markdownPath);
+                editor.Measure(new Size(700, 500));
+                editor.Arrange(new Rect(0, 0, 700, 500));
+                editor.UpdateLayout();
+
+                Assert.True(WaitUntil(() => FindImage(editor.PreviewViewer.Document) is { Source: not null }));
+                editor.Measure(new Size(700, 500));
+                editor.Arrange(new Rect(0, 0, 700, 500));
+                editor.UpdateLayout();
+
+                var image = FindImage(editor.PreviewViewer.Document);
+                Assert.NotNull(image);
+                var availableWidth = editor.PreviewViewer.ActualWidth - editor.PreviewViewer.Document.PagePadding.Left - editor.PreviewViewer.Document.PagePadding.Right;
+
+                Assert.True(
+                    image.ActualWidth <= availableWidth,
+                    $"Image width {image.ActualWidth} exceeds preview width {availableWidth}.");
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
     private static void RunOnSta(Action action)
     {
         Exception? exception = null;
@@ -172,4 +220,54 @@ public sealed class MarkdownEditorRenderingTests
             Span span => span.Inlines.Cast<Inline>().Any(InlineContainsImage),
             _ => false
         };
+
+    private static Image? FindImage(FlowDocument? document)
+    {
+        if (document is null)
+            return null;
+
+        return document.Blocks.Cast<Block>().Select(FindImage).FirstOrDefault(static image => image is not null);
+    }
+
+    private static Image? FindImage(Block block) =>
+        block switch
+        {
+            BlockUIContainer { Child: Image image } => image,
+            BlockUIContainer { Child: ContentControl { Content: Image image } } => image,
+            Section section => section.Blocks.Cast<Block>().Select(FindImage).FirstOrDefault(static image => image is not null),
+            Paragraph paragraph => paragraph.Inlines.Cast<Inline>().Select(FindImage).FirstOrDefault(static image => image is not null),
+            Table table => table.RowGroups
+                .SelectMany(group => group.Rows)
+                .SelectMany(row => row.Cells)
+                .SelectMany(cell => cell.Blocks.Cast<Block>())
+                .Select(FindImage)
+                .FirstOrDefault(static image => image is not null),
+            _ => null
+        };
+
+    private static Image? FindImage(Inline inline) =>
+        inline switch
+        {
+            InlineUIContainer { Child: Image image } => image,
+            Span span => span.Inlines.Cast<Inline>().Select(FindImage).FirstOrDefault(static image => image is not null),
+            _ => null
+        };
+
+    private static void WritePng(string path, int width, int height)
+    {
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+        {
+            context.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
+        }
+
+        var renderTarget = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        renderTarget.Render(visual);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(renderTarget));
+
+        using var stream = File.Create(path);
+        encoder.Save(stream);
+    }
 }

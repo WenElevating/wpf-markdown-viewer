@@ -54,7 +54,7 @@ public sealed class ImageRenderingTests
 
                 var document = renderer.Render(parser.Parse($"![pasted]({imagePath})"));
                 var block = Assert.IsType<BlockUIContainer>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
-                var image = Assert.IsType<Image>(block.Child);
+                var image = Assert.IsAssignableFrom<Image>(block.Child);
 
                 Assert.NotNull(image.Source);
             }
@@ -93,7 +93,7 @@ public sealed class ImageRenderingTests
 
             Assert.True(WaitUntil(() => paragraph.Inlines.Single() is InlineUIContainer));
             var container = Assert.IsType<InlineUIContainer>(Assert.Single(paragraph.Inlines));
-            var image = Assert.IsType<Image>(container.Child);
+            var image = Assert.IsAssignableFrom<Image>(container.Child);
             Assert.NotNull(image.Source);
         });
     }
@@ -177,7 +177,7 @@ public sealed class ImageRenderingTests
             Assert.True(
                 WaitUntil(() => host.Content is Image image && image.Source is not null),
                 $"Final content: {host.Content?.GetType().FullName}");
-            var image = Assert.IsType<Image>(host.Content);
+            var image = Assert.IsAssignableFrom<Image>(host.Content);
             Assert.NotNull(image.Source);
             Assert.True(WaitUntil(() => layoutRefreshCount > 0));
         });
@@ -295,7 +295,7 @@ public sealed class ImageRenderingTests
     }
 
     [Fact]
-    public void Render_AnchorWrappedHtmlImageLines_RendersInlineImageLinks()
+    public void Render_AnchorWrappedHtmlImageLines_UsesStandaloneImageLinkSpacing()
     {
         RunOnSta(() =>
         {
@@ -308,10 +308,19 @@ public sealed class ImageRenderingTests
                 <a href="https://996.icu"><img src="https://camo.githubusercontent.com/image"></a>
                 """));
 
-            var paragraph = Assert.IsType<Paragraph>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
-            Assert.Equal(2, CountInlines<Hyperlink>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>()));
+            var section = Assert.IsType<Section>(Assert.Single(document.Blocks.Cast<WpfBlock>()));
+            var paragraphs = section.Blocks.Cast<WpfBlock>().OfType<Paragraph>().ToList();
+
+            Assert.Equal(2, paragraphs.Count);
+            foreach (var paragraph in paragraphs)
+            {
+                Assert.Equal(8, paragraph.Margin.Top);
+                Assert.True(paragraph.Margin.Bottom >= 20);
+                Assert.Equal(1, CountInlines<Hyperlink>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>()));
+            }
+
             Assert.True(WaitUntil(() =>
-                CountInlines<InlineUIContainer>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>()) == 2));
+                paragraphs.Sum(paragraph => CountInlines<InlineUIContainer>(paragraph.Inlines.Cast<System.Windows.Documents.Inline>())) == 2));
         });
     }
 
