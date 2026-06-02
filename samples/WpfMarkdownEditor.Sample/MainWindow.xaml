@@ -665,6 +665,119 @@
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,0,1,0"
                 ClipToBounds="True">
+                <Border.Resources>
+                    <Style x:Key="SidebarActionButtonStyle" TargetType="Button">
+                        <Setter Property="MinHeight" Value="32" />
+                        <Setter Property="Margin" Value="0,4,0,0" />
+                        <Setter Property="Padding" Value="10,7" />
+                        <Setter Property="HorizontalContentAlignment" Value="Left" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border
+                                        x:Name="Bd"
+                                        Padding="{TemplateBinding Padding}"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="6"
+                                        SnapsToDevicePixels="True">
+                                        <ContentPresenter
+                                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PressedBackgroundBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+
+                    <Style x:Key="WorkspaceTreeItemStyle" TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TreeViewItem">
+                                    <StackPanel>
+                                        <Border
+                                            x:Name="ItemBorder"
+                                            MinHeight="26"
+                                            Margin="4,1"
+                                            Padding="2,2,8,2"
+                                            Background="Transparent"
+                                            CornerRadius="5"
+                                            SnapsToDevicePixels="True">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="18" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <ToggleButton
+                                                    x:Name="Expander"
+                                                    Grid.Column="0"
+                                                    Width="16"
+                                                    Height="20"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Cursor="Hand"
+                                                    IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                                    <TextBlock
+                                                        x:Name="ExpanderGlyph"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        FontFamily="Segoe MDL2 Assets"
+                                                        FontSize="8"
+                                                        Foreground="{DynamicResource TextSecondaryBrush}"
+                                                        Text="&#xE76C;" />
+                                                </ToggleButton>
+                                                <ContentPresenter
+                                                    Grid.Column="1"
+                                                    Margin="1,0,0,0"
+                                                    ContentSource="Header"
+                                                    HorizontalAlignment="Stretch"
+                                                    VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <ItemsPresenter x:Name="ItemsHost" Margin="18,0,0,0" />
+                                    </StackPanel>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="HasItems" Value="False">
+                                            <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                                        </Trigger>
+                                        <Trigger Property="IsExpanded" Value="False">
+                                            <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed" />
+                                        </Trigger>
+                                        <Trigger SourceName="Expander" Property="IsChecked" Value="True">
+                                            <Setter TargetName="ExpanderGlyph" Property="Text" Value="&#xE70D;" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource PressedBackgroundBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Border.Resources>
                 <Grid Width="260">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -672,9 +785,8 @@
                     </Grid.RowDefinitions>
 
                     <!--  Tab Headers  -->
-                    <Grid Grid.Row="0" Margin="16,12,16,0">
+                    <Grid Grid.Row="0" Margin="18,12,18,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
@@ -685,7 +797,8 @@
                                 Cursor="Hand"
                                 FontFamily="Segoe UI Variable, Segoe UI"
                                 FontSize="12"
-                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                FontWeight="SemiBold"
+                                Foreground="{DynamicResource TextPrimaryBrush}"
                                 MouseLeftButtonDown="OnTabFiles"
                                 Text="{DynamicResource Loc.MainWindow.Files}" />
                             <Border
@@ -694,29 +807,9 @@
                                 Height="2"
                                 HorizontalAlignment="Center"
                                 Background="{DynamicResource AccentBrush}"
-                                CornerRadius="1"
-                                Visibility="Collapsed" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                            <TextBlock
-                                x:Name="TabHistory"
-                                Margin="0,0,0,6"
-                                Cursor="Hand"
-                                FontFamily="Segoe UI Variable, Segoe UI"
-                                FontSize="12"
-                                FontWeight="SemiBold"
-                                Foreground="{DynamicResource TextPrimaryBrush}"
-                                MouseLeftButtonDown="OnTabHistory"
-                                Text="{DynamicResource Loc.MainWindow.History}" />
-                            <Border
-                                x:Name="HistoryUnderline"
-                                Width="20"
-                                Height="2"
-                                HorizontalAlignment="Center"
-                                Background="{DynamicResource AccentBrush}"
                                 CornerRadius="1" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                             <TextBlock
                                 x:Name="TabOutline"
                                 Margin="0,0,0,6"
@@ -739,37 +832,87 @@
 
                     <!--  Tab Content  -->
                     <Grid Grid.Row="1">
-                        <TreeView
-                            x:Name="FilesTree"
-                            Padding="8"
-                            SelectedItemChanged="OnFilesTreeSelectedItemChanged"
-                            Visibility="Collapsed">
-                            <TreeView.ItemTemplate>
-                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                    <TextBlock Text="{Binding Name}" />
-                                </HierarchicalDataTemplate>
-                            </TreeView.ItemTemplate>
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
-                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                        </TreeView>
-                        <ScrollViewer
-                            x:Name="HistoryPanel"
-                            Padding="8"
-                            VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="HistoryList">
+                        <Grid x:Name="FilesPanel">
+                            <TreeView
+                                x:Name="FilesTree"
+                                Padding="6,8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ItemContainerStyle="{StaticResource WorkspaceTreeItemStyle}"
+                                SelectedItemChanged="OnFilesTreeSelectedItemChanged"
+                                Visibility="Collapsed">
+                                <TreeView.ItemTemplate>
+                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock
+                                                x:Name="WorkspaceNodeIcon"
+                                                Width="16"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                FontFamily="Segoe MDL2 Assets"
+                                                FontSize="12"
+                                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                                Text="&#xE8A5;" />
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontFamily="Segoe UI Variable, Segoe UI"
+                                                FontSize="12"
+                                                Text="{Binding Name}"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <HierarchicalDataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                <Setter TargetName="WorkspaceNodeIcon" Property="Text" Value="&#xE8B7;" />
+                                            </DataTrigger>
+                                        </HierarchicalDataTemplate.Triggers>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                            <StackPanel
+                                x:Name="FilesEmptyPanel"
+                                Margin="18,34,18,0"
+                                VerticalAlignment="Top">
                                 <TextBlock
-                                    Margin="0,32,0,0"
-                                    HorizontalAlignment="Center"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="24"
+                                    Foreground="{DynamicResource TextSecondaryBrush}"
+                                    Text="&#xE8B7;" />
+                                <TextBlock
+                                    x:Name="FilesEmptyTitle"
+                                    Margin="0,14,0,0"
+                                    FontFamily="Segoe UI Variable, Segoe UI"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="{DynamicResource TextPrimaryBrush}"
+                                    Text="{DynamicResource Loc.MainWindow.NoFolderOpened}" />
+                                <TextBlock
+                                    x:Name="FilesEmptyHint"
+                                    Margin="0,6,0,10"
                                     FontFamily="Segoe UI Variable, Segoe UI"
                                     FontSize="12"
                                     Foreground="{DynamicResource TextSecondaryBrush}"
-                                    Text="{DynamicResource Loc.MainWindow.NoFilesOpened}" />
+                                    Text="{DynamicResource Loc.MainWindow.OpenFolderHint}"
+                                    TextWrapping="Wrap" />
+                                <Button Click="OnOpenFolder" Style="{StaticResource SidebarActionButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            Margin="0,0,8,0"
+                                            FontFamily="Segoe MDL2 Assets"
+                                            Text="&#xE8B7;" />
+                                        <TextBlock Text="{DynamicResource Loc.MainWindow.OpenFolder}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Click="OnOpenFile" Style="{StaticResource SidebarActionButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            Margin="0,0,8,0"
+                                            FontFamily="Segoe MDL2 Assets"
+                                            Text="&#xE8A5;" />
+                                        <TextBlock Text="{DynamicResource Loc.MainWindow.OpenFile}" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
-                        </ScrollViewer>
+                        </Grid>
                         <ScrollViewer
                             x:Name="OutlinePanel"
                             Padding="8"

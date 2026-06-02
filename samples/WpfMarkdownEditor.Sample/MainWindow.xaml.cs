@@ -37,7 +37,6 @@ public partial class MainWindow : Window
     private string _statusKey = "Status.Ready";
     private object[] _statusArgs = [];
     private bool _sidebarOpen;
-    private readonly List<FileHistoryEntry> _fileHistory = [];
     private TranslationService? _translationService;
     private TranslationSettingsService? _translationSettings;
     private CancellationTokenSource? _translationCts;
@@ -57,8 +56,6 @@ public partial class MainWindow : Window
     private string? _currentFilePath;
     private bool _isDirty;
     private bool _loadingFile;
-
-    private record FileHistoryEntry(string Path, DateTime OpenedAt);
 
     public MainWindow(
         string? filePath = null,
@@ -102,7 +99,6 @@ public partial class MainWindow : Window
             _loadingFile = false;
             _currentFilePath = filePath;
             _isDirty = false;
-            AddToHistory(filePath);
             _recentFilesService.AddOrRefreshFile(filePath);
             AddRecentFileToCache(filePath);
             SetStatus("Status.FileLoaded", filePath);
@@ -258,7 +254,6 @@ public partial class MainWindow : Window
             _loadingFile = false;
             _currentFilePath = path;
             _isDirty = false;
-            AddToHistory(path);
             _recentFilesService.AddOrRefreshFile(path);
             AddRecentFileToCache(path);
             UpdateTitle();
@@ -292,7 +287,6 @@ public partial class MainWindow : Window
             await Editor.SaveFileAsync(targetPath);
             _currentFilePath = targetPath;
             _isDirty = false;
-            AddToHistory(targetPath);
             _recentFilesService.AddOrRefreshFile(targetPath);
             AddRecentFileToCache(targetPath);
             UpdateTitle();
@@ -322,7 +316,6 @@ public partial class MainWindow : Window
             await Editor.SaveFileAsync(dialog.FileName);
             _currentFilePath = dialog.FileName;
             _isDirty = false;
-            AddToHistory(dialog.FileName);
             _recentFilesService.AddOrRefreshFile(dialog.FileName);
             AddRecentFileToCache(dialog.FileName);
             UpdateTitle();
@@ -683,7 +676,6 @@ public partial class MainWindow : Window
             AddRecentFileToCache(dialog.FileName);
             RemoveWorkspaceNode(oldPath);
             _currentFilePath = dialog.FileName;
-            AddToHistory(dialog.FileName);
             UpdateTitle();
             SetStatus("Status.FileSaved", dialog.FileName);
         }
@@ -974,7 +966,6 @@ public partial class MainWindow : Window
             File.WriteAllText(targetPath, Editor.Markdown);
             _currentFilePath = targetPath;
             _isDirty = false;
-            AddToHistory(targetPath);
             _recentFilesService.AddOrRefreshFile(targetPath);
             AddRecentFileToCache(targetPath);
             UpdateTitle();
@@ -1145,7 +1136,6 @@ public partial class MainWindow : Window
     {
         UpdateTitle();
         RefreshStatusText();
-        UpdateHistoryList();
         if (OutlinePanel.Visibility == Visibility.Visible)
             UpdateOutline();
         UpdateSearchCount();
@@ -1394,24 +1384,6 @@ public partial class MainWindow : Window
         AnimateSidebar(SidebarWidth);
     }
 
-    private void OnTabHistory(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        TabFiles.FontWeight = FontWeights.Normal;
-        TabFiles.Foreground = (Brush)FindResource("TextSecondaryBrush");
-        TabHistory.FontWeight = FontWeights.SemiBold;
-        TabHistory.Foreground = (Brush)FindResource("TextPrimaryBrush");
-        TabOutline.FontWeight = FontWeights.Normal;
-        TabOutline.Foreground = (Brush)FindResource("TextSecondaryBrush");
-        FilesUnderline.Visibility = Visibility.Collapsed;
-        HistoryUnderline.Visibility = Visibility.Visible;
-        OutlineUnderline.Visibility = Visibility.Collapsed;
-
-        FilesTree.Visibility = Visibility.Collapsed;
-        HistoryPanel.Visibility = Visibility.Visible;
-        OutlinePanel.Visibility = Visibility.Collapsed;
-    }
-
     private void OnTabOutline(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
@@ -1419,15 +1391,11 @@ public partial class MainWindow : Window
         TabFiles.Foreground = (Brush)FindResource("TextSecondaryBrush");
         TabOutline.FontWeight = FontWeights.SemiBold;
         TabOutline.Foreground = (Brush)FindResource("TextPrimaryBrush");
-        TabHistory.FontWeight = FontWeights.Normal;
-        TabHistory.Foreground = (Brush)FindResource("TextSecondaryBrush");
         FilesUnderline.Visibility = Visibility.Collapsed;
         OutlineUnderline.Visibility = Visibility.Visible;
-        HistoryUnderline.Visibility = Visibility.Collapsed;
 
-        FilesTree.Visibility = Visibility.Collapsed;
+        FilesPanel.Visibility = Visibility.Collapsed;
         OutlinePanel.Visibility = Visibility.Visible;
-        HistoryPanel.Visibility = Visibility.Collapsed;
         UpdateOutline();
     }
 
@@ -1441,17 +1409,31 @@ public partial class MainWindow : Window
     {
         TabFiles.FontWeight = FontWeights.SemiBold;
         TabFiles.Foreground = (Brush)FindResource("TextPrimaryBrush");
-        TabHistory.FontWeight = FontWeights.Normal;
-        TabHistory.Foreground = (Brush)FindResource("TextSecondaryBrush");
         TabOutline.FontWeight = FontWeights.Normal;
         TabOutline.Foreground = (Brush)FindResource("TextSecondaryBrush");
         FilesUnderline.Visibility = Visibility.Visible;
-        HistoryUnderline.Visibility = Visibility.Collapsed;
         OutlineUnderline.Visibility = Visibility.Collapsed;
 
-        FilesTree.Visibility = Visibility.Visible;
-        HistoryPanel.Visibility = Visibility.Collapsed;
+        FilesPanel.Visibility = Visibility.Visible;
         OutlinePanel.Visibility = Visibility.Collapsed;
+        UpdateFilesPanelState();
+    }
+
+    private void UpdateFilesPanelState()
+    {
+        var hasWorkspaceFiles = _workspaceRoot?.Children.Count > 0 == true;
+        FilesTree.Visibility = hasWorkspaceFiles ? Visibility.Visible : Visibility.Collapsed;
+        FilesEmptyPanel.Visibility = hasWorkspaceFiles ? Visibility.Collapsed : Visibility.Visible;
+
+        if (_workspaceRoot is null)
+        {
+            FilesEmptyTitle.Text = _localizationService.GetString("MainWindow.NoFolderOpened");
+            FilesEmptyHint.Text = _localizationService.GetString("MainWindow.OpenFolderHint");
+            return;
+        }
+
+        FilesEmptyTitle.Text = _localizationService.GetString("MainWindow.NoMarkdownFiles");
+        FilesEmptyHint.Text = _localizationService.GetString("MainWindow.NoMarkdownFilesHint");
     }
 
     private void OnFilesTreeSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -1472,81 +1454,6 @@ public partial class MainWindow : Window
         }
         if (OutlinePanel.Visibility == Visibility.Visible)
             UpdateOutline();
-    }
-
-    private void AddToHistory(string filePath)
-    {
-        // Remove duplicate if already exists
-        _fileHistory.RemoveAll(h => h.Path == filePath);
-        _fileHistory.Insert(0, new FileHistoryEntry(filePath, DateTime.Now));
-
-        // Keep max 20 entries
-        if (_fileHistory.Count > 20)
-            _fileHistory.RemoveRange(20, _fileHistory.Count - 20);
-
-        UpdateHistoryList();
-    }
-
-    private void UpdateHistoryList()
-    {
-        HistoryList.Children.Clear();
-
-        if (_fileHistory.Count == 0)
-        {
-            HistoryList.Children.Add(new TextBlock
-            {
-                Text = _localizationService.GetString("MainWindow.NoFilesOpened"),
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
-                FontSize = 12,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 32, 0, 0),
-            });
-            return;
-        }
-
-        foreach (var entry in _fileHistory)
-        {
-            var fileName = System.IO.Path.GetFileName(entry.Path);
-            var dir = System.IO.Path.GetDirectoryName(entry.Path) ?? "";
-            var timeStr = entry.OpenedAt.ToString("HH:mm");
-
-            var btn = new Button
-            {
-                Style = (Style)FindResource("SidebarItemStyle"),
-                Tag = entry.Path,
-                Content = new StackPanel
-                {
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = fileName,
-                            FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
-                            FontSize = 12,
-                            FontWeight = FontWeights.Medium,
-                        },
-                        new TextBlock
-                        {
-                            Text = $"{timeStr} · {dir}",
-                            FontFamily = new FontFamily("Segoe UI Variable, Segoe UI"),
-                            FontSize = 10,
-                            Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                            TextTrimming = TextTrimming.CharacterEllipsis,
-                            Margin = new Thickness(0, 2, 0, 0),
-                        },
-                    }
-                },
-            };
-            btn.Click += OnHistoryItemClick;
-            HistoryList.Children.Add(btn);
-        }
-    }
-
-    private void OnHistoryItemClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button btn || btn.Tag is not string path) return;
-        OpenFilePath(path);
     }
 
     private void UpdateOutline()

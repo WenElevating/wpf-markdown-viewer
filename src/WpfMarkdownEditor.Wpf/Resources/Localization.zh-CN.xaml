@@ -66,9 +66,11 @@
     <sys:String x:Key="Loc.MainWindow.Themes">主题</sys:String>
     <sys:String x:Key="Loc.MainWindow.Language">语言</sys:String>
     <sys:String x:Key="Loc.MainWindow.Files">文件</sys:String>
-    <sys:String x:Key="Loc.MainWindow.History">历史</sys:String>
     <sys:String x:Key="Loc.MainWindow.Outline">大纲</sys:String>
-    <sys:String x:Key="Loc.MainWindow.NoFilesOpened">尚未打开文件</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoFolderOpened">未打开文件夹</sys:String>
+    <sys:String x:Key="Loc.MainWindow.OpenFolderHint">Markdown 文件会显示在这里。</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoMarkdownFiles">没有 Markdown 文件</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoMarkdownFilesHint">请选择其他文件夹，或直接打开单个文件。</sys:String>
     <sys:String x:Key="Loc.MainWindow.NoHeadingsFound">未找到标题</sys:String>
     <sys:String x:Key="Loc.MainWindow.SearchCloseTooltip">关闭 (Esc)</sys:String>
     <sys:String x:Key="Loc.MainWindow.SearchNextTooltip">下一个 (Enter)</sys:String>

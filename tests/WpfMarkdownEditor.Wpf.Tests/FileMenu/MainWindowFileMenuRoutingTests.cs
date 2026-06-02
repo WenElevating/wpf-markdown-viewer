@@ -136,11 +136,41 @@ public sealed class MainWindowFileMenuRoutingTests
 
         Assert.Contains("x:Name=\"TabFiles\"", xaml);
         Assert.Contains("MouseLeftButtonDown=\"OnTabFiles\"", xaml);
+        Assert.DoesNotContain("x:Name=\"TabHistory\"", xaml);
+        Assert.DoesNotContain("x:Name=\"HistoryPanel\"", xaml);
         Assert.Contains("x:Name=\"FilesTree\"", xaml);
         Assert.Contains("SelectedItemChanged=\"OnFilesTreeSelectedItemChanged\"", xaml);
         Assert.Contains("ItemsSource=\"{Binding Children}\"", xaml);
         Assert.Contains("IsExpanded, Mode=TwoWay", xaml);
         Assert.Contains("IsSelected, Mode=TwoWay", xaml);
+        Assert.Contains("x:Name=\"FilesEmptyPanel\"", xaml);
+        Assert.Contains("Click=\"OnOpenFolder\"", xaml);
+        Assert.Contains("Click=\"OnOpenFile\"", xaml);
+        Assert.Contains("Loc.MainWindow.NoFolderOpened", xaml);
+        Assert.Contains("Loc.MainWindow.OpenFolderHint", xaml);
+        Assert.Contains("x:Name=\"FilesEmptyTitle\"", xaml);
+        Assert.Contains("x:Name=\"FilesEmptyHint\"", xaml);
+        Assert.Contains("x:Key=\"WorkspaceTreeItemStyle\"", xaml);
+        Assert.Contains("Text=\"&#xE8B7;\"", xaml);
+        Assert.Contains("Text=\"&#xE8A5;\"", xaml);
+
+        var panelStateMethod = ExtractMethod(code: LoadMainWindowCode(), "UpdateFilesPanelState");
+        Assert.Contains("Children.Count > 0", panelStateMethod);
+        Assert.Contains("MainWindow.NoMarkdownFiles", panelStateMethod);
+        Assert.Contains("MainWindow.NoMarkdownFilesHint", panelStateMethod);
+    }
+
+    [Fact]
+    public void FilesSidebar_DoesNotKeepSessionHistoryState()
+    {
+        var code = LoadMainWindowCode();
+
+        Assert.DoesNotContain("FileHistoryEntry", code);
+        Assert.DoesNotContain("_fileHistory", code);
+        Assert.DoesNotContain("AddToHistory", code);
+        Assert.DoesNotContain("UpdateHistoryList", code);
+        Assert.DoesNotContain("OnHistoryItemClick", code);
+        Assert.DoesNotContain("OnTabHistory", code);
     }
 
     private static string LoadMainWindowXaml()

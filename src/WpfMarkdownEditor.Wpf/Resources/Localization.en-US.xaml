@@ -66,9 +66,11 @@
     <sys:String x:Key="Loc.MainWindow.Themes">Themes</sys:String>
     <sys:String x:Key="Loc.MainWindow.Language">Language</sys:String>
     <sys:String x:Key="Loc.MainWindow.Files">Files</sys:String>
-    <sys:String x:Key="Loc.MainWindow.History">History</sys:String>
     <sys:String x:Key="Loc.MainWindow.Outline">Outline</sys:String>
-    <sys:String x:Key="Loc.MainWindow.NoFilesOpened">No files opened yet</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoFolderOpened">No folder open</sys:String>
+    <sys:String x:Key="Loc.MainWindow.OpenFolderHint">Markdown files will appear here.</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoMarkdownFiles">No Markdown files</sys:String>
+    <sys:String x:Key="Loc.MainWindow.NoMarkdownFilesHint">Choose another folder or open a single file.</sys:String>
     <sys:String x:Key="Loc.MainWindow.NoHeadingsFound">No headings found</sys:String>
     <sys:String x:Key="Loc.MainWindow.SearchCloseTooltip">Close (Esc)</sys:String>
     <sys:String x:Key="Loc.MainWindow.SearchNextTooltip">Next (Enter)</sys:String>
