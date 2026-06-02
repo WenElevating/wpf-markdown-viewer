@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _folderScanCts;
     private CancellationTokenSource? _recentFilesLoadCts;
     private CancellationTokenSource? _recentFilesHoverCts;
+    private CancellationTokenSource? _recentFilesCloseCts;
     private IReadOnlyList<RecentFileEntry> _recentFilesCache = [];
     private bool _recentFilesCacheLoaded;
     private string? _currentFilePath;
@@ -123,6 +124,7 @@ public partial class MainWindow : Window
         _folderScanCts?.Cancel();
         _folderScanCts?.Dispose();
         _recentFilesHoverCts?.Cancel();
+        _recentFilesCloseCts?.Cancel();
         _recentFilesLoadCts?.Cancel();
         base.OnClosed(e);
     }
@@ -140,7 +142,14 @@ public partial class MainWindow : Window
     private void OnQuickOpen(object sender, RoutedEventArgs e) => QuickOpen();
     private void OnOpenRecentFile(object sender, RoutedEventArgs e) => OpenRecentFileMenu(e);
     private async void OnOpenRecentFileMouseEnter(object sender, MouseEventArgs e) => await OpenRecentFileMenuAfterHoverDelayAsync();
-    private void OnOpenRecentFileMouseLeave(object sender, MouseEventArgs e) => CancelRecentFilesHover();
+    private void OnOpenRecentFileMouseLeave(object sender, MouseEventArgs e)
+    {
+        CancelRecentFilesHover();
+        ScheduleRecentFilesMenuClose();
+    }
+
+    private void OnRecentFilesMenuMouseEnter(object sender, MouseEventArgs e) => CancelRecentFilesMenuClose();
+    private void OnRecentFilesMenuMouseLeave(object sender, MouseEventArgs e) => ScheduleRecentFilesMenuClose();
     private async void OnSaveFileAs(object sender, RoutedEventArgs e) => await SaveCurrentFileAsAsync();
     private void OnMoveFile(object sender, RoutedEventArgs e) => MoveCurrentFile();
     private void OnShowFileProperties(object sender, RoutedEventArgs e) => ShowCurrentFileProperties();
@@ -410,6 +419,7 @@ public partial class MainWindow : Window
             e.Handled = true;
 
         CancelRecentFilesHover();
+        CancelRecentFilesMenuClose();
         SetOpenRecentFileButtonActive(isActive: true);
         RecentFilesPopup.IsOpen = true;
         if (_recentFilesCacheLoaded)
@@ -449,6 +459,41 @@ public partial class MainWindow : Window
     private void CancelRecentFilesHover()
     {
         _recentFilesHoverCts?.Cancel();
+    }
+
+    private void ScheduleRecentFilesMenuClose()
+    {
+        _recentFilesCloseCts?.Cancel();
+        var closeCts = new CancellationTokenSource();
+        _recentFilesCloseCts = closeCts;
+        _ = CloseRecentFilesMenuIfPointerLeftAsync(closeCts);
+    }
+
+    private void CancelRecentFilesMenuClose()
+    {
+        _recentFilesCloseCts?.Cancel();
+    }
+
+    private async Task CloseRecentFilesMenuIfPointerLeftAsync(CancellationTokenSource closeCts)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(120), closeCts.Token);
+            if (OpenRecentFileButton.IsMouseOver || RecentFilesList.IsMouseOver)
+                return;
+
+            RecentFilesPopup.IsOpen = false;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_recentFilesCloseCts, closeCts))
+                _recentFilesCloseCts = null;
+
+            closeCts.Dispose();
+        }
     }
 
     private async Task RefreshRecentFilesCacheAsync(bool renderWhenOpen = false)

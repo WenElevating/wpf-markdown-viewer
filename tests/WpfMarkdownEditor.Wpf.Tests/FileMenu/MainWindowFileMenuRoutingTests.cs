@@ -38,6 +38,8 @@ public sealed class MainWindowFileMenuRoutingTests
         Assert.Contains("PopupAnimation=\"None\"", xaml);
         Assert.Contains("StaysOpen=\"True\"", xaml);
         Assert.Contains("x:Name=\"RecentFilesList\"", xaml);
+        Assert.Contains("MouseEnter=\"OnRecentFilesMenuMouseEnter\"", xaml);
+        Assert.Contains("MouseLeave=\"OnRecentFilesMenuMouseLeave\"", xaml);
         Assert.Contains("x:Name=\"RecentFileItemsPanel\"", xaml);
         Assert.Contains("Click=\"OnClearRecentFiles\"", xaml);
         Assert.Contains("Loc.MainWindow.ClearRecentFiles", xaml);
@@ -83,6 +85,25 @@ public sealed class MainWindowFileMenuRoutingTests
 
         var mouseLeaveMethod = ExtractMethod(code, "OnOpenRecentFileMouseLeave");
         Assert.Contains("CancelRecentFilesHover", mouseLeaveMethod);
+        Assert.Contains("ScheduleRecentFilesMenuClose", mouseLeaveMethod);
+    }
+
+    [Fact]
+    public void OpenRecentFile_ClosesSubmenuWhenPointerLeavesParentAndSubmenu()
+    {
+        var code = LoadMainWindowCode();
+
+        var submenuEnterMethod = ExtractMethod(code, "OnRecentFilesMenuMouseEnter");
+        Assert.Contains("CancelRecentFilesMenuClose", submenuEnterMethod);
+
+        var submenuLeaveMethod = ExtractMethod(code, "OnRecentFilesMenuMouseLeave");
+        Assert.Contains("ScheduleRecentFilesMenuClose", submenuLeaveMethod);
+
+        var closeMethod = ExtractMethod(code, "CloseRecentFilesMenuIfPointerLeftAsync");
+        Assert.Contains("Task.Delay(TimeSpan.FromMilliseconds(120)", closeMethod);
+        Assert.Contains("OpenRecentFileButton.IsMouseOver", closeMethod);
+        Assert.Contains("RecentFilesList.IsMouseOver", closeMethod);
+        Assert.Contains("RecentFilesPopup.IsOpen = false", closeMethod);
     }
 
     [Fact]

@@ -157,7 +157,11 @@
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     Effect="{StaticResource PopupShadowEffect}">
-                                    <StackPanel x:Name="RecentFilesList" MinWidth="430">
+                                    <StackPanel
+                                        x:Name="RecentFilesList"
+                                        MinWidth="430"
+                                        MouseEnter="OnRecentFilesMenuMouseEnter"
+                                        MouseLeave="OnRecentFilesMenuMouseLeave">
                                         <StackPanel x:Name="RecentFileItemsPanel" />
                                         <Border
                                             Height="1"
