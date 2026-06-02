@@ -8,6 +8,7 @@ using System.Windows.Markup;
 using MarkItDown.Core;
 using WpfMarkdownEditor.Core.Parsing;
 using WpfMarkdownEditor.Wpf.Rendering;
+using WpfMarkdownEditor.Wpf.Services;
 using WpfMarkdownEditor.Wpf.Theming;
 
 namespace WpfMarkdownEditor.Converters;
@@ -36,24 +37,48 @@ public sealed class MarkdownToFlowDocumentConverter : BaseConverter
         CancellationToken cancellationToken = default)
     {
         var markdown = await ReadMarkdownAsync(request, cancellationToken);
-        var xaml = ConvertToXaml(markdown);
+        var xaml = ConvertToXaml(markdown, request.FilePath);
         return new DocumentConversionResult("FlowDocument", xaml);
     }
 
-    public FlowDocument ConvertToFlowDocument(string markdown)
+    public FlowDocument ConvertToFlowDocument(string markdown) =>
+        ConvertToFlowDocument(markdown, filePath: null);
+
+    public FlowDocument ConvertToFlowDocument(string markdown, string? filePath)
     {
         var blocks = _parser.Parse(markdown);
-        var renderer = new FlowDocumentRenderer(_theme);
+        var baseDirectory = GetBaseDirectory(filePath);
+        var renderer = baseDirectory is null
+            ? new FlowDocumentRenderer(_theme)
+            : new FlowDocumentRenderer(_theme, new ImageLoader(baseDirectory));
         return renderer.Render(blocks);
     }
 
-    public string ConvertToXaml(string markdown)
+    public string ConvertToXaml(string markdown) =>
+        ConvertToXaml(markdown, filePath: null);
+
+    public string ConvertToXaml(string markdown, string? filePath)
     {
-        var document = ConvertToFlowDocument(markdown);
+        var document = ConvertToFlowDocument(markdown, filePath);
         var sb = new StringBuilder();
         using var writer = new StringWriter(sb);
         XamlWriter.Save(document, writer);
         return sb.ToString();
+    }
+
+    private static string? GetBaseDirectory(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return null;
+
+        try
+        {
+            return Path.GetDirectoryName(Path.GetFullPath(filePath));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            return null;
+        }
     }
 
     private static async Task<string> ReadMarkdownAsync(
