@@ -114,6 +114,11 @@
     <sys:String x:Key="Loc.Editor.Copy">复制</sys:String>
     <sys:String x:Key="Loc.Editor.Paste">粘贴</sys:String>
     <sys:String x:Key="Loc.Editor.SelectAll">全选</sys:String>
+    <sys:String x:Key="Loc.Editor.MarkdownEditor">Markdown 编辑器</sys:String>
+    <sys:String x:Key="Loc.Editor.MarkdownSource">Markdown 源文本</sys:String>
+    <sys:String x:Key="Loc.Editor.Splitter">编辑器分隔条</sys:String>
+    <sys:String x:Key="Loc.Editor.Preview">渲染预览</sys:String>
+    <sys:String x:Key="Loc.Editor.ZoomLevel">缩放级别</sys:String>
     <sys:String x:Key="Loc.Editor.ZoomOut">缩小</sys:String>
     <sys:String x:Key="Loc.Editor.ZoomIn">放大</sys:String>
     <sys:String x:Key="Loc.Editor.ResetZoom">重置缩放</sys:String>

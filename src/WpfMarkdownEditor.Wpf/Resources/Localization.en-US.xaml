@@ -114,6 +114,11 @@
     <sys:String x:Key="Loc.Editor.Copy">Copy</sys:String>
     <sys:String x:Key="Loc.Editor.Paste">Paste</sys:String>
     <sys:String x:Key="Loc.Editor.SelectAll">Select All</sys:String>
+    <sys:String x:Key="Loc.Editor.MarkdownEditor">Markdown editor</sys:String>
+    <sys:String x:Key="Loc.Editor.MarkdownSource">Markdown source</sys:String>
+    <sys:String x:Key="Loc.Editor.Splitter">Editor splitter</sys:String>
+    <sys:String x:Key="Loc.Editor.Preview">Rendered preview</sys:String>
+    <sys:String x:Key="Loc.Editor.ZoomLevel">Zoom level</sys:String>
     <sys:String x:Key="Loc.Editor.ZoomOut">Zoom Out</sys:String>
     <sys:String x:Key="Loc.Editor.ZoomIn">Zoom In</sys:String>
     <sys:String x:Key="Loc.Editor.ResetZoom">Reset Zoom</sys:String>

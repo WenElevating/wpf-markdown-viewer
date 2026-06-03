@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -128,6 +129,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste, OnPasteExecuted));
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll));
 
+        RefreshAutomationProperties(FallbackStringLocalizer.Instance);
         UpdateRenderer();
     }
 
@@ -428,6 +430,20 @@ public partial class MarkdownEditor : UserControl, IDisposable
         ZoomOutBtn.ToolTip = _localizationService.GetString("Editor.ZoomOut");
         ZoomInBtn.ToolTip = _localizationService.GetString("Editor.ZoomIn");
         ZoomResetBtn.ToolTip = _localizationService.GetString("Editor.ResetZoom");
+        RefreshAutomationProperties(_localizationService);
+    }
+
+    private void RefreshAutomationProperties(IStringLocalizer localizer)
+    {
+        AutomationProperties.SetName(this, localizer.GetString("Editor.MarkdownEditor"));
+        AutomationProperties.SetName(EditorTextBox, localizer.GetString("Editor.MarkdownSource"));
+        AutomationProperties.SetName(EditorSplitter, localizer.GetString("Editor.Splitter"));
+        AutomationProperties.SetName(PreviewViewer, localizer.GetString("Editor.Preview"));
+        AutomationProperties.SetName(ZoomOutBtn, localizer.GetString("Editor.ZoomOut"));
+        AutomationProperties.SetName(ZoomSlider, localizer.GetString("Editor.ZoomLevel"));
+        AutomationProperties.SetName(ZoomText, localizer.GetString("Editor.ZoomLevel"));
+        AutomationProperties.SetName(ZoomInBtn, localizer.GetString("Editor.ZoomIn"));
+        AutomationProperties.SetName(ZoomResetBtn, localizer.GetString("Editor.ResetZoom"));
     }
 
     private void UpdateRenderer()
