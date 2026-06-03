@@ -285,6 +285,7 @@ dotnet test
 
 - [markitdown](https://github.com/microsoft/markitdown) — Microsoft's markdown conversion library
 - [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — Claude Code enhancement plugin
+- [Understand Anything](https://github.com/Lum1104/Understand-Anything) — README content used as the sample document
 
 ## License
 

@@ -262,6 +262,7 @@ dotnet test
 
 - [markitdown](https://github.com/microsoft/markitdown) — Microsoft 的 Markdown 转换库
 - [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — Claude Code 增强插件
+- [Understand Anything](https://github.com/Lum1104/Understand-Anything) — 示例文档使用了该项目的 README 内容
 
 ## 许可证
 
