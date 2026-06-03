@@ -1,6 +1,6 @@
-# WPF Markdown 编辑器
+# Quillora
 
-一个基于 .NET 8 的现代化、零依赖的 WPF Markdown 编辑器控件，支持实时预览。
+Quillora 是一个基于 .NET 8 的现代化、零依赖 WPF Markdown 编辑器控件，支持实时预览。
 
 [English](README.md)
 
@@ -18,13 +18,13 @@
 ## 截图
 
 ### GitHub Light
-![GitHub Light 主题](sources/github_light_theme.png)
+![GitHub Light 主题](sources/zh/github_light_theme.png)
 
 ### GitHub Dark
-![GitHub Dark 主题](sources/github_dark_theme.png)
+![GitHub Dark 主题](sources/zh/github_dark_theme.png)
 
 ### Claude
-![Claude Light 主题](sources/claude_light_theme.png)
+![Claude Light 主题](sources/zh/claude_light_theme.png)
 
 ## 快速开始
 

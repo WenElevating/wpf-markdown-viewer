@@ -98,6 +98,41 @@
         <SolidColorBrush x:Key="ToolbarPressedBackground" Color="#28000000"/>
         <SolidColorBrush x:Key="ToolbarAccent" Color="#0969da"/>
 
+        <!-- Minimal document scrollbar -->
+        <Style x:Key="DocumentScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb x:Name="Thumb" Opacity="0.3">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="{x:Type Thumb}">
+                                                <Border x:Name="Bd" Background="#888" CornerRadius="4"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Flat toolbar button -->
         <Style x:Key="ToolBarFlatButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -190,6 +225,9 @@
                  FontSize="14"
                  BorderThickness="0"
                  Padding="12,8">
+            <TextBox.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource DocumentScrollBarStyle}"/>
+            </TextBox.Resources>
 	            <TextBox.ContextMenu>
 	                <ContextMenu x:Name="EditorContextMenu"
 	                             Style="{StaticResource EditorContextMenuStyle}">
@@ -236,40 +274,7 @@
                                       IsToolBarVisible="False"
                                       VerticalScrollBarVisibility="Auto">
                 <FlowDocumentScrollViewer.Resources>
-                    <!-- Minimal scrollbar -->
-                    <Style TargetType="ScrollBar">
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Width" Value="8"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ScrollBar">
-                                    <Grid Background="Transparent">
-                                        <Track x:Name="PART_Track" IsDirectionReversed="True">
-                                            <Track.Thumb>
-                                                <Thumb x:Name="Thumb" Opacity="0.3">
-                                                    <Thumb.Template>
-                                                        <ControlTemplate TargetType="{x:Type Thumb}">
-                                                            <Border x:Name="Bd" Background="#888" CornerRadius="4"/>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsDragging" Value="True">
-                                                                    <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Thumb.Template>
-                                                </Thumb>
-                                            </Track.Thumb>
-                                        </Track>
-                                    </Grid>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Thumb" Property="Opacity" Value="0.6"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
+                    <Style TargetType="ScrollBar" BasedOn="{StaticResource DocumentScrollBarStyle}"/>
                 </FlowDocumentScrollViewer.Resources>
             </FlowDocumentScrollViewer>
 

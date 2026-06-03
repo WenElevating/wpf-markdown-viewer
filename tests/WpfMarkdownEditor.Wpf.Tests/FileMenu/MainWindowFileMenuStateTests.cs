@@ -19,7 +19,7 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public void FileScopedMenuItems_DisabledForUntitledDocument()
+    public void FileScopedMenuItems_DisabledForEmptyDocument()
     {
         RunOnSta(() =>
         {
@@ -55,6 +55,27 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
             try
             {
                 AssertFileScopedMenuItems(window, isEnabled: true);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void Constructor_WithoutOpenFile_ShowsBrandOnlyTitle()
+    {
+        RunOnSta(() =>
+        {
+            EnsureSampleApplication();
+            var localizationService = new LocalizationService();
+            var settingsService = new LocalizationSettingsService(_directory);
+
+            var window = new MainWindow(null, localizationService, settingsService);
+            try
+            {
+                Assert.Equal("Quillora", window.Title);
             }
             finally
             {

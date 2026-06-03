@@ -1,6 +1,6 @@
-# Markdown Viewer
+# Quillora
 
-A modern, zero-dependency Markdown editor & viewer for WPF with real-time preview, multi-engine translation, and 6 built-in themes. Built on .NET 8.
+Quillora is a modern, zero-dependency WPF Markdown editor with real-time preview, multi-engine translation, and 6 built-in themes. Built on .NET 8.
 
 [中文文档](README.zh-CN.md)
 
@@ -18,13 +18,13 @@ A modern, zero-dependency Markdown editor & viewer for WPF with real-time previe
 ## Screenshots
 
 ### GitHub Light
-![GitHub Light Theme](sources/github_light_theme.png)
+![GitHub Light Theme](sources/en/github_light_theme.png)
 
 ### GitHub Dark
-![GitHub Dark Theme](sources/github_dark_theme.png)
+![GitHub Dark Theme](sources/en/github_dark_theme.png)
 
 ### Claude
-![Claude Light Theme](sources/claude_light_theme.png)
+![Claude Light Theme](sources/en/claude_light_theme.png)
 
 ## Getting Started
 

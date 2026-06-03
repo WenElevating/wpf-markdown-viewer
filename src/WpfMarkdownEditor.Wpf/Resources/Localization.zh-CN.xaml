@@ -13,7 +13,7 @@
     <sys:String x:Key="Loc.Language.Chinese">中文</sys:String>
     <sys:String x:Key="Loc.Translation.Language.Japanese">日文</sys:String>
     <sys:String x:Key="Loc.Translation.Language.Korean">韩文</sys:String>
-    <sys:String x:Key="Loc.MainWindow.TitleSuffix">Markdown 查看器</sys:String>
+    <sys:String x:Key="Loc.MainWindow.TitleSuffix">Quillora</sys:String>
     <sys:String x:Key="Loc.MainWindow.File">文件</sys:String>
     <sys:String x:Key="Loc.MainWindow.Edit">编辑</sys:String>
     <sys:String x:Key="Loc.MainWindow.Paragraph">段落</sys:String>

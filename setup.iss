@@ -1,7 +1,7 @@
-; Markdown Viewer - Inno Setup Script
+; Quillora - Inno Setup Script
 ; Requires .NET 8.0 Desktop Runtime
 
-#define AppName "Markdown Viewer"
+#define AppName "Quillora"
 #define AppVersion "1.0.0"
 #define AppPublisher "WenMingMing"
 #define AppExeName "WpfMarkdownEditor.Sample.exe"
@@ -20,7 +20,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
 OutputDir=installer-output
-OutputBaseFilename=MarkdownViewer-{#AppVersion}-Setup
+OutputBaseFilename=Quillora-{#AppVersion}-Setup
 SetupIconFile=assets\app.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -56,10 +56,10 @@ Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; F
 
 [Registry]
 ; Associate .md files
-Root: HKA; Subkey: "Software\Classes\.md\OpenWithProgids"; ValueType: string; ValueName: "MarkdownViewer.md"; ValueData: ""; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\MarkdownViewer.md"; ValueType: string; ValueName: ""; ValueData: "Markdown File"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\MarkdownViewer.md\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},0"; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\MarkdownViewer.md\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.md\OpenWithProgids"; ValueType: string; ValueName: "Quillora.md"; ValueData: ""; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\Quillora.md"; ValueType: string; ValueName: ""; ValueData: "Markdown File"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\Quillora.md\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},0"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\Quillora.md\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""; Tasks: fileassoc
 
 [Code]
 function IsDotNetInstalled: Boolean;

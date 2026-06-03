@@ -13,7 +13,7 @@
     <sys:String x:Key="Loc.Language.Chinese">Chinese</sys:String>
     <sys:String x:Key="Loc.Translation.Language.Japanese">Japanese</sys:String>
     <sys:String x:Key="Loc.Translation.Language.Korean">Korean</sys:String>
-    <sys:String x:Key="Loc.MainWindow.TitleSuffix">Markdown Viewer</sys:String>
+    <sys:String x:Key="Loc.MainWindow.TitleSuffix">Quillora</sys:String>
     <sys:String x:Key="Loc.MainWindow.File">File</sys:String>
     <sys:String x:Key="Loc.MainWindow.Edit">Edit</sys:String>
     <sys:String x:Key="Loc.MainWindow.Paragraph">Paragraph</sys:String>

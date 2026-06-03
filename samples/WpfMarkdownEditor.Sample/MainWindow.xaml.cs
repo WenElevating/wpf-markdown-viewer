@@ -1100,10 +1100,10 @@ public partial class MainWindow : Window
 
     private void UpdateTitle()
     {
-        var fileName = _currentFilePath != null
-            ? System.IO.Path.GetFileName(_currentFilePath)
-            : _localizationService.GetString("MainWindow.Untitled");
-        Title = $"{fileName}{(_isDirty ? " *" : "")} - {_localizationService.GetString("MainWindow.TitleSuffix")}";
+        var titleSuffix = _localizationService.GetString("MainWindow.TitleSuffix");
+        Title = _currentFilePath != null
+            ? $"{System.IO.Path.GetFileName(_currentFilePath)}{(_isDirty ? " *" : "")} - {titleSuffix}"
+            : _isDirty ? $"* - {titleSuffix}" : titleSuffix;
         UpdateFileScopedMenuItems();
     }
 

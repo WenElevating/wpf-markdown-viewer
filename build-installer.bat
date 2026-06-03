@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal
 
 echo ============================================
-echo   WPF Markdown Editor - Build Installer
+echo   Quillora - Build Installer
 echo ============================================
 echo.
 
