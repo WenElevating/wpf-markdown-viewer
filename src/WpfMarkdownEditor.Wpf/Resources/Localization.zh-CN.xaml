@@ -58,6 +58,12 @@
     <sys:String x:Key="Loc.MainWindow.Heading1">一级标题</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading2">二级标题</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading3">三级标题</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Heading4">四级标题</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Heading5">五级标题</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Heading6">六级标题</sys:String>
+    <sys:String x:Key="Loc.MainWindow.ParagraphStyle">段落</sys:String>
+    <sys:String x:Key="Loc.MainWindow.InsertParagraphAbove">在上方插入段落</sys:String>
+    <sys:String x:Key="Loc.MainWindow.InsertParagraphBelow">在下方插入段落</sys:String>
     <sys:String x:Key="Loc.MainWindow.Blockquote">引用</sys:String>
     <sys:String x:Key="Loc.MainWindow.OrderedList">有序列表</sys:String>
     <sys:String x:Key="Loc.MainWindow.BulletList">无序列表</sys:String>

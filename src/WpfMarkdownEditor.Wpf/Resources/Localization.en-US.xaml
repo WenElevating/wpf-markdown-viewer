@@ -58,6 +58,12 @@
     <sys:String x:Key="Loc.MainWindow.Heading1">Heading 1</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading2">Heading 2</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading3">Heading 3</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Heading4">Heading 4</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Heading5">Heading 5</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Heading6">Heading 6</sys:String>
+    <sys:String x:Key="Loc.MainWindow.ParagraphStyle">Paragraph</sys:String>
+    <sys:String x:Key="Loc.MainWindow.InsertParagraphAbove">Insert Paragraph Above</sys:String>
+    <sys:String x:Key="Loc.MainWindow.InsertParagraphBelow">Insert Paragraph Below</sys:String>
     <sys:String x:Key="Loc.MainWindow.Blockquote">Blockquote</sys:String>
     <sys:String x:Key="Loc.MainWindow.OrderedList">Ordered List</sys:String>
     <sys:String x:Key="Loc.MainWindow.BulletList">Bullet List</sys:String>
