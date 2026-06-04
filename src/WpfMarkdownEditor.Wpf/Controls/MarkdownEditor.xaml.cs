@@ -746,6 +746,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
         try
         {
             EditorTextBox.Text = operation.Text;
+            Markdown = operation.Text;
             var selectionStart = Math.Clamp(operation.SelectionStart, 0, EditorTextBox.Text.Length);
             var selectionLength = Math.Clamp(operation.SelectionLength, 0, EditorTextBox.Text.Length - selectionStart);
             EditorTextBox.Select(selectionStart, selectionLength);

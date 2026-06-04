@@ -104,6 +104,23 @@ public sealed class MarkdownEditorCommandTests
     }
 
     [Fact]
+    public void MoveLineDown_UpdatesMarkdownProperty()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "one\ntwo\nthree";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.CaretIndex = 4;
+
+            MarkdownEditorCommands.MoveLineDown.Execute(null, editor);
+
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal("one\nthree\ntwo", editor.Markdown);
+        });
+    }
+
+    [Fact]
     public void SelectAllCommand_TargetsEditorTextBox_SelectsDocument()
     {
         WpfTestHost.Run(() =>
