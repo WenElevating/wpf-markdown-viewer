@@ -1,4 +1,3 @@
-using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -14,7 +13,7 @@ public sealed class MarkdownEditorAutomationTests
     [Fact]
     public void MarkdownEditor_InitializesAutomationPeersForPrimarySurfaces()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
             using var editor = CreateEditorWithEnglishLocalizer();
             Measure(editor);
@@ -59,7 +58,7 @@ public sealed class MarkdownEditorAutomationTests
     [Fact]
     public void SetLocalizer_WhenLanguageChanges_RefreshesAutomationNames()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
             using var editor = new MarkdownEditor();
             var localizer = new LocalizationService();
@@ -107,36 +106,6 @@ public sealed class MarkdownEditorAutomationTests
         element.Arrange(new Rect(0, 0, 800, 600));
         element.UpdateLayout();
         DrainDispatcher();
-    }
-
-    private static void RunOnSta(Action action)
-    {
-        Exception? exception = null;
-        var thread = new Thread(() =>
-        {
-            SynchronizationContext.SetSynchronizationContext(
-                new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
-
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-            finally
-            {
-                Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (exception is not null)
-            throw exception;
     }
 
     private static void DrainDispatcher()

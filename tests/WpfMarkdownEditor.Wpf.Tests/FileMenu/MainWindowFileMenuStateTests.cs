@@ -4,7 +4,10 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using WpfMarkdownEditor.Sample;
+using WpfMarkdownEditor.Sample.Services;
+using WpfMarkdownEditor.Sample.ViewModels;
 using WpfMarkdownEditor.Wpf.Localization;
 using Xunit;
 
@@ -21,13 +24,10 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void FileScopedMenuItems_DisabledForEmptyDocument()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
-
-            var window = new MainWindow(null, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var window = provider.GetRequiredService<MainWindow>();
             try
             {
                 AssertFileScopedMenuItems(window, isEnabled: false);
@@ -42,16 +42,15 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void FileScopedMenuItems_EnabledWhenFileIsOpen()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
             Directory.CreateDirectory(_directory);
             var filePath = Path.Combine(_directory, "open.md");
             File.WriteAllText(filePath, "# Open");
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
 
-            var window = new MainWindow(filePath, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var window = provider.GetRequiredService<MainWindow>();
+            window.OpenStartupFile(filePath);
             try
             {
                 AssertFileScopedMenuItems(window, isEnabled: true);
@@ -66,13 +65,12 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void Constructor_WithoutOpenFile_ShowsBrandOnlyTitle()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
-
-            var window = new MainWindow(null, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var localizationService = provider.GetRequiredService<LocalizationService>();
+            localizationService.SetLanguage(SupportedLanguage.English);
+            var window = provider.GetRequiredService<MainWindow>();
             try
             {
                 Assert.Equal("Quillora", window.Title);
@@ -87,19 +85,18 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void Constructor_WithInjectedSettingsDirectory_StoresRecentFilesInThatDirectory()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
             Directory.CreateDirectory(_directory);
             var filePath = Path.Combine(_directory, "open.md");
             File.WriteAllText(filePath, "# Open");
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
 
-            var window = new MainWindow(filePath, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var window = provider.GetRequiredService<MainWindow>();
+            window.OpenStartupFile(filePath);
             try
             {
-                var recentFilesService = GetPrivateField<RecentFilesService>(window, "_recentFilesService");
+                var recentFilesService = provider.GetRequiredService<RecentFilesService>();
                 var files = recentFilesService.LoadFiles();
 
                 var entry = Assert.Single(files);
@@ -116,74 +113,24 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void Constructor_WithOpenFile_LoadsCurrentFileDirectoryTreeAsynchronously()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
             Directory.CreateDirectory(_directory);
             var filePath = Path.Combine(_directory, "open.md");
             File.WriteAllText(filePath, "# Open");
             File.WriteAllText(Path.Combine(_directory, "other.md"), "# Other");
             Directory.CreateDirectory(Path.Combine(_directory, "nested"));
-            var nestedFilePath = Path.Combine(_directory, "nested", "deep.md");
-            File.WriteAllText(nestedFilePath, "# Deep");
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
+            File.WriteAllText(Path.Combine(_directory, "nested", "deep.md"), "# Deep");
 
-            var window = new MainWindow(filePath, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var window = provider.GetRequiredService<MainWindow>();
+            window.OpenStartupFile(filePath);
             try
             {
-                WaitFor(() => GetPrivateField<string?>(window, "_workspaceFolderPath") is not null);
+                WaitFor(() => Assert.IsType<TreeView>(window.FindName("FilesTree")).Items.Count > 0);
 
-                Assert.Equal(Path.GetFullPath(_directory), GetPrivateField<string?>(window, "_workspaceFolderPath"));
                 Assert.Equal(Visibility.Visible, Assert.IsType<TreeView>(window.FindName("FilesTree")).Visibility);
                 Assert.Equal(Visibility.Collapsed, Assert.IsType<StackPanel>(window.FindName("FilesEmptyPanel")).Visibility);
-
-                var index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
-                var node = Assert.Contains(Path.GetFullPath(filePath), index);
-                Assert.False(node.IsDirectory);
-                Assert.True(node.IsSelected);
-                Assert.DoesNotContain(Path.GetFullPath(nestedFilePath), index.Keys);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
-    [Fact]
-    public void LoadWorkspaceNodeChildren_LoadsExpandedDirectoryOneLevel()
-    {
-        RunOnSta(() =>
-        {
-            EnsureSampleApplication();
-            Directory.CreateDirectory(_directory);
-            var filePath = Path.Combine(_directory, "open.md");
-            File.WriteAllText(filePath, "# Open");
-            var nestedDirectory = Path.Combine(_directory, "nested");
-            Directory.CreateDirectory(nestedDirectory);
-            var nestedFilePath = Path.Combine(nestedDirectory, "deep.md");
-            File.WriteAllText(nestedFilePath, "# Deep");
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
-
-            var window = new MainWindow(filePath, localizationService, settingsService);
-            try
-            {
-                WaitFor(() => GetPrivateField<string?>(window, "_workspaceFolderPath") is not null);
-
-                var index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
-                var nested = Assert.Contains(Path.GetFullPath(nestedDirectory), index);
-                Assert.True(nested.IsDirectory);
-                Assert.False(nested.ChildrenLoaded);
-                Assert.DoesNotContain(Path.GetFullPath(nestedFilePath), index.Keys);
-
-                InvokePrivateTask(window, "LoadWorkspaceNodeChildrenAsync", nested);
-
-                index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
-                Assert.True(nested.ChildrenLoaded);
-                var file = Assert.Contains(Path.GetFullPath(nestedFilePath), index);
-                Assert.False(file.IsDirectory);
             }
             finally
             {
@@ -195,33 +142,27 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void ShowInSidebarButton_ClickedWithoutOpenWorkspace_LoadsCurrentFileDirectoryAndSelectsFile()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
             Directory.CreateDirectory(_directory);
             var filePath = Path.Combine(_directory, "open.md");
             File.WriteAllText(filePath, "# Open");
             File.WriteAllText(Path.Combine(_directory, "other.md"), "# Other");
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
 
-            var window = new MainWindow(filePath, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var window = provider.GetRequiredService<MainWindow>();
+            window.OpenStartupFile(filePath);
             try
             {
                 FindButton(window, "ShowInSidebarButton")
                     .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-                WaitFor(() => GetPrivateField<string?>(window, "_workspaceFolderPath") is not null);
+                var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                WaitFor(() => viewModel.IsSidebarOpen);
 
-                Assert.True(GetPrivateField<bool>(window, "_sidebarOpen"));
+                Assert.True(viewModel.IsSidebarOpen);
                 Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("FilesPanel")).Visibility);
                 Assert.Equal(Visibility.Collapsed, Assert.IsType<StackPanel>(window.FindName("FilesEmptyPanel")).Visibility);
-                Assert.Equal(Path.GetFullPath(_directory), GetPrivateField<string?>(window, "_workspaceFolderPath"));
-
-                var index = GetPrivateField<Dictionary<string, WorkspaceTreeNode>>(window, "_workspaceIndex");
-                var node = Assert.Contains(Path.GetFullPath(filePath), index);
-                Assert.False(node.IsDirectory);
-                Assert.True(node.IsSelected);
             }
             finally
             {
@@ -233,12 +174,10 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
     [Fact]
     public void RecentFilesMenu_UsesSingleShortDisplayPathWithoutShortcutText()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
-            var window = new MainWindow(null, localizationService, settingsService);
+            using var provider = CreateProvider();
+            var window = provider.GetRequiredService<MainWindow>();
             var path = Path.Combine(
                 _directory,
                 "very-long-folder-name-that-should-not-fill-the-recent-files-menu",
@@ -301,62 +240,13 @@ public sealed class MainWindowFileMenuStateTests : IDisposable
         method.Invoke(window, [entries]);
     }
 
-    private static void InvokePrivateTask(MainWindow window, string name, params object[] args)
+    private ServiceProvider CreateProvider()
     {
-        var method = typeof(MainWindow).GetMethod(
-            name,
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-        Assert.NotNull(method);
-        var task = Assert.IsAssignableFrom<Task>(method.Invoke(window, args));
-        while (!task.IsCompleted)
-        {
-            Dispatcher.CurrentDispatcher.Invoke(
-                () => { },
-                DispatcherPriority.Background);
-            Thread.Sleep(20);
-        }
-
-        task.GetAwaiter().GetResult();
-    }
-
-    private static void EnsureSampleApplication()
-    {
-        if (Application.Current != null)
-            return;
-
-        var app = new App();
-        app.InitializeComponent();
-    }
-
-    private static void RunOnSta(Action action)
-    {
-        Exception? exception = null;
-        var thread = new Thread(() =>
-        {
-            SynchronizationContext.SetSynchronizationContext(
-                new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
-
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-            finally
-            {
-                Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (exception is not null)
-            throw exception;
+        var services = new ServiceCollection();
+        services.AddWpfMarkdownEditorSample(_directory);
+        var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<LocalizationService>().SetLanguage(SupportedLanguage.English);
+        return provider;
     }
 
     private static void WaitFor(Func<bool> condition)

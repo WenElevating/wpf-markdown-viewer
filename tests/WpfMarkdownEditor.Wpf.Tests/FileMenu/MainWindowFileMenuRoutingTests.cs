@@ -44,6 +44,7 @@ public sealed class MainWindowFileMenuRoutingTests
         Assert.Contains("Click=\"OnClearRecentFiles\"", xaml);
         Assert.Contains("Loc.MainWindow.ClearRecentFiles", xaml);
         Assert.Contains("button.Click += OnRecentFileItemClick", code);
+        Assert.Contains("RecentFilesMenuViewModel", code);
 
         var method = ExtractMethod(code, "OpenRecentFileMenu");
         Assert.DoesNotContain("ShowQuickOpenDialog", method);
@@ -56,16 +57,16 @@ public sealed class MainWindowFileMenuRoutingTests
         var code = LoadMainWindowCode();
 
         var menuMethod = ExtractMethod(code, "OpenRecentFileMenu");
-        Assert.Contains("_recentFilesCacheLoaded", menuMethod);
+        Assert.Contains("_recentFilesMenuViewModel.IsCacheLoaded", menuMethod);
         Assert.Contains("ShowRecentFilesLoadingState()", menuMethod);
-        Assert.Contains("RenderRecentFilesMenu(_recentFilesCache)", menuMethod);
+        Assert.Contains("RenderRecentFilesMenu(_recentFilesMenuViewModel.Entries)", menuMethod);
         Assert.Contains("RefreshRecentFilesCacheAsync", menuMethod);
         Assert.DoesNotContain("LoadFiles(", menuMethod);
         Assert.DoesNotContain("await", menuMethod);
 
         var refreshMethod = ExtractMethod(code, "RefreshRecentFilesCacheAsync");
-        Assert.Contains("await _recentFilesService.LoadFilesSnapshotAsync", refreshMethod);
-        Assert.DoesNotContain("removeMissingFiles: true", refreshMethod);
+        Assert.Contains("await _recentFilesMenuViewModel.RefreshAsync", refreshMethod);
+        Assert.Contains("RenderRecentFilesMenu(_recentFilesMenuViewModel.Entries)", refreshMethod);
     }
 
     [Fact]
@@ -205,11 +206,17 @@ public sealed class MainWindowFileMenuRoutingTests
     private static string LoadMainWindowCode()
     {
         var directory = FindRepositoryRoot();
-        return File.ReadAllText(Path.Combine(
+        var sampleDirectory = Path.Combine(
             directory.FullName,
             "samples",
-            "WpfMarkdownEditor.Sample",
-            "MainWindow.xaml.cs"));
+            "WpfMarkdownEditor.Sample");
+
+        return string.Join(
+            Environment.NewLine,
+            Directory
+                .EnumerateFiles(sampleDirectory, "MainWindow*.cs")
+                .OrderBy(path => path)
+                .Select(File.ReadAllText));
     }
 
     private static DirectoryInfo FindRepositoryRoot([CallerFilePath] string sourcePath = "")

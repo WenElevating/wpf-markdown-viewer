@@ -58,13 +58,19 @@ into named types with clear contracts and focused tests.
 
 - Core stays UI-agnostic. Do not reference WPF types from
   `WpfMarkdownEditor.Core`.
+- WPF application code should follow MVVM. Views and code-behind should focus on
+  UI event wiring, binding setup, and view coordination. State management,
+  commands, orchestration, persistence, parsing, rendering decisions, and
+  provider behavior belong in view models, services, or dedicated components.
 - WPF rendering should keep parser models and visual elements loosely coupled.
   Rendering helpers belong under `src/WpfMarkdownEditor.Wpf/Rendering`.
-- Network and disk work must not block the WPF UI thread. Use async services and
-  cache expensive image or translation operations where appropriate.
-- UI code-behind is for event wiring and view coordination. Business logic,
-  persistence, parsing, rendering decisions, and provider behavior belong in
-  services or dedicated components.
+- Avoid IO-heavy and compute-heavy work on the WPF UI thread. Use asynchronous
+  services or background work for expensive operations, cache image and
+  translation work where appropriate, and marshal UI access back through the UI
+  thread `Dispatcher` when background work needs to update WPF objects.
+- If a module supports multiple vendors or providers, program against
+  interfaces so provider-specific behavior stays isolated behind clear
+  contracts.
 - Localization strings live in resource dictionaries and localization services,
   not hard-coded across controls.
 - Translation providers must keep credentials and user-specific settings out of
@@ -77,6 +83,20 @@ into named types with clear contracts and focused tests.
 - Keep files focused. If a file is becoming hard to scan, extract a cohesive
   helper, renderer, service, model, or test fixture instead of appending another
   unrelated section.
+- Avoid oversized modules. Try to keep each production `.cs` class under 500
+  lines of code; test code is exempt from this guideline.
+- If a production file exceeds 800 lines of code, add new functionality by
+  creating a new module or file instead of extending the large file, unless
+  there is a strong documented reason not to.
+- Treat large, cross-cutting files as sensitive integration surfaces. This is
+  especially true for `samples/WpfMarkdownEditor.Sample/MainWindow.xaml.cs`,
+  which should stay focused on UI work. Except for trivial changes, avoid adding
+  new standalone methods there; create a view model, service, coordinator, or
+  feature-local module instead.
+- When extracting code from a large module, move the related tests and relevant
+  module or type documentation with the new implementation when practical. The
+  conditions that prove the behavior correct should stay close to the code they
+  describe.
 - Prefer clear names over comments. Add comments only for non-obvious WPF,
   threading, caching, or parser edge cases.
 - Do not mix unrelated refactors with feature or bug-fix changes.

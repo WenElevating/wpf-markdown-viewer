@@ -1,9 +1,9 @@
 using System.IO;
-using System.Threading;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using WpfMarkdownEditor.Sample;
+using WpfMarkdownEditor.Sample.Services;
 using WpfMarkdownEditor.Wpf.Localization;
 using Xunit;
 
@@ -20,14 +20,16 @@ public sealed class MainWindowLocalizationTests : IDisposable
     [Fact]
     public void LanguageMenu_PersistsSelectionAndRefreshesSelectedState()
     {
-        RunOnSta(() =>
+        WpfTestHost.Run(() =>
         {
-            EnsureSampleApplication();
-            var localizationService = new LocalizationService();
-            var settingsService = new LocalizationSettingsService(_directory);
+            var services = new ServiceCollection();
+            services.AddWpfMarkdownEditorSample(_directory);
+            using var provider = services.BuildServiceProvider();
+            var localizationService = provider.GetRequiredService<LocalizationService>();
+            var settingsService = provider.GetRequiredService<LocalizationSettingsService>();
             localizationService.SetLanguage(SupportedLanguage.English);
 
-            var window = new MainWindow(null, localizationService, settingsService);
+            var window = provider.GetRequiredService<MainWindow>();
             try
             {
                 var languageList = Assert.IsType<StackPanel>(window.FindName("LanguageListPanel"));
@@ -57,45 +59,6 @@ public sealed class MainWindowLocalizationTests : IDisposable
     {
         if (Directory.Exists(_directory))
             Directory.Delete(_directory, recursive: true);
-    }
-
-    private static void EnsureSampleApplication()
-    {
-        if (Application.Current != null)
-            return;
-
-        var app = new App();
-        app.InitializeComponent();
-    }
-
-    private static void RunOnSta(Action action)
-    {
-        Exception? exception = null;
-        var thread = new Thread(() =>
-        {
-            SynchronizationContext.SetSynchronizationContext(
-                new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
-
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-            finally
-            {
-                Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (exception is not null)
-            throw exception;
     }
 
     private static void DrainDispatcher()
