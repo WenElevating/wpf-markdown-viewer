@@ -48,6 +48,13 @@
     <sys:String x:Key="Loc.MainWindow.Undo">撤销</sys:String>
     <sys:String x:Key="Loc.MainWindow.Redo">重做</sys:String>
     <sys:String x:Key="Loc.MainWindow.Find">查找</sys:String>
+    <sys:String x:Key="Loc.MainWindow.PasteImage">粘贴图片</sys:String>
+    <sys:String x:Key="Loc.MainWindow.CopyPlainText">复制为纯文本</sys:String>
+    <sys:String x:Key="Loc.MainWindow.PastePlainText">粘贴为纯文本</sys:String>
+    <sys:String x:Key="Loc.MainWindow.MoveLineUp">上移该行</sys:String>
+    <sys:String x:Key="Loc.MainWindow.MoveLineDown">下移该行</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Delete">删除</sys:String>
+    <sys:String x:Key="Loc.MainWindow.InsertHardLineBreak">插入硬换行</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading1">一级标题</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading2">二级标题</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading3">三级标题</sys:String>

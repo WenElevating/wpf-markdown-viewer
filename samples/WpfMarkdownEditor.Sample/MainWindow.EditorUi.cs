@@ -48,8 +48,6 @@ public partial class MainWindow
     }
 
     private void OnHorizontalRule(object sender, RoutedEventArgs e) => Editor.InsertText("\n---\n");
-    private void OnUndo(object sender, RoutedEventArgs e) => Editor.TextBox.Undo();
-    private void OnRedo(object sender, RoutedEventArgs e) => Editor.TextBox.Redo();
     private void OnFind(object sender, RoutedEventArgs e) => ShowSearchPanel();
 
     private void OnToggleSidebarFromMenu(object sender, RoutedEventArgs e)

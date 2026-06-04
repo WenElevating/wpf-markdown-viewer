@@ -48,6 +48,13 @@
     <sys:String x:Key="Loc.MainWindow.Undo">Undo</sys:String>
     <sys:String x:Key="Loc.MainWindow.Redo">Redo</sys:String>
     <sys:String x:Key="Loc.MainWindow.Find">Find</sys:String>
+    <sys:String x:Key="Loc.MainWindow.PasteImage">Paste Image</sys:String>
+    <sys:String x:Key="Loc.MainWindow.CopyPlainText">Copy as Plain Text</sys:String>
+    <sys:String x:Key="Loc.MainWindow.PastePlainText">Paste as Plain Text</sys:String>
+    <sys:String x:Key="Loc.MainWindow.MoveLineUp">Move Line Up</sys:String>
+    <sys:String x:Key="Loc.MainWindow.MoveLineDown">Move Line Down</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Delete">Delete</sys:String>
+    <sys:String x:Key="Loc.MainWindow.InsertHardLineBreak">Insert Hard Line Break</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading1">Heading 1</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading2">Heading 2</sys:String>
     <sys:String x:Key="Loc.MainWindow.Heading3">Heading 3</sys:String>

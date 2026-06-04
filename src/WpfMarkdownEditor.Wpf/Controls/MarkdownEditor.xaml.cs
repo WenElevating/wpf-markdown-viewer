@@ -129,6 +129,14 @@ public partial class MarkdownEditor : UserControl, IDisposable
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste, OnPasteExecuted));
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll));
 
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.PasteImage, OnPasteImageExecuted, OnCanPasteImage));
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.CopyPlainText, OnCopyPlainTextExecuted, OnCanCopyPlainText));
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.PastePlainText, OnPastePlainTextExecuted, OnCanPastePlainText));
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.MoveLineUp, OnMoveLineUpExecuted, OnCanMoveLineUp));
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.MoveLineDown, OnMoveLineDownExecuted, OnCanMoveLineDown));
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.DeleteSelectionOrCurrentLine, OnDeleteSelectionOrCurrentLineExecuted, OnCanDeleteSelectionOrCurrentLine));
+        CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.InsertHardLineBreak, OnInsertHardLineBreakExecuted));
+
         RefreshAutomationProperties(FallbackStringLocalizer.Instance);
         UpdateRenderer();
     }
@@ -583,6 +591,199 @@ public partial class MarkdownEditor : UserControl, IDisposable
     {
         var textBox = EditorTextBox;
 
+        if (TryPasteImageFromClipboard(textBox))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // Standard text paste fallback
+        if (Clipboard.ContainsText())
+        {
+            textBox.SelectedText = Clipboard.GetText();
+            textBox.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void OnCanPasteImage(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = ClipboardHasImageSource();
+        e.Handled = true;
+    }
+
+    private void OnPasteImageExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        e.Handled = TryPasteImageFromClipboard(EditorTextBox);
+    }
+
+    private void OnCanCopyPlainText(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = EditorTextBox.SelectionLength > 0;
+        e.Handled = true;
+    }
+
+    private void OnCopyPlainTextExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (EditorTextBox.SelectionLength <= 0)
+            return;
+
+        Clipboard.SetText(EditorTextBox.SelectedText, TextDataFormat.UnicodeText);
+        e.Handled = true;
+    }
+
+    private void OnCanPastePlainText(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = ClipboardContainsUnicodeText();
+        e.Handled = true;
+    }
+
+    private void OnPastePlainTextExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (!ClipboardContainsUnicodeText())
+            return;
+
+        var operation = EditorTextOperations.InsertText(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            Clipboard.GetText(TextDataFormat.UnicodeText));
+        ApplyTextOperation(operation);
+        e.Handled = true;
+    }
+
+    private void OnCanMoveLineUp(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = EditorTextOperations.MoveSelectedLines(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            -1) is not null;
+        e.Handled = true;
+    }
+
+    private void OnMoveLineUpExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        var operation = EditorTextOperations.MoveSelectedLines(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            -1);
+        if (operation is null)
+            return;
+
+        ApplyTextOperation(operation.Value);
+        e.Handled = true;
+    }
+
+    private void OnCanMoveLineDown(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = EditorTextOperations.MoveSelectedLines(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            1) is not null;
+        e.Handled = true;
+    }
+
+    private void OnMoveLineDownExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        var operation = EditorTextOperations.MoveSelectedLines(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            1);
+        if (operation is null)
+            return;
+
+        ApplyTextOperation(operation.Value);
+        e.Handled = true;
+    }
+
+    private void OnCanDeleteSelectionOrCurrentLine(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = EditorTextOperations.DeleteSelectionOrCurrentLine(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength) is not null;
+        e.Handled = true;
+    }
+
+    private void OnDeleteSelectionOrCurrentLineExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        var operation = EditorTextOperations.DeleteSelectionOrCurrentLine(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength);
+        if (operation is null)
+            return;
+
+        ApplyTextOperation(operation.Value);
+        e.Handled = true;
+    }
+
+    private void OnInsertHardLineBreakExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        var operation = EditorTextOperations.InsertText(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            "  " + Environment.NewLine);
+        ApplyTextOperation(operation);
+        e.Handled = true;
+    }
+
+    private void ApplyTextOperation(TextEditOperation operation)
+    {
+        EditorTextBox.BeginChange();
+        try
+        {
+            EditorTextBox.Text = operation.Text;
+            var selectionStart = Math.Clamp(operation.SelectionStart, 0, EditorTextBox.Text.Length);
+            var selectionLength = Math.Clamp(operation.SelectionLength, 0, EditorTextBox.Text.Length - selectionStart);
+            EditorTextBox.Select(selectionStart, selectionLength);
+        }
+        finally
+        {
+            EditorTextBox.EndChange();
+        }
+
+        EditorTextBox.Focus();
+    }
+
+    private static bool ClipboardContainsUnicodeText()
+    {
+        try
+        {
+            return Clipboard.ContainsText(TextDataFormat.UnicodeText);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            return false;
+        }
+    }
+
+    private static bool ClipboardHasImageSource()
+    {
+        try
+        {
+            if (Clipboard.ContainsImage())
+                return true;
+
+            if (!Clipboard.ContainsFileDropList())
+                return false;
+
+            var files = Clipboard.GetFileDropList();
+            return files.Cast<string?>().Any(IsSupportedImagePath);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryPasteImageFromClipboard(TextBox textBox)
+    {
         // Priority 1: Clipboard image (screenshot, copied image)
         if (Clipboard.ContainsImage())
         {
@@ -594,8 +795,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
                 {
                     textBox.SelectedText = CreateImageMarkdown(imagePath);
                     textBox.Focus();
-                    e.Handled = true;
-                    return;
+                    return true;
                 }
             }
         }
@@ -606,25 +806,23 @@ public partial class MarkdownEditor : UserControl, IDisposable
             var files = Clipboard.GetFileDropList();
             foreach (string? file in files)
             {
-                if (file == null) continue;
-                var ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
-                if (ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".webp" or ".svg")
+                if (IsSupportedImagePath(file))
                 {
-                    textBox.SelectedText = CreateImageMarkdown(file);
+                    textBox.SelectedText = CreateImageMarkdown(file!);
                     textBox.Focus();
-                    e.Handled = true;
-                    return;
+                    return true;
                 }
             }
         }
 
-        // Priority 3: Standard text paste
-        if (Clipboard.ContainsText())
-        {
-            textBox.SelectedText = Clipboard.GetText();
-            textBox.Focus();
-            e.Handled = true;
-        }
+        return false;
+    }
+
+    private static bool IsSupportedImagePath(string? file)
+    {
+        if (file == null) return false;
+        var ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
+        return ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".webp" or ".svg";
     }
 
     private static string CreateImageMarkdown(string imagePath)
