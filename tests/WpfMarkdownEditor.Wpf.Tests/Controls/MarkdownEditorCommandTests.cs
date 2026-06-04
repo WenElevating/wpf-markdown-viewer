@@ -204,6 +204,96 @@ public sealed class MarkdownEditorCommandTests
         });
     }
 
+    [Fact]
+    public void SetHeadingLevel_UpdatesMarkdownAndSelection()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "one\ntwo";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.CaretIndex = 5;
+
+            editor.SetHeadingLevel(4);
+
+            Assert.Equal("one\n#### two", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal(10, editor.TextBox.CaretIndex);
+        });
+    }
+
+    [Fact]
+    public void ClearParagraphStyle_RemovesSupportedBlockPrefix()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "### title";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.CaretIndex = 5;
+
+            editor.ClearParagraphStyle();
+
+            Assert.Equal("title", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal(1, editor.TextBox.CaretIndex);
+        });
+    }
+
+    [Fact]
+    public void ToggleBulletList_UpdatesSelectedLines()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "one\ntwo\nthree";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.Select(0, "one\ntwo".Length);
+
+            editor.ToggleBulletList();
+
+            Assert.Equal("- one\n- two\nthree", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal("- one\n- two".Length, editor.TextBox.SelectionLength);
+        });
+    }
+
+    [Fact]
+    public void InsertParagraphAbove_InsertsBlankLineAndMovesCaret()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "one\ntwo";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.CaretIndex = 5;
+
+            editor.InsertParagraphAbove();
+
+            Assert.Equal("one\n\ntwo", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal("one\n".Length, editor.TextBox.CaretIndex);
+        });
+    }
+
+    [Fact]
+    public void InsertHorizontalRule_UsesBlockBoundaries()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "one\ntwo";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.CaretIndex = 4;
+
+            editor.InsertHorizontalRule();
+
+            Assert.Equal("one\n\n---\n\ntwo", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal("one\n\n---\n\n".Length, editor.TextBox.CaretIndex);
+        });
+    }
+
     private static void ClearClipboard()
     {
         RetryClipboard(Clipboard.Clear);

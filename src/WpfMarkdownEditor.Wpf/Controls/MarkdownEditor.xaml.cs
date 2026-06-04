@@ -282,55 +282,60 @@ public partial class MarkdownEditor : UserControl, IDisposable
         RenderPreview();
     }
 
+    public void SetHeadingLevel(int level) =>
+        ApplyParagraphOperation((text, start, length) =>
+            MarkdownParagraphOperations.SetHeadingLevel(text, start, length, level));
+
+    public void ClearParagraphStyle() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.ClearBlockPrefix);
+
+    public void ToggleBlockquote() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.ToggleBlockquote);
+
+    public void ToggleOrderedList() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.ToggleOrderedList);
+
+    public void ToggleBulletList() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.ToggleBulletList);
+
+    public void InsertParagraphAbove() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.InsertParagraphAbove);
+
+    public void InsertParagraphBelow() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.InsertParagraphBelow);
+
+    public void InsertHorizontalRule() =>
+        ApplyParagraphOperation(MarkdownParagraphOperations.InsertHorizontalRule);
+
     /// <summary>
-    /// Toggle a line prefix (heading, quote, list marker) on the current line.
-    /// If the line already has the prefix, it is removed. Otherwise it is added
-    /// (replacing any existing heading prefix first).
+    /// Toggle a line prefix for existing callers. New paragraph menu actions use
+    /// the explicit paragraph methods above.
     /// </summary>
     public void ToggleLinePrefix(string prefix)
     {
-        var textBox = EditorTextBox;
-        var text = textBox.Text;
-        var caretIndex = textBox.CaretIndex;
-
-        var lineStart = text.LastIndexOf('\n', Math.Max(0, caretIndex - 1)) + 1;
-        var lineEnd = text.IndexOf('\n', caretIndex);
-        if (lineEnd < 0) lineEnd = text.Length;
-        var lineText = text.Substring(lineStart, lineEnd - lineStart).TrimEnd('\r');
-
-        // Detect existing heading or block prefix
-        var existingMatch = System.Text.RegularExpressions.Regex.Match(lineText, @"^(#{1,6}|>|-|\d+\.)\s");
-
-        if (existingMatch.Success && existingMatch.Groups[1].Value == prefix.TrimEnd())
+        switch (prefix)
         {
-            // Same prefix — remove it
-            var removeLen = existingMatch.Value.Length;
-            textBox.Select(lineStart, removeLen);
-            textBox.SelectedText = "";
-            textBox.CaretIndex = caretIndex > lineStart + removeLen
-                ? caretIndex - removeLen
-                : lineStart;
+            case "#":
+                SetHeadingLevel(1);
+                break;
+            case "##":
+                SetHeadingLevel(2);
+                break;
+            case "###":
+                SetHeadingLevel(3);
+                break;
+            case ">":
+                ToggleBlockquote();
+                break;
+            case "1.":
+                ToggleOrderedList();
+                break;
+            case "-":
+                ToggleBulletList();
+                break;
+            default:
+                throw new ArgumentException($"Unsupported line prefix: {prefix}", nameof(prefix));
         }
-        else
-        {
-            // Remove existing prefix if present, then insert new one
-            var removeLen = existingMatch.Success ? existingMatch.Value.Length : 0;
-            var replacement = prefix + " ";
-            if (removeLen > 0)
-            {
-                textBox.Select(lineStart, removeLen);
-                textBox.SelectedText = replacement;
-                textBox.CaretIndex = caretIndex - removeLen + replacement.Length;
-            }
-            else
-            {
-                textBox.Select(lineStart, 0);
-                textBox.SelectedText = replacement;
-                textBox.CaretIndex = caretIndex + replacement.Length;
-            }
-        }
-
-        textBox.Focus();
     }
 
     #endregion
@@ -757,6 +762,15 @@ public partial class MarkdownEditor : UserControl, IDisposable
         }
 
         EditorTextBox.Focus();
+    }
+
+    private void ApplyParagraphOperation(Func<string, int, int, TextEditOperation> operationFactory)
+    {
+        var operation = operationFactory(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength);
+        ApplyTextOperation(operation);
     }
 
     private static bool ClipboardContainsUnicodeText()
