@@ -54,6 +54,7 @@ The sample app already has these foundations:
 - Do not implement spell-check workflows, smart punctuation, emoji pickers, or math rendering in the first version.
 - Do not introduce multi-document or tab-aware editing.
 - Do not place text algorithms in `MainWindow.xaml.cs`.
+- Do not show deferred screenshot items in the first-version menu. Hidden is clearer than disabled until their behavior is designed.
 
 ## Approved Menu Scope
 
@@ -291,11 +292,11 @@ Use screenshot-aligned Chinese labels for the top menu where possible:
 - 粘贴
 - 复制为纯文本
 - 粘贴为纯文本
-- 选择
+- 全选
 - 上移该行
 - 下移该行
 - 删除
-- 查找和替换
+- 查找
 - 插入硬换行
 
 The screenshot's "拷贝图片" label is deferred as Copy Image until rendered image selection/copy behavior exists.
@@ -317,7 +318,9 @@ Add focused WPF tests for `MarkdownEditor` custom commands:
 - `PasteImageCanExecute_ClipboardHasImage_Enabled`
 - `PasteImageCanExecute_ClipboardHasOnlyText_Disabled`
 - `MoveLineUpCanExecute_CaretOnFirstLine_Disabled`
+- `MoveLineUpCanExecute_SelectedBlockStartsOnFirstLine_Disabled`
 - `MoveLineDownCanExecute_CaretOnLastLine_Disabled`
+- `MoveLineDownCanExecute_SelectedBlockEndsOnLastLine_Disabled`
 - `DeleteSelectionOrCurrentLineCanExecute_EmptyDocument_Disabled`
 
 Tests that instantiate WPF controls must use the existing STA test host pattern.
@@ -327,7 +330,7 @@ Tests that instantiate WPF controls must use the existing STA test host pattern.
 Add or update sample app routing tests similar to the File menu tests:
 
 - Edit menu contains the approved first-version items.
-- Edit menu omits or marks deferred screenshot items.
+- Edit menu omits deferred screenshot items from the first-version UI.
 - Built-in items use commands instead of `Click` handlers where appropriate.
 - Editor-level menu items set explicit `CommandTarget` bindings.
 - Find remains routed to sample app search UI.
@@ -359,5 +362,6 @@ No Sample-layer `EditorEditService` is planned for the first version. If selecti
 - Prefer command sources over `Click` handlers for editor-level commands.
 - If a custom command needs explicit command target binding from `MainWindow.xaml`, target `Editor` for `MarkdownEditorCommands` and target `Editor.TextBox` for `ApplicationCommands` when feasible.
 - If Popup focus breaks command target resolution, set the command target explicitly rather than relying on keyboard focus.
+- `PastePlainText` should read explicit plain Unicode text, for example `Clipboard.GetText(TextDataFormat.UnicodeText)` or an equivalent path. Do not rely on rich clipboard formats such as RTF or HTML being converted implicitly.
 - Keep keyboard shortcut routing aligned with command gestures. Avoid duplicating command logic in `OnPreviewKeyDown`.
-- Keep deferred menu items out of the first-version UI unless the product decision is to show them disabled.
+- Keep deferred menu items out of the first-version UI.
