@@ -89,7 +89,7 @@ The screenshot's Edit menu is divided into first-version commands, second-phase 
 | Delete Range | Needs a range model, such as current paragraph, current list, or current heading section. |
 | Math Tools | Template insertion is simple, but useful math tooling depends on parser/rendering support and command semantics. |
 | Whitespace and Line Break Cleanup | Batch document changes need explicit rules and a single undo unit. |
-| Replace | Requires expanding the search overlay with replace-current, replace-all, and result-state behavior. |
+| Replace | Requires expanding the search panel with replace-current, replace-all, and result-state behavior. |
 
 ### Deferred Research
 
@@ -158,6 +158,9 @@ Responsibilities:
   - `DeleteSelectionOrCurrentLine`
   - `InsertHardLineBreak`
 - Implement `CanExecute` using current selection, caret, text, and clipboard state.
+- `PasteImage` is image-only: enable it only when the clipboard contains an image or a file-drop list with a supported image file. It must not run for text-only clipboard content.
+- `ApplicationCommands.Paste` remains the normal paste command and keeps the existing fallback order: clipboard image, copied image file, then clipboard text.
+- `DeleteSelectionOrCurrentLine` is enabled when there is a selection or the editor contains at least one character. It is disabled for an empty document with no selection.
 - Keep text mutations in a single undo unit when a command performs multi-step edits.
 - Keep command behavior independent of the sample app.
 
@@ -182,13 +185,13 @@ Responsibilities:
 
 These commands are editor-level behavior, not sample app behavior. They belong beside `MarkdownEditor`, not in `MainWindow`.
 
-### Editor Text Operations
+### Static Editor Text Operations
 
-The custom command handlers may call private helper methods in `MarkdownEditor`, or a focused internal helper such as:
+The custom command handlers may call private helper methods in `MarkdownEditor`, or the static helper:
 
 `src/WpfMarkdownEditor.Wpf/Controls/EditorTextOperations.cs`
 
-`EditorTextOperations` should be a stateless helper. Prefer static pure functions that receive text and selection inputs, then return an operation description. The helper should not hold a `TextBox`, `MarkdownEditor`, dispatcher, clipboard, or mutable editor state.
+`EditorTextOperations` should be a stateless static helper. Its public/internal methods should be pure functions: receive text, selection start, selection length, caret position, and command-specific inputs; return an operation description; do not mutate WPF controls. The helper must not hold a `TextBox`, `MarkdownEditor`, dispatcher, clipboard, or mutable editor state.
 
 Recommended shape:
 
@@ -255,6 +258,7 @@ Paste command relationship:
 - `MarkdownEditorCommands.PasteImage` is an explicit image-only action. It is enabled only when the clipboard contains an image or a file-drop list with a supported image file.
 - `PasteImage` must ignore text-only clipboard content. If the clipboard has text but no image source, `CanExecute` is false and the menu item is disabled.
 - `PastePlainText` is text-only. It is enabled only when the clipboard contains text.
+- `DeleteSelectionOrCurrentLine` is disabled when the document is empty and there is no selected text.
 
 Sample app command flow:
 
@@ -267,7 +271,7 @@ Top Edit menu Find
 
 ## Localization
 
-Reuse `Editor.*` keys for labels that are identical between the top Edit menu and the `MarkdownEditor` context menu, such as Undo, Redo, Cut, Copy, Paste, and Select All. Add `MainWindow.*` keys only for top-menu-only entries or labels that intentionally differ from the context menu.
+Localization key rule: prefer reusing `Editor.*` keys for labels that are identical between the top Edit menu and the `MarkdownEditor` context menu, such as Undo, Redo, Cut, Copy, Paste, and Select All. Add `MainWindow.*` keys only for top-menu-only entries or labels that intentionally differ from the context menu.
 
 This avoids maintaining duplicate translations for the same user-visible command. If a future product decision requires different wording in the top menu and context menu, document that difference beside the key addition.
 
@@ -292,6 +296,7 @@ Use screenshot-aligned Chinese labels for the top menu where possible:
 - 下移该行
 - 删除
 - 查找和替换
+- 插入硬换行
 
 The screenshot's "拷贝图片" label is deferred as Copy Image until rendered image selection/copy behavior exists.
 
@@ -347,6 +352,7 @@ No Sample-layer `EditorEditService` is planned for the first version. If selecti
 - New localization keys exist in English and Chinese.
 - Focused WPF command tests and menu routing tests pass.
 - No new dependencies are added.
+- `MarkdownEditorCommands` and `EditorTextOperations` live in `WpfMarkdownEditor.Wpf` and do not reference `WpfMarkdownEditor.Sample` types.
 
 ## Implementation Notes
 
