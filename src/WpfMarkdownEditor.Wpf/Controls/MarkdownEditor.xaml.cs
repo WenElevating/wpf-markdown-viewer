@@ -789,7 +789,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
         }
     }
 
-    private static bool TryPasteImageFromClipboard(TextBox textBox)
+    private bool TryPasteImageFromClipboard(TextBox textBox)
     {
         // Priority 1: Clipboard image (screenshot, copied image)
         if (Clipboard.ContainsImage())
@@ -797,7 +797,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
             var imageSource = Clipboard.GetImage();
             if (imageSource != null)
             {
-                var imagePath = SaveClipboardImage(imageSource);
+                var imagePath = SaveClipboardImage(imageSource, GetDocumentBaseDirectory());
                 if (imagePath != null)
                 {
                     textBox.SelectedText = CreateImageMarkdown(imagePath);
@@ -856,11 +856,11 @@ public partial class MarkdownEditor : UserControl, IDisposable
             : normalized;
     }
 
-    private static string? SaveClipboardImage(BitmapSource image)
+    internal static string? SaveClipboardImage(BitmapSource image, string baseDirectory)
     {
         try
         {
-            var imagesDir = System.IO.Path.Combine(AppContext.BaseDirectory, "images");
+            var imagesDir = System.IO.Path.Combine(baseDirectory, "images");
             Directory.CreateDirectory(imagesDir);
 
             var fileName = $"clipboard_{DateTime.Now:yyyyMMdd_HHmmss}.png";

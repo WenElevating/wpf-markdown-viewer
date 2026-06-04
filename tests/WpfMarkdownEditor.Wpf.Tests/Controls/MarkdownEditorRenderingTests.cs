@@ -104,6 +104,30 @@ public sealed class MarkdownEditorRenderingTests
     }
 
     [Fact]
+    public void SaveClipboardImage_WithDocumentBaseDirectory_WritesRelativeImageBesideDocument()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+
+            try
+            {
+                var relativePath = MarkdownEditor.SaveClipboardImage(CreateBitmapSource(width: 2, height: 2), root);
+
+                Assert.NotNull(relativePath);
+                Assert.StartsWith("images/clipboard_", relativePath);
+                Assert.EndsWith(".png", relativePath);
+                Assert.True(File.Exists(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar))));
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
     public void PreviewImage_WiderThanPreviewPane_ShrinksToAvailableWidth()
     {
         RunOnSta(() =>
@@ -269,5 +293,29 @@ public sealed class MarkdownEditorRenderingTests
 
         using var stream = File.Create(path);
         encoder.Save(stream);
+    }
+
+    private static BitmapSource CreateBitmapSource(int width, int height)
+    {
+        var pixels = new byte[width * height * 4];
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            pixels[i] = 0x00;
+            pixels[i + 1] = 0x80;
+            pixels[i + 2] = 0xFF;
+            pixels[i + 3] = 0xFF;
+        }
+
+        var bitmap = BitmapSource.Create(
+            width,
+            height,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            width * 4);
+        bitmap.Freeze();
+        return bitmap;
     }
 }
