@@ -831,6 +831,8 @@ public partial class MarkdownEditor : UserControl, IDisposable
             EditorTextBox.SelectionLength,
             markdown);
         ApplyTextOperation(operation);
+        UpdateRenderer();
+        RenderPreview();
     }
 
     private static bool IsSupportedImagePath(string? file)
