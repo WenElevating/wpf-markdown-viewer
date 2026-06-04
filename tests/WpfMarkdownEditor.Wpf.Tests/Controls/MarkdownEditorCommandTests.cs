@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using WpfMarkdownEditor.Wpf.Controls;
 using Xunit;
 
@@ -102,6 +104,46 @@ public sealed class MarkdownEditorCommandTests
     }
 
     [Fact]
+    public void SelectAllCommand_TargetsEditorTextBox_SelectsDocument()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            var otherButton = new Button();
+            var host = new Window
+            {
+                Content = new StackPanel
+                {
+                    Children =
+                    {
+                        otherButton,
+                        editor,
+                    },
+                },
+            };
+
+            try
+            {
+                host.Show();
+                editor.TextBox.Text = "one two";
+                editor.TextBox.CaretIndex = 3;
+                otherButton.Focus();
+                DrainDispatcher();
+
+                ApplicationCommands.SelectAll.Execute(null, editor.TextBox);
+
+                Assert.Equal(0, editor.TextBox.SelectionStart);
+                Assert.Equal(editor.TextBox.Text.Length, editor.TextBox.SelectionLength);
+                Assert.True(editor.TextBox.IsKeyboardFocusWithin);
+            }
+            finally
+            {
+                host.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void DeleteSelectionOrCurrentLineCanExecute_EmptyDocument_Disabled()
     {
         WpfTestHost.Run(() =>
@@ -164,5 +206,14 @@ public sealed class MarkdownEditorCommandTests
                 Thread.Sleep(50);
             }
         }
+    }
+
+    private static void DrainDispatcher()
+    {
+        var frame = new DispatcherFrame();
+        Dispatcher.CurrentDispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
     }
 }

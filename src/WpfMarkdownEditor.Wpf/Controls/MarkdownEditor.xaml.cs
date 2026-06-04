@@ -127,7 +127,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Cut));
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy));
         EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste, OnPasteExecuted));
-        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll));
+        EditorTextBox.CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll, OnSelectAllExecuted));
 
         CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.PasteImage, OnPasteImageExecuted, OnCanPasteImage));
         CommandBindings.Add(new CommandBinding(MarkdownEditorCommands.CopyPlainText, OnCopyPlainTextExecuted, OnCanCopyPlainText));
@@ -604,6 +604,13 @@ public partial class MarkdownEditor : UserControl, IDisposable
             textBox.Focus();
             e.Handled = true;
         }
+    }
+
+    private void OnSelectAllExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        EditorTextBox.SelectAll();
+        EditorTextBox.Focus();
+        e.Handled = true;
     }
 
     private void OnCanPasteImage(object sender, CanExecuteRoutedEventArgs e)
