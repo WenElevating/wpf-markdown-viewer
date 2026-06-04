@@ -591,7 +591,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
     {
         var textBox = EditorTextBox;
 
-        if (TryPasteImageFromClipboard(textBox))
+        if (TryPasteImageFromClipboard())
         {
             e.Handled = true;
             return;
@@ -621,7 +621,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
 
     private void OnPasteImageExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-        e.Handled = TryPasteImageFromClipboard(EditorTextBox);
+        e.Handled = TryPasteImageFromClipboard();
     }
 
     private void OnCanCopyPlainText(object sender, CanExecuteRoutedEventArgs e)
@@ -789,7 +789,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
         }
     }
 
-    private bool TryPasteImageFromClipboard(TextBox textBox)
+    private bool TryPasteImageFromClipboard()
     {
         // Priority 1: Clipboard image (screenshot, copied image)
         if (Clipboard.ContainsImage())
@@ -800,8 +800,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
                 var imagePath = SaveClipboardImage(imageSource, GetDocumentBaseDirectory());
                 if (imagePath != null)
                 {
-                    textBox.SelectedText = CreateImageMarkdown(imagePath);
-                    textBox.Focus();
+                    InsertImageMarkdown(CreateImageMarkdown(imagePath));
                     return true;
                 }
             }
@@ -815,14 +814,23 @@ public partial class MarkdownEditor : UserControl, IDisposable
             {
                 if (IsSupportedImagePath(file))
                 {
-                    textBox.SelectedText = CreateImageMarkdown(file!);
-                    textBox.Focus();
+                    InsertImageMarkdown(CreateImageMarkdown(file!));
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    private void InsertImageMarkdown(string markdown)
+    {
+        var operation = EditorTextOperations.InsertImageBlock(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength,
+            markdown);
+        ApplyTextOperation(operation);
     }
 
     private static bool IsSupportedImagePath(string? file)

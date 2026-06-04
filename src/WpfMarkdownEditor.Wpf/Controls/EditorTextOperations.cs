@@ -12,6 +12,20 @@ internal static class EditorTextOperations
         return new TextEditOperation(updated, start + insertion.Length, 0);
     }
 
+    public static TextEditOperation InsertImageBlock(
+        string text,
+        int selectionStart,
+        int selectionLength,
+        string imageMarkdown)
+    {
+        var start = Math.Clamp(selectionStart, 0, text.Length);
+        var length = Math.Clamp(selectionLength, 0, text.Length - start);
+        var newline = DetectNewline(text);
+        var prefix = GetBlockPrefix(text[..start], newline);
+        var suffix = GetBlockSuffix(text[(start + length)..], newline);
+        return InsertText(text, start, length, prefix + imageMarkdown + suffix);
+    }
+
     public static TextEditOperation? DeleteSelectionOrCurrentLine(
         string text,
         int selectionStart,
@@ -94,6 +108,44 @@ internal static class EditorTextOperations
             document.BuildText(lines),
             document.GetLineStart(lines, newStartLine),
             document.GetSelectionLength(lines, newStartLine, endLine + 1));
+    }
+
+    private static string DetectNewline(string text)
+    {
+        if (text.Contains("\r\n", StringComparison.Ordinal))
+            return "\r\n";
+
+        return text.Contains('\n', StringComparison.Ordinal)
+            ? "\n"
+            : Environment.NewLine;
+    }
+
+    private static string GetBlockPrefix(string before, string newline)
+    {
+        if (before.Length == 0)
+            return string.Empty;
+
+        if (before.EndsWith(newline + newline, StringComparison.Ordinal))
+            return string.Empty;
+
+        if (before.EndsWith(newline, StringComparison.Ordinal))
+            return newline;
+
+        return newline + newline;
+    }
+
+    private static string GetBlockSuffix(string after, string newline)
+    {
+        if (after.Length == 0)
+            return string.Empty;
+
+        if (after.StartsWith(newline + newline, StringComparison.Ordinal))
+            return string.Empty;
+
+        if (after.StartsWith(newline, StringComparison.Ordinal))
+            return newline;
+
+        return newline + newline;
     }
 
     private sealed record LineInfo(string Content, int Start);

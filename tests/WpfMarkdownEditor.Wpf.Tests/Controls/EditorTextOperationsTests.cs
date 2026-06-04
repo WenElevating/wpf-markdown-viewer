@@ -82,4 +82,32 @@ public sealed class EditorTextOperationsTests
         Assert.Equal(6, result.SelectionStart);
         Assert.Equal(0, result.SelectionLength);
     }
+
+    [Fact]
+    public void InsertImageBlock_BetweenHtmlBlocks_AddsBlankLineBoundaries()
+    {
+        var result = EditorTextOperations.InsertImageBlock(
+            "<h1>Title</h1>\n<p>Next</p>",
+            "<h1>Title</h1>\n".Length,
+            0,
+            "![clipboard](images/clipboard.png)");
+
+        Assert.Equal("<h1>Title</h1>\n\n![clipboard](images/clipboard.png)\n\n<p>Next</p>", result.Text);
+        Assert.Equal("<h1>Title</h1>\n\n![clipboard](images/clipboard.png)\n\n".Length, result.SelectionStart);
+        Assert.Equal(0, result.SelectionLength);
+    }
+
+    [Fact]
+    public void InsertImageBlock_EmptyDocument_InsertsImageOnly()
+    {
+        var result = EditorTextOperations.InsertImageBlock(
+            string.Empty,
+            0,
+            0,
+            "![clipboard](images/clipboard.png)");
+
+        Assert.Equal("![clipboard](images/clipboard.png)", result.Text);
+        Assert.Equal("![clipboard](images/clipboard.png)".Length, result.SelectionStart);
+        Assert.Equal(0, result.SelectionLength);
+    }
 }

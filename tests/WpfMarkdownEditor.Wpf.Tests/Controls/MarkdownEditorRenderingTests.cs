@@ -128,6 +128,124 @@ public sealed class MarkdownEditorRenderingTests
     }
 
     [Fact]
+    public void LoadFile_RendersRelativeImageAfterSingleLineHtmlHeading()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            var imageDirectory = Path.Combine(root, "images");
+            var markdownPath = Path.Combine(root, "readme.md");
+            Directory.CreateDirectory(imageDirectory);
+            File.WriteAllText(
+                markdownPath,
+                """
+                <h1 align="center">Title</h1>
+                ![clipboard](images/clipboard.png)
+
+                <p align="center">Next paragraph</p>
+                """);
+            File.WriteAllBytes(Path.Combine(imageDirectory, "clipboard.png"), Png1x1);
+
+            try
+            {
+                using var editor = new MarkdownEditor();
+
+                editor.LoadFile(markdownPath);
+
+                Assert.True(WaitUntil(() => DocumentContainsImage(editor.PreviewViewer.Document)));
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
+    public void LoadFile_RendersLargeRelativeClipboardImageAfterSingleLineHtmlHeading()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            var imageDirectory = Path.Combine(root, "images");
+            var markdownPath = Path.Combine(root, "readme.md");
+            Directory.CreateDirectory(imageDirectory);
+            File.WriteAllText(
+                markdownPath,
+                """
+                <h1 align="center">Title</h1>
+                ![clipboard](images/clipboard.png)
+
+                <p align="center">Next paragraph</p>
+                """);
+            WritePng(Path.Combine(imageDirectory, "clipboard.png"), width: 1442, height: 962);
+
+            try
+            {
+                using var editor = new MarkdownEditor
+                {
+                    Width = 1000,
+                    Height = 800,
+                };
+
+                editor.LoadFile(markdownPath);
+                editor.Measure(new Size(1000, 800));
+                editor.Arrange(new Rect(0, 0, 1000, 800));
+                editor.UpdateLayout();
+
+                Assert.True(WaitUntil(() => FindImage(editor.PreviewViewer.Document) is { Source: not null }));
+                var image = FindImage(editor.PreviewViewer.Document);
+                Assert.NotNull(image);
+                Assert.True(image.ActualHeight > 0 || image.Height > 0);
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
+    public void LoadFile_RendersRelativeImageBetweenSingleLineHtmlBlocksWithoutBlankLines()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            var imageDirectory = Path.Combine(root, "images");
+            var markdownPath = Path.Combine(root, "readme.md");
+            Directory.CreateDirectory(imageDirectory);
+            File.WriteAllText(
+                markdownPath,
+                """
+                <h1 align="center">Title</h1>
+                ![clipboard](images/clipboard.png)
+                <p align="center">Next paragraph</p>
+                """);
+            WritePng(Path.Combine(imageDirectory, "clipboard.png"), width: 1442, height: 962);
+
+            try
+            {
+                using var editor = new MarkdownEditor
+                {
+                    Width = 1000,
+                    Height = 800,
+                };
+
+                editor.LoadFile(markdownPath);
+                editor.Measure(new Size(1000, 800));
+                editor.Arrange(new Rect(0, 0, 1000, 800));
+                editor.UpdateLayout();
+
+                Assert.True(WaitUntil(() => FindImage(editor.PreviewViewer.Document) is { Source: not null }));
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
     public void PreviewImage_WiderThanPreviewPane_ShrinksToAvailableWidth()
     {
         RunOnSta(() =>

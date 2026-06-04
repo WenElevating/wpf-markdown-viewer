@@ -67,6 +67,26 @@ public sealed class HtmlMarkdownParserTests
     }
 
     [Fact]
+    public void Parse_SingleLineClosedHtmlBlock_DoesNotConsumeFollowingImage()
+    {
+        var blocks = _parser.Parse(
+            """
+            <h1 align="center">Title</h1>
+            ![clipboard](images/clipboard.png)
+            """);
+
+        Assert.Collection(
+            blocks,
+            block => Assert.IsType<HtmlBlock>(block),
+            block =>
+            {
+                var paragraph = Assert.IsType<ParagraphBlock>(block);
+                var image = Assert.IsType<ImageInline>(Assert.Single(paragraph.Inlines));
+                Assert.Equal("images/clipboard.png", image.Url);
+            });
+    }
+
+    [Fact]
     public void Parse_MixedLineBlockTag_DoesNotPromoteToHtmlBlock()
     {
         var blocks = _parser.Parse("""Some text <div align="center">logo</div> more text""");
