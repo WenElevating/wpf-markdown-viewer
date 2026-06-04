@@ -1,50 +1,78 @@
 # Quillora
 
-Quillora is a modern, zero-dependency WPF Markdown editor with real-time preview, multi-engine translation, and 6 built-in themes. Built on .NET 8.
+Quillora is a WPF Markdown workspace for writing, previewing, translating, and exporting documentation. It is built on .NET 8 and ships as both a desktop sample app and a reusable set of Markdown parsing, rendering, editor, and converter components.
 
 [中文文档](README.zh-CN.md)
-
-## Features
-
-- **Real-time Preview** — Side-by-side editing with debounced rendering (~100ms)
-- **Multi-engine Translation** — Translate documents via Baidu or OpenAI-compatible APIs (Qwen, DeepSeek, etc.), preview-only mode preserves original content
-- **6 Built-in Themes** — GitHub, GitHub Dark, Claude, Claude Dark, Light, Dark
-- **Smart Editing** — Auto-continuation for lists, prefix toggling, selection wrapping
-- **Formatting Toolbar** — Headings, bold, italic, code, links, tables, and more
-- **Sidebar** — File history & document outline (TOC) with animated toggle
-- **Syntax Highlighting** — Code blocks with C#, JavaScript/TypeScript, Python, JSON, SQL, Bash support
-- **Zero Dependencies** — Pure WPF, no NuGet packages required
 
 ## Screenshots
 
 ### GitHub Light
+
 ![GitHub Light Theme](sources/en/github_light_theme.png)
 
 ### GitHub Dark
+
 ![GitHub Dark Theme](sources/en/github_dark_theme.png)
 
 ### Claude
+
 ![Claude Light Theme](sources/en/claude_light_theme.png)
 
-## Getting Started
+## What Quillora Includes
 
-### Requirements
+- **Desktop Markdown editor** - A polished WPF sample app with file menus, recent files, quick open, folder sidebar, document outline, theme switching, localization, export, print, and translation workflows.
+- **Reusable editor control** - `MarkdownEditor` provides two-way Markdown binding, source editing, live preview, formatting helpers, zoom controls, image paste support, and theme-aware UI.
+- **Markdown renderer** - `FlowDocumentRenderer` turns parsed Markdown into WPF `FlowDocument` output for preview panes, chat bubbles, read-only views, or converter pipelines.
+- **Parser and AST** - `WpfMarkdownEditor.Core` contains the UI-independent Markdown parser, block/inline model, and translation-safe segment extraction.
+- **Converter bridge** - `WpfMarkdownEditor.Converters` adapts Markdown rendering to the `markitdown-csharp` conversion interface.
 
-- .NET 8.0 SDK
+## Highlights
+
+- **Live split preview** - Edit Markdown on the left and render a debounced preview on the right.
+- **Clean Quillora branding** - Brand-only empty-window title, refreshed app icon, and installer metadata.
+- **File workflows** - New/open/save/save as, open folder, recent files, quick open, move file, delete file, properties, show in sidebar, import text/Markdown, export HTML, and print.
+- **Workspace sidebar** - File tree and outline tabs with animated show/hide behavior.
+- **Markdown formatting** - Menu commands for headings, blockquote, ordered/bullet lists, bold, italic, strikethrough, inline code, links, code blocks, tables, and horizontal rules.
+- **Smart editing** - List auto-continuation, ordered-list incrementing, Tab/Shift+Tab list indentation, empty-list cleanup, selection wrapping, and paste handling for clipboard images and image files.
+- **Rendering coverage** - Headings, paragraphs, blockquotes, lists, tables, thematic breaks, inline styles, code blocks, local/remote images, SVG images, HTML image tags, linked image blocks, and responsive image sizing.
+- **Syntax highlighting** - C#, JavaScript/TypeScript, Python, JSON/JSONC, SQL, and shell code blocks.
+- **Translation preview** - Translate Markdown through Baidu Translate or OpenAI-compatible chat APIs while preserving Markdown structure and leaving the editor text unchanged.
+- **Themes** - GitHub, GitHub Dark, Claude, Claude Dark, Light, and Dark, with theme-aware editor chrome and scrollbars.
+- **Localization** - English and Simplified Chinese resources for the sample app.
+
+## Run the App
+
+Requirements:
+
 - Windows 10/11
+- .NET 8 SDK
 
-### Install
-
-Add the NuGet packages to your WPF project:
-
-```xml
-<ItemGroup>
-  <PackageReference Include="WpfMarkdownEditor.Core" Version="0.1.0" />
-  <PackageReference Include="WpfMarkdownEditor.Wpf" Version="0.1.0" />
-</ItemGroup>
+```bash
+git clone https://github.com/WenElevating/wpf-markdown-viewer.git
+cd wpf-markdown-viewer
+dotnet run --project samples/WpfMarkdownEditor.Sample/WpfMarkdownEditor.Sample.csproj
 ```
 
-Or reference the projects directly:
+The sample app only depends on `WpfMarkdownEditor.Wpf` and `WpfMarkdownEditor.Core`, so it is the quickest way to try Quillora.
+
+## Build and Test
+
+```bash
+# Build the reusable control and the sample app
+dotnet build samples/WpfMarkdownEditor.Sample/WpfMarkdownEditor.Sample.csproj --no-restore
+
+# Run WPF tests
+dotnet test tests/WpfMarkdownEditor.Wpf.Tests/WpfMarkdownEditor.Wpf.Tests.csproj --no-restore
+
+# Run Core parser/translation tests
+dotnet test tests/WpfMarkdownEditor.Core.Tests/WpfMarkdownEditor.Core.Tests.csproj --no-restore
+```
+
+The full solution includes `WpfMarkdownEditor.Converters`, which currently references a sibling `markitdown-csharp` checkout. If you only cloned this repository, build the sample app or the Core/WPF projects directly.
+
+## Use the Editor Control
+
+Reference the projects from your WPF app:
 
 ```xml
 <ItemGroup>
@@ -53,239 +81,192 @@ Or reference the projects directly:
 </ItemGroup>
 ```
 
-### Quick Start
+Add the control in XAML:
 
 ```xml
-<Window xmlns:ctrl="clr-namespace:WpfMarkdownEditor.Wpf.Controls;assembly=WpfMarkdownEditor.Wpf">
-    <ctrl:MarkdownEditor x:Name="Editor"
-                         Markdown="# Hello Markdown"
-                         ShowPreview="True" />
+<Window
+    xmlns:ctrl="clr-namespace:WpfMarkdownEditor.Wpf.Controls;assembly=WpfMarkdownEditor.Wpf">
+    <ctrl:MarkdownEditor
+        x:Name="Editor"
+        Markdown="# Hello Quillora"
+        ShowPreview="True" />
 </Window>
 ```
 
+Use it from code:
+
 ```csharp
-// Load a file
+using WpfMarkdownEditor.Wpf.Theming;
+
 Editor.LoadFile("README.md");
+Editor.ApplyTheme(EditorTheme.GitHubDark);
 
-// Apply a theme
-Editor.ApplyTheme(EditorTheme.GitHub);
-
-// Listen for changes
-Editor.MarkdownChanged += (s, e) =>
+Editor.MarkdownChanged += (_, e) =>
 {
-    Console.WriteLine($"Content changed ({e.NewMarkdown.Length} chars)");
+    Console.WriteLine($"Markdown changed: {e.NewMarkdown.Length} chars");
 };
 ```
 
-## Translation
-
-Translate markdown documents while preserving all formatting (headings, lists, tables, code blocks, inline markers). Translation renders in the **preview pane only** — the editor stays untouched.
-
-### Supported Providers
-
-| Provider | Service |
-|----------|---------|
-| **Baidu Translate** | 百度翻译 API |
-| **OpenAI Compatible** | Qwen, DeepSeek, Zhipu, OpenAI, any Chat Completions API |
-
-### Supported Languages
-
-English, Chinese (中文), Japanese (日本語), Korean (한국어)
-
-### How It Works
-
-1. **Template-based extraction** — Parses markdown into segments, extracts only translatable text, replaces inline markers (bold, italic, code, links) with ASCII tokens
-2. **Translate** — Sends clean plain text to the translation API
-3. **Reconstruct** — Rebuilds markdown from the template with translated text, restoring all formatting
-4. **Preview** — Renders translated content in the preview pane; original editor content unchanged
-
-```csharp
-// Translate and show in preview
-var service = new TranslationService(provider);
-var result = await service.TranslateMarkdownAsync(
-    Editor.Markdown, TranslationLanguage.Chinese, progress, ct);
-Editor.RenderTranslatedPreview(result.TranslatedText);
-
-// Clear translation, revert to original
-Editor.ClearTranslatedPreview();
-```
-
-## API Reference
+## Editor API Snapshot
 
 ### Dependency Properties
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Markdown` | `string` | `""` | Markdown content (two-way binding) |
-| `Theme` | `EditorTheme` | `Light` | Current editor theme |
-| `ShowPreview` | `bool` | `true` | Show/hide the preview pane |
-| `PreviewWidth` | `GridLength` | `1*` | Preview pane width |
+|---|---|---|---|
+| `Markdown` | `string` | `""` | Markdown content with two-way binding. |
+| `Theme` | `EditorTheme` | `Light` | Current editor and preview theme. |
+| `ShowPreview` | `bool` | `true` | Shows or hides the preview pane. |
+| `PreviewWidth` | `GridLength` | `1*` | Width of the preview pane. |
 
-### Methods
+### Common Methods
 
 | Method | Description |
-|--------|-------------|
-| `LoadFile(string path)` | Load markdown from a file |
-| `SaveFileAsync(string path)` | Save markdown to a file |
-| `ApplyTheme(EditorTheme theme)` | Apply a theme |
-| `FocusEditor()` | Focus the editor text box |
-| `WrapSelection(string before, string after)` | Wrap selected text with markers |
-| `InsertText(string text)` | Insert text at cursor position |
-| `ToggleLinePrefix(string prefix)` | Toggle heading/quote/list prefixes |
-| `RenderTranslatedPreview(string md)` | Show translated markdown in preview |
-| `ClearTranslatedPreview()` | Revert preview to editor content |
+|---|---|
+| `LoadFile(string path)` | Loads Markdown and sets the document directory for relative images. |
+| `SaveFileAsync(string path)` | Saves the current Markdown text. |
+| `ApplyTheme(EditorTheme theme)` | Applies a built-in or custom theme. |
+| `FocusEditor()` | Focuses the source editor. |
+| `WrapSelection(string before, string after)` | Wraps the selected text with Markdown markers. |
+| `InsertText(string text)` | Inserts text at the caret. |
+| `ToggleLinePrefix(string prefix)` | Toggles heading, quote, or list prefixes on the current selection. |
+| `RenderTranslatedPreview(string md)` | Renders translated Markdown in the preview pane only. |
+| `ClearTranslatedPreview()` | Returns the preview to the editor content. |
 
 ### Events
 
 | Event | Description |
-|-------|-------------|
-| `MarkdownChanged` | Fired when markdown content changes |
+|---|---|
+| `MarkdownChanged` | Raised when editor text changes. |
+
+## Rendering and Images
+
+Quillora renders Markdown into WPF `FlowDocument` content. The renderer supports common Markdown blocks, GitHub-style tables, syntax-highlighted code blocks, inline formatting, and mixed Markdown/HTML image patterns.
+
+Images can be loaded from:
+
+- relative paths based on the current document directory
+- absolute local paths
+- remote URLs
+- SVG data through the SVG browser fallback
+- HTML `<img>`, linked image, and `<picture>` fallback patterns
+
+The image renderer uses stable placeholder hosts and refreshes layout when asynchronous images finish loading, which keeps the preview from jumping during updates.
+
+## Translation
+
+Translation is preview-only: the original Markdown in the editor is not overwritten.
+
+Supported providers:
+
+| Provider | Notes |
+|---|---|
+| Baidu Translate | Uses App ID and Secret Key. |
+| OpenAI Compatible | Works with Qwen, DeepSeek, Zhipu, OpenAI, or any compatible chat completions endpoint. |
+
+Supported target languages:
+
+- English
+- Chinese
+- Japanese
+- Korean
+
+How translation preserves Markdown:
+
+1. Parse Markdown into structured blocks and inline segments.
+2. Extract only translatable text.
+3. Replace inline Markdown markers with stable ASCII placeholders.
+4. Translate clean text through the selected provider.
+5. Reconstruct Markdown and render it in the preview pane.
+
+Translation credentials are stored by the WPF layer using protected local settings.
 
 ## Themes
 
-Six built-in themes, all customizable:
+Built-in themes:
 
 ```csharp
-// Built-in themes
 Editor.ApplyTheme(EditorTheme.GitHub);
 Editor.ApplyTheme(EditorTheme.GitHubDark);
 Editor.ApplyTheme(EditorTheme.Claude);
 Editor.ApplyTheme(EditorTheme.ClaudeDark);
 Editor.ApplyTheme(EditorTheme.Light);
 Editor.ApplyTheme(EditorTheme.Dark);
-
-// Custom theme
-var custom = new EditorTheme
-{
-    Name = "My Theme",
-    BaseFontSize = 13,          // base body font size (headings scale proportionally)
-    LineHeight = 22,            // line height in device-independent pixels (NaN = auto)
-    BackgroundColor = Colors.White,
-    ForegroundColor = Colors.Black,
-    BodyFont = new FontFamily("Segoe UI Variable, Segoe UI"),
-    HeadingFont = new FontFamily("Segoe UI Variable, Segoe UI"),
-    CodeFont = new FontFamily("Cascadia Mono, Consolas"),
-    LinkColor = Colors.Blue,
-    ParagraphSpacing = 10,
-    HeadingMarginTop = 14,
-    HeadingMarginBottom = 4,
-    // ... see EditorTheme for all properties
-};
-Editor.ApplyTheme(custom);
 ```
 
-### Typography Properties
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `BaseFontSize` | `double` | `14` | Body font size; headings scale relative to this value |
-| `LineHeight` | `double` | `NaN` | Line height in DIPs; `NaN` = WPF automatic |
-| `BodyFont` | `FontFamily` | `"Segoe UI"` | Font used for paragraphs and lists |
-| `HeadingFont` | `FontFamily` | `"Segoe UI Semibold"` | Font used for headings |
-| `CodeFont` | `FontFamily` | `"Consolas"` | Font used for code blocks and inline code |
-| `ParagraphSpacing` | `double` | `12` | Bottom margin between paragraphs (DIPs) |
-| `HeadingMarginTop` | `double` | `24` | Top margin before headings (DIPs) |
-| `HeadingMarginBottom` | `double` | `8` | Bottom margin after headings (DIPs) |
-
-### Using FlowDocumentRenderer Directly
-
-Use `FlowDocumentRenderer` standalone to render markdown into a `FlowDocument` — useful for read-only chat bubbles, tooltips, or any custom WPF control:
+Custom themes are plain `EditorTheme` instances:
 
 ```csharp
+var theme = new EditorTheme
+{
+    Name = "Docs",
+    BackgroundColor = Colors.White,
+    ForegroundColor = Colors.Black,
+    BodyFont = new FontFamily("Segoe UI"),
+    HeadingFont = new FontFamily("Segoe UI Semibold"),
+    CodeFont = new FontFamily("Cascadia Mono, Consolas"),
+    LinkColor = Colors.RoyalBlue,
+    ParagraphSpacing = 14,
+};
+
+Editor.ApplyTheme(theme);
+```
+
+## Use the Renderer Directly
+
+```csharp
+using WpfMarkdownEditor.Core.Parsing;
+using WpfMarkdownEditor.Wpf.Rendering;
+using WpfMarkdownEditor.Wpf.Theming;
+
 var parser = new MarkdownParser();
 var renderer = new FlowDocumentRenderer(EditorTheme.ClaudeDark);
 
 var blocks = parser.Parse(markdownText);
 var document = renderer.Render(blocks);
 
-// Attach to any FlowDocumentScrollViewer / RichTextBox
-myFlowDocumentScrollViewer.Document = document;
+PreviewViewer.Document = document;
 ```
 
-You can also expose theme as a `DependencyProperty` on your control to allow XAML configuration without modifying the library:
+## Converter Project
 
-```xml
-<local:MyMarkdownControl
-    Markdown="{Binding Text}"
-    Theme="{x:Static themes:AppThemes.ClaudeCode}" />
-```
-
-## Smart Editing
-
-- **List auto-continuation** — Press Enter in a list to auto-insert the next marker
-- **Numbered list increment** — `1.` → `2.` → `3.` automatically
-- **Tab/Shift+Tab** — Indent/outdent list items
-- **Empty list cleanup** — Press Enter on an empty item to remove the marker
-- **Paste image support** — Paste clipboard images or drag-drop files to insert markdown image syntax
-
-## Syntax Highlighting
-
-| Language | Aliases |
-|----------|---------|
-| C# | `csharp`, `cs` |
-| JavaScript / TypeScript | `javascript`, `js`, `typescript`, `ts`, `jsx`, `tsx` |
-| Python | `python`, `py` |
-| JSON | `json`, `jsonc` |
-| SQL | `sql`, `postgres`, `mysql`, `sqlite` |
-| Shell | `bash`, `sh`, `shell`, `zsh` |
-
-## Converter
-
-`WpfMarkdownEditor.Converters` implements the [markitdown-csharp](https://github.com/WenElevating/markitdown-csharp) `IConverter` interface, converting Markdown to WPF FlowDocument.
+`WpfMarkdownEditor.Converters` adapts the renderer to the `markitdown-csharp` `IConverter` contract:
 
 ```csharp
 using MarkItDown.Core;
 using WpfMarkdownEditor.Converters;
 using WpfMarkdownEditor.Wpf.Theming;
 
-// Create converter with custom theme
 var converter = new MarkdownToFlowDocumentConverter(EditorTheme.GitHub);
+var document = converter.ConvertToFlowDocument("# Hello");
 
-// Direct FlowDocument output (no serialization)
-var document = converter.ConvertToFlowDocument("# Hello World");
-
-// XAML string output (via IConverter interface)
 var result = await converter.ConvertAsync(
     new DocumentConversionRequest { FilePath = "README.md" });
-Console.WriteLine(result.Kind);     // "FlowDocument"
-Console.WriteLine(result.Markdown);  // XAML string
 ```
 
-## Project Structure
+This project is useful when Markdown-to-WPF output needs to participate in a broader document conversion pipeline.
 
-```
+## Project Layout
+
+```text
 src/
-  WpfMarkdownEditor.Core/         — Markdown parser, AST, translation extraction
-  WpfMarkdownEditor.Wpf/          — WPF control library, rendering, themes, translation providers
-  WpfMarkdownEditor.Converters/   — MarkItDown IConverter: Markdown → FlowDocument
+  WpfMarkdownEditor.Core/         Markdown parser, AST, translation extraction
+  WpfMarkdownEditor.Wpf/          WPF control, renderer, themes, localization, translation providers
+  WpfMarkdownEditor.Converters/   MarkItDown bridge for Markdown -> FlowDocument
 samples/
-  WpfMarkdownEditor.Sample/       — Demo application
+  WpfMarkdownEditor.Sample/       Quillora desktop app
 tests/
-  WpfMarkdownEditor.Core.Tests/     — Core unit tests
-  WpfMarkdownEditor.Wpf.Tests/      — WPF integration tests
-  WpfMarkdownEditor.Converters.Tests/ — Converter unit tests (19 tests)
-```
-
-## Building
-
-```bash
-git clone https://github.com/WenElevating/wpf-markdown-viewer.git
-cd wpf-markdown-viewer
-dotnet build
-dotnet run --project samples/WpfMarkdownEditor.Sample
-```
-
-## Running Tests
-
-```bash
-dotnet test
+  WpfMarkdownEditor.Core.Tests/       Parser and translation tests
+  WpfMarkdownEditor.Wpf.Tests/        WPF control, rendering, services, localization tests
+  WpfMarkdownEditor.Converters.Tests/ Converter tests
+sources/
+  en/ and zh/                     README screenshots by language
 ```
 
 ## Acknowledgments
 
-- [markitdown](https://github.com/microsoft/markitdown) — Microsoft's markdown conversion library
-- [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) — Claude Code enhancement plugin
-- [Understand Anything](https://github.com/Lum1104/Understand-Anything) — README content used as the sample document
+- [markitdown](https://github.com/microsoft/markitdown) - Microsoft's document conversion project.
+- [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) - Claude Code enhancement plugin.
+- [Understand Anything](https://github.com/Lum1104/Understand-Anything) - README content used as the sample document.
 
 ## License
 
