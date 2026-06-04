@@ -878,7 +878,7 @@ public partial class MarkdownEditor : UserControl, IDisposable
             var filePath = System.IO.Path.Combine(imagesDir, fileName);
 
             var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(image));
+            encoder.Frames.Add(BitmapFrame.Create(EnsureVisibleClipboardImage(image)));
 
             using var stream = System.IO.File.Create(filePath);
             encoder.Save(stream);
@@ -889,6 +889,46 @@ public partial class MarkdownEditor : UserControl, IDisposable
         {
             return null;
         }
+    }
+
+    private static BitmapSource EnsureVisibleClipboardImage(BitmapSource image)
+    {
+        var converted = new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0);
+        var stride = converted.PixelWidth * 4;
+        var pixels = new byte[stride * converted.PixelHeight];
+        converted.CopyPixels(pixels, stride, 0);
+
+        var alphaNonZero = false;
+        var rgbNonZero = false;
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            if (pixels[i + 3] != 0)
+                alphaNonZero = true;
+
+            if (pixels[i] != 0 || pixels[i + 1] != 0 || pixels[i + 2] != 0)
+                rgbNonZero = true;
+
+            if (alphaNonZero)
+                return image;
+        }
+
+        if (!rgbNonZero)
+            return image;
+
+        for (var i = 3; i < pixels.Length; i += 4)
+            pixels[i] = 255;
+
+        var visible = BitmapSource.Create(
+            converted.PixelWidth,
+            converted.PixelHeight,
+            converted.DpiX,
+            converted.DpiY,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            stride);
+        visible.Freeze();
+        return visible;
     }
 
     #endregion

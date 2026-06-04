@@ -128,6 +128,69 @@ public sealed class MarkdownEditorRenderingTests
     }
 
     [Fact]
+    public void PasteImageStyleMarkdown_UnsavedDocument_RendersImageFromApplicationImagesDirectory()
+    {
+        RunOnSta(() =>
+        {
+            var imagesDirectory = Path.Combine(AppContext.BaseDirectory, "images");
+            Directory.CreateDirectory(imagesDirectory);
+            var relativePath = MarkdownEditor.SaveClipboardImage(
+                CreateBitmapSource(width: 1545, height: 1356),
+                AppContext.BaseDirectory);
+            Assert.NotNull(relativePath);
+
+            var fullPath = Path.Combine(AppContext.BaseDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            try
+            {
+                using var editor = new MarkdownEditor
+                {
+                    Width = 1000,
+                    Height = 800,
+                    Markdown = $"![{Path.GetFileName(relativePath)}]({relativePath})",
+                };
+
+                editor.Measure(new Size(1000, 800));
+                editor.Arrange(new Rect(0, 0, 1000, 800));
+                editor.UpdateLayout();
+
+                Assert.True(WaitUntil(() => FindImage(editor.PreviewViewer.Document) is { Source: not null }));
+                var image = FindImage(editor.PreviewViewer.Document);
+                Assert.NotNull(image);
+                Assert.True(image.ActualWidth > 0 && image.ActualHeight > 0);
+            }
+            finally
+            {
+                if (File.Exists(fullPath))
+                    File.Delete(fullPath);
+            }
+        });
+    }
+
+    [Fact]
+    public void SaveClipboardImage_TransparentClipboardRgbData_WritesOpaquePng()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+
+            try
+            {
+                var relativePath = MarkdownEditor.SaveClipboardImage(CreateTransparentRgbBitmapSource(), root);
+
+                Assert.NotNull(relativePath);
+                var fullPath = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                Assert.True(File.Exists(fullPath), $"Pasted image file was not written: {fullPath}");
+                Assert.Equal(4, CountPixelsWithAlpha(fullPath, 255));
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
     public void LoadFile_RendersRelativeImageAfterSingleLineHtmlHeading()
     {
         RunOnSta(() =>
@@ -237,6 +300,96 @@ public sealed class MarkdownEditorRenderingTests
                 editor.UpdateLayout();
 
                 Assert.True(WaitUntil(() => FindImage(editor.PreviewViewer.Document) is { Source: not null }));
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
+    public void MarkdownChange_WithDocumentPath_RendersClipboardStyleRelativeImages()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            var imageDirectory = Path.Combine(root, "images");
+            var markdownPath = Path.Combine(root, "readme.md");
+            Directory.CreateDirectory(imageDirectory);
+            WritePng(Path.Combine(imageDirectory, "clipboard_20260604_224533.png"), width: 1442, height: 962);
+            WritePng(Path.Combine(imageDirectory, "clipboard_20260604_222406.png"), width: 1442, height: 962);
+
+            try
+            {
+                using var editor = new MarkdownEditor
+                {
+                    Width = 1000,
+                    Height = 800,
+                    DocumentPath = markdownPath,
+                };
+
+                editor.Markdown =
+                    """
+                    ![clipboard_20260604_222406.png](images/clipboard_20260604_222406.png)
+
+                    ![clipboard_20260604_224533.png](images/clipboard_20260604_224533.png)
+                    """;
+                editor.Measure(new Size(1000, 800));
+                editor.Arrange(new Rect(0, 0, 1000, 800));
+                editor.UpdateLayout();
+
+                Assert.True(WaitUntil(() => CountImages(editor.PreviewViewer.Document) == 2));
+                editor.Measure(new Size(1000, 800));
+                editor.Arrange(new Rect(0, 0, 1000, 800));
+                editor.UpdateLayout();
+
+                var images = FindImages(editor.PreviewViewer.Document).ToArray();
+                Assert.Equal(2, images.Length);
+                Assert.All(images, image => Assert.True(
+                    image.ActualWidth > 0 && image.ActualHeight > 0,
+                    $"Image was loaded but not visible. Actual size: {image.ActualWidth}x{image.ActualHeight}."));
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
+    public void MarkdownChange_AfterInitialMissingRelativeImage_ReRendersWhenDocumentPathIsSet()
+    {
+        RunOnSta(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "WpfMarkdownEditor.Tests", Guid.NewGuid().ToString("N"));
+            var imageDirectory = Path.Combine(root, "images");
+            var markdownPath = Path.Combine(root, "readme.md");
+            Directory.CreateDirectory(imageDirectory);
+            WritePng(Path.Combine(imageDirectory, "clipboard.png"), width: 1442, height: 962);
+
+            try
+            {
+                using var editor = new MarkdownEditor
+                {
+                    Width = 1000,
+                    Height = 800,
+                };
+
+                editor.Markdown = "![clipboard.png](images/clipboard.png)";
+                Assert.True(WaitUntil(() => editor.PreviewViewer.Document is not null));
+
+                editor.DocumentPath = markdownPath;
+                editor.Measure(new Size(1000, 800));
+                editor.Arrange(new Rect(0, 0, 1000, 800));
+                editor.UpdateLayout();
+
+                Assert.True(WaitUntil(() => FindImage(editor.PreviewViewer.Document) is { Source: not null }));
+                var image = FindImage(editor.PreviewViewer.Document);
+                Assert.NotNull(image);
+                Assert.True(
+                    image.ActualWidth > 0 && image.ActualHeight > 0,
+                    $"Image was loaded but not visible. Actual size: {image.ActualWidth}x{image.ActualHeight}.");
             }
             finally
             {
@@ -371,6 +524,22 @@ public sealed class MarkdownEditorRenderingTests
         return document.Blocks.Cast<Block>().Select(FindImage).FirstOrDefault(static image => image is not null);
     }
 
+    private static IEnumerable<Image> FindImages(FlowDocument? document)
+    {
+        if (document is null)
+            return [];
+
+        return document.Blocks.Cast<Block>().SelectMany(FindImages);
+    }
+
+    private static int CountImages(FlowDocument? document)
+    {
+        if (document is null)
+            return 0;
+
+        return document.Blocks.Cast<Block>().Sum(CountImages);
+    }
+
     private static Image? FindImage(Block block) =>
         block switch
         {
@@ -387,12 +556,58 @@ public sealed class MarkdownEditorRenderingTests
             _ => null
         };
 
+    private static IEnumerable<Image> FindImages(Block block) =>
+        block switch
+        {
+            BlockUIContainer { Child: Image image } => [image],
+            BlockUIContainer { Child: ContentControl { Content: Image image } } => [image],
+            Section section => section.Blocks.Cast<Block>().SelectMany(FindImages),
+            Paragraph paragraph => paragraph.Inlines.Cast<Inline>().SelectMany(FindImages),
+            Table table => table.RowGroups
+                .SelectMany(group => group.Rows)
+                .SelectMany(row => row.Cells)
+                .SelectMany(cell => cell.Blocks.Cast<Block>())
+                .SelectMany(FindImages),
+            _ => []
+        };
+
+    private static int CountImages(Block block) =>
+        block switch
+        {
+            BlockUIContainer { Child: Image image } when image.Source is not null => 1,
+            BlockUIContainer { Child: ContentControl { Content: Image image } } when image.Source is not null => 1,
+            Section section => section.Blocks.Cast<Block>().Sum(CountImages),
+            Paragraph paragraph => paragraph.Inlines.Cast<Inline>().Sum(CountImages),
+            Table table => table.RowGroups
+                .SelectMany(group => group.Rows)
+                .SelectMany(row => row.Cells)
+                .SelectMany(cell => cell.Blocks.Cast<Block>())
+                .Sum(CountImages),
+            _ => 0
+        };
+
     private static Image? FindImage(Inline inline) =>
         inline switch
         {
             InlineUIContainer { Child: Image image } => image,
             Span span => span.Inlines.Cast<Inline>().Select(FindImage).FirstOrDefault(static image => image is not null),
             _ => null
+        };
+
+    private static IEnumerable<Image> FindImages(Inline inline) =>
+        inline switch
+        {
+            InlineUIContainer { Child: Image image } => [image],
+            Span span => span.Inlines.Cast<Inline>().SelectMany(FindImages),
+            _ => []
+        };
+
+    private static int CountImages(Inline inline) =>
+        inline switch
+        {
+            InlineUIContainer { Child: Image image } when image.Source is not null => 1,
+            Span span => span.Inlines.Cast<Inline>().Sum(CountImages),
+            _ => 0
         };
 
     private static void WritePng(string path, int width, int height)
@@ -435,5 +650,50 @@ public sealed class MarkdownEditorRenderingTests
             width * 4);
         bitmap.Freeze();
         return bitmap;
+    }
+
+    private static BitmapSource CreateTransparentRgbBitmapSource()
+    {
+        var pixels = new byte[2 * 2 * 4];
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            pixels[i] = 0x20;
+            pixels[i + 1] = 0x80;
+            pixels[i + 2] = 0xFF;
+            pixels[i + 3] = 0x00;
+        }
+
+        var bitmap = BitmapSource.Create(
+            2,
+            2,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            2 * 4);
+        bitmap.Freeze();
+        return bitmap;
+    }
+
+    private static int CountPixelsWithAlpha(string path, byte expectedAlpha)
+    {
+        var decoder = BitmapDecoder.Create(
+            new Uri(path),
+            BitmapCreateOptions.IgnoreColorProfile,
+            BitmapCacheOption.OnLoad);
+        var converted = new FormatConvertedBitmap(decoder.Frames[0], PixelFormats.Bgra32, null, 0);
+        var stride = converted.PixelWidth * 4;
+        var pixels = new byte[stride * converted.PixelHeight];
+        converted.CopyPixels(pixels, stride, 0);
+
+        var count = 0;
+        for (var i = 3; i < pixels.Length; i += 4)
+        {
+            if (pixels[i] == expectedAlpha)
+                count++;
+        }
+
+        return count;
     }
 }
