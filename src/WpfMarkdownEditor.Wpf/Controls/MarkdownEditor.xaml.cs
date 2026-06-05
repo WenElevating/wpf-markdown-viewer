@@ -289,6 +289,21 @@ public partial class MarkdownEditor : UserControl, IDisposable
     public void ClearParagraphStyle() =>
         ApplyParagraphOperation(MarkdownParagraphOperations.ClearBlockPrefix);
 
+    public void ClearInlineStyle()
+    {
+        var operation = MarkdownInlineFormatOperations.ClearInlineStyle(
+            EditorTextBox.Text,
+            EditorTextBox.SelectionStart,
+            EditorTextBox.SelectionLength);
+        if (operation is null)
+        {
+            EditorTextBox.Focus();
+            return;
+        }
+
+        ApplyTextOperation(operation.Value);
+    }
+
     public void ToggleBlockquote() =>
         ApplyParagraphOperation(MarkdownParagraphOperations.ToggleBlockquote);
 

@@ -294,6 +294,61 @@ public sealed class MarkdownEditorCommandTests
         });
     }
 
+    [Fact]
+    public void ClearInlineStyle_Selection_UpdatesMarkdown()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "before **bold** after";
+            editor.Markdown = editor.TextBox.Text;
+            var start = "before ".Length;
+            editor.TextBox.Select(start, "**bold**".Length);
+
+            editor.ClearInlineStyle();
+
+            Assert.Equal("before bold after", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal(start, editor.TextBox.SelectionStart);
+            Assert.Equal("bold".Length, editor.TextBox.SelectionLength);
+        });
+    }
+
+    [Fact]
+    public void ClearInlineStyle_NoSelection_DoesNotChangeText()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "**bold**";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.CaretIndex = 2;
+
+            editor.ClearInlineStyle();
+
+            Assert.Equal("**bold**", editor.TextBox.Text);
+            Assert.Equal(editor.TextBox.Text, editor.Markdown);
+            Assert.Equal(2, editor.TextBox.CaretIndex);
+        });
+    }
+
+    [Fact]
+    public void WrapSelection_UnderlineMarkers_UsesHtmlUnderline()
+    {
+        WpfTestHost.Run(() =>
+        {
+            using var editor = new MarkdownEditor();
+            editor.TextBox.Text = "under";
+            editor.Markdown = editor.TextBox.Text;
+            editor.TextBox.Select(0, "under".Length);
+
+            editor.WrapSelection("<u>", "</u>");
+
+            Assert.Equal("<u>under</u>", editor.TextBox.Text);
+            Assert.Equal("under".Length, editor.TextBox.SelectionLength);
+        });
+    }
+
     private static void ClearClipboard()
     {
         RetryClipboard(Clipboard.Clear);
