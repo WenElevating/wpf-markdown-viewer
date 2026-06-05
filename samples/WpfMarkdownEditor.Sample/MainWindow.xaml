@@ -343,31 +343,80 @@
                     <Border
                         Button.Click="OnPopupItemClick"
                         Style="{StaticResource MenuPopupBorderStyle}">
-                        <StackPanel MinWidth="200">
+                        <StackPanel MinWidth="220">
                             <Button
                                 Click="OnHeading1"
                                 Content="{DynamicResource Loc.MainWindow.Heading1}"
-                                Style="{StaticResource MenuItemStyle}" />
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+1" />
                             <Button
                                 Click="OnHeading2"
                                 Content="{DynamicResource Loc.MainWindow.Heading2}"
-                                Style="{StaticResource MenuItemStyle}" />
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+2" />
                             <Button
                                 Click="OnHeading3"
                                 Content="{DynamicResource Loc.MainWindow.Heading3}"
-                                Style="{StaticResource MenuItemStyle}" />
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+3" />
+                            <Button
+                                Click="OnHeading4"
+                                Content="{DynamicResource Loc.MainWindow.Heading4}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+4" />
+                            <Button
+                                Click="OnHeading5"
+                                Content="{DynamicResource Loc.MainWindow.Heading5}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+5" />
+                            <Button
+                                Click="OnHeading6"
+                                Content="{DynamicResource Loc.MainWindow.Heading6}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+6" />
+                            <Button
+                                Click="OnParagraphStyle"
+                                Content="{DynamicResource Loc.MainWindow.ParagraphStyle}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+0" />
                             <Border Style="{StaticResource MenuSeparatorStyle}" />
                             <Button
                                 Click="OnQuote"
                                 Content="{DynamicResource Loc.MainWindow.Blockquote}"
-                                Style="{StaticResource MenuItemStyle}" />
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+Q" />
                             <Button
                                 Click="OnOrderedList"
                                 Content="{DynamicResource Loc.MainWindow.OrderedList}"
-                                Style="{StaticResource MenuItemStyle}" />
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+[" />
                             <Button
                                 Click="OnUnorderedList"
                                 Content="{DynamicResource Loc.MainWindow.BulletList}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+]" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
+                            <Button
+                                Click="OnCodeBlock"
+                                Content="{DynamicResource Loc.MainWindow.CodeBlock}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+K" />
+                            <Button
+                                Click="OnTable"
+                                Content="{DynamicResource Loc.MainWindow.Table}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnHorizontalRule"
+                                Content="{DynamicResource Loc.MainWindow.HorizontalRule}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
+                            <Button
+                                Click="OnInsertParagraphAbove"
+                                Content="{DynamicResource Loc.MainWindow.InsertParagraphAbove}"
+                                Style="{StaticResource MenuItemStyle}" />
+                            <Button
+                                Click="OnInsertParagraphBelow"
+                                Content="{DynamicResource Loc.MainWindow.InsertParagraphBelow}"
                                 Style="{StaticResource MenuItemStyle}" />
                         </StackPanel>
                     </Border>

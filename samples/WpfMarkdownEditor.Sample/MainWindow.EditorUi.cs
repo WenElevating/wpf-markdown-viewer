@@ -26,28 +26,35 @@ public partial class MainWindow
         ToolsPopup.IsOpen = false;
     }
 
-    private void OnHeading1(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("#");
-    private void OnHeading2(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("##");
-    private void OnHeading3(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("###");
+    private void OnHeading1(object sender, RoutedEventArgs e) => Editor.SetHeadingLevel(1);
+    private void OnHeading2(object sender, RoutedEventArgs e) => Editor.SetHeadingLevel(2);
+    private void OnHeading3(object sender, RoutedEventArgs e) => Editor.SetHeadingLevel(3);
+    private void OnHeading4(object sender, RoutedEventArgs e) => Editor.SetHeadingLevel(4);
+    private void OnHeading5(object sender, RoutedEventArgs e) => Editor.SetHeadingLevel(5);
+    private void OnHeading6(object sender, RoutedEventArgs e) => Editor.SetHeadingLevel(6);
+    private void OnParagraphStyle(object sender, RoutedEventArgs e) => Editor.ClearParagraphStyle();
     private void OnBold(object sender, RoutedEventArgs e) => Editor.WrapSelection("**", "**");
     private void OnItalic(object sender, RoutedEventArgs e) => Editor.WrapSelection("*", "*");
     private void OnStrikethrough(object sender, RoutedEventArgs e) => Editor.WrapSelection("~~", "~~");
     private void OnInlineCode(object sender, RoutedEventArgs e) => Editor.WrapSelection("`", "`");
     private void OnLink(object sender, RoutedEventArgs e) => Editor.WrapSelection("[", "](url)");
-    private void OnQuote(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix(">");
-    private void OnUnorderedList(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("-");
-    private void OnOrderedList(object sender, RoutedEventArgs e) => Editor.ToggleLinePrefix("1.");
+    private void OnQuote(object sender, RoutedEventArgs e) => Editor.ToggleBlockquote();
+    private void OnUnorderedList(object sender, RoutedEventArgs e) => Editor.ToggleBulletList();
+    private void OnOrderedList(object sender, RoutedEventArgs e) => Editor.ToggleOrderedList();
+    private void OnInsertParagraphAbove(object sender, RoutedEventArgs e) => Editor.InsertParagraphAbove();
+    private void OnInsertParagraphBelow(object sender, RoutedEventArgs e) => Editor.InsertParagraphBelow();
     private void OnCodeBlock(object sender, RoutedEventArgs e) => Editor.WrapSelection("```\n", "\n```");
 
     private void OnTable(object sender, RoutedEventArgs e)
     {
+        ParagraphPopup.IsOpen = false;
         InsertPopup.IsOpen = false;
         var dialog = new TableInsertDialog(_localizationService) { Owner = this };
         if (dialog.ShowDialog() == true && dialog.Result is (int rows, int cols))
             Editor.InsertText(MarkdownInsertService.GenerateTable(rows, cols));
     }
 
-    private void OnHorizontalRule(object sender, RoutedEventArgs e) => Editor.InsertText("\n---\n");
+    private void OnHorizontalRule(object sender, RoutedEventArgs e) => Editor.InsertHorizontalRule();
     private void OnFind(object sender, RoutedEventArgs e) => ShowSearchPanel();
 
     private void OnToggleSidebarFromMenu(object sender, RoutedEventArgs e)
