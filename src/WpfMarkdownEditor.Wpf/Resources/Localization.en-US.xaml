@@ -69,9 +69,13 @@
     <sys:String x:Key="Loc.MainWindow.BulletList">Bullet List</sys:String>
     <sys:String x:Key="Loc.MainWindow.Bold">Bold</sys:String>
     <sys:String x:Key="Loc.MainWindow.Italic">Italic</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Underline">Underline</sys:String>
     <sys:String x:Key="Loc.MainWindow.Strikethrough">Strikethrough</sys:String>
     <sys:String x:Key="Loc.MainWindow.InlineCode">Inline Code</sys:String>
     <sys:String x:Key="Loc.MainWindow.Link">Link</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Comment">Comment</sys:String>
+    <sys:String x:Key="Loc.MainWindow.Hyperlink">Hyperlink</sys:String>
+    <sys:String x:Key="Loc.MainWindow.ClearStyle">Clear Style</sys:String>
     <sys:String x:Key="Loc.MainWindow.CodeBlock">Code Block</sys:String>
     <sys:String x:Key="Loc.MainWindow.Table">Table</sys:String>
     <sys:String x:Key="Loc.MainWindow.HorizontalRule">Horizontal Rule</sys:String>
