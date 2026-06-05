@@ -438,7 +438,7 @@
                     <Border
                         Button.Click="OnPopupItemClick"
                         Style="{StaticResource MenuPopupBorderStyle}">
-                        <StackPanel MinWidth="200">
+                        <StackPanel MinWidth="220">
                             <Button
                                 Click="OnBold"
                                 Content="{DynamicResource Loc.MainWindow.Bold}"
@@ -450,13 +450,37 @@
                                 Style="{StaticResource MenuItemStyle}"
                                 Tag="Ctrl+I" />
                             <Button
-                                Click="OnStrikethrough"
-                                Content="{DynamicResource Loc.MainWindow.Strikethrough}"
-                                Style="{StaticResource MenuItemStyle}" />
+                                Click="OnUnderline"
+                                Content="{DynamicResource Loc.MainWindow.Underline}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+U" />
                             <Button
                                 Click="OnInlineCode"
                                 Content="{DynamicResource Loc.MainWindow.InlineCode}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+Shift+`" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
+                            <Button
+                                Click="OnStrikethrough"
+                                Content="{DynamicResource Loc.MainWindow.Strikethrough}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Alt+Shift+5" />
+                            <Button
+                                Click="OnComment"
+                                Content="{DynamicResource Loc.MainWindow.Comment}"
                                 Style="{StaticResource MenuItemStyle}" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
+                            <Button
+                                Click="OnLink"
+                                Content="{DynamicResource Loc.MainWindow.Hyperlink}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+K" />
+                            <Border Style="{StaticResource MenuSeparatorStyle}" />
+                            <Button
+                                Click="OnClearStyle"
+                                Content="{DynamicResource Loc.MainWindow.ClearStyle}"
+                                Style="{StaticResource MenuItemStyle}"
+                                Tag="Ctrl+\" />
                         </StackPanel>
                     </Border>
                 </Popup>

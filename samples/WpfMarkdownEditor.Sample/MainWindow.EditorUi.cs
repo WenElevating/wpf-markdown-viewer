@@ -35,9 +35,12 @@ public partial class MainWindow
     private void OnParagraphStyle(object sender, RoutedEventArgs e) => Editor.ClearParagraphStyle();
     private void OnBold(object sender, RoutedEventArgs e) => Editor.WrapSelection("**", "**");
     private void OnItalic(object sender, RoutedEventArgs e) => Editor.WrapSelection("*", "*");
+    private void OnUnderline(object sender, RoutedEventArgs e) => Editor.WrapSelection("<u>", "</u>");
     private void OnStrikethrough(object sender, RoutedEventArgs e) => Editor.WrapSelection("~~", "~~");
     private void OnInlineCode(object sender, RoutedEventArgs e) => Editor.WrapSelection("`", "`");
     private void OnLink(object sender, RoutedEventArgs e) => Editor.WrapSelection("[", "](url)");
+    private void OnComment(object sender, RoutedEventArgs e) => Editor.WrapSelection("<!-- ", " -->");
+    private void OnClearStyle(object sender, RoutedEventArgs e) => Editor.ClearInlineStyle();
     private void OnQuote(object sender, RoutedEventArgs e) => Editor.ToggleBlockquote();
     private void OnUnorderedList(object sender, RoutedEventArgs e) => Editor.ToggleBulletList();
     private void OnOrderedList(object sender, RoutedEventArgs e) => Editor.ToggleOrderedList();
