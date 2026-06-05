@@ -59,13 +59,17 @@ The first version should include these items:
 | Underline | `Ctrl+U` | Wrap selection in `<u>...</u>`, or insert selected default text wrapped in `<u>...</u>`. |
 | Inline Code | `Ctrl+Shift+`` | Wrap selection in backticks, or insert selected default text wrapped in backticks. |
 | Strikethrough | `Alt+Shift+5` | Wrap selection in `~~`, or insert selected default text wrapped in `~~`. |
-| Comment | none | Wrap selection in `<!-- ... -->`, or insert selected default text wrapped in an HTML comment. |
+| Comment | none | Wrap selection in `<!-- ` and ` -->`, or insert selected default text inside that HTML comment template. |
 | Hyperlink | `Ctrl+K` | Reuse the existing link insertion behavior: `WrapSelection("[", "](url)")`. |
 | Clear Style | `Ctrl+\` | Remove supported inline wrappers from the current selection. If there is no selection, leave the document unchanged and focus the editor. |
 
 `Hyperlink` should be duplicated into Format because it is an inline formatting operation in the screenshot. Keep the existing Insert menu Link entry during this pass so users do not lose the current path.
 
-`Underline` uses HTML `<u>` because standard Markdown does not define underline syntax. The renderer already supports an HTML subset; if underline rendering is incomplete, that is a renderer follow-up, not a reason to invent custom Markdown syntax here.
+`Underline` uses HTML `<u>` because standard Markdown does not define underline syntax. `MarkdownEditor.WrapSelection(before, after)` already supports asymmetric wrappers through the existing link behavior (`WrapSelection("[", "](url)")`), so `WrapSelection("<u>", "</u>")` is valid for the first version. The renderer already supports an HTML subset; if underline rendering is incomplete, that is a renderer follow-up, not a reason to invent custom Markdown syntax here.
+
+Bold, Italic, Underline, Inline Code, Strikethrough, Comment, and Hyperlink use the current `WrapSelection` behavior. This is wrapping behavior, not toggle behavior. If the user selects `**text**` and clicks Bold, the first version may produce `****text****`; unwrapping active formatting belongs to the Phase 2 toggle-state work.
+
+Shortcut labels should match the screenshot for the first version, but they are display labels only. The first version does not add new real key bindings. `Ctrl+\` and `Alt+Shift+5` need keyboard-layout and Windows input-method compatibility verification before they become real input gestures.
 
 ## Deferred Items
 
@@ -75,6 +79,8 @@ The first version should include these items:
 | Image submenu | Phase 2 | Requires detecting image inline/block context, path resolution, open/replace/copy behavior, and interaction with existing paste-image behavior. |
 | Smart Clear Style with no selection | Phase 2 | Requires current inline span detection to avoid deleting nearby Markdown syntax incorrectly. |
 | Toggle active formatting state | Phase 2 | Requires command state detection and menu checked/disabled states rather than simple buttons. |
+| Nested inline cleanup | Phase 2 | Requires recursive inline parsing and conflict rules for cases such as `**_text_**`. |
+| Partial wrapper cleanup | Phase 2 | Requires scanning outside the selection to know whether the selected text is part of a larger wrapper. |
 
 ## Architecture
 
@@ -145,7 +151,15 @@ Supported first-version cleanup rules:
 - `<!-- text -->` becomes `text`.
 - `[text](url)` becomes `text`.
 
+For links, Clear Style intentionally keeps only the display text. The URL is discarded and is not appended as plain text.
+
 The cleanup should operate on the selected text only. It should not scan outside the selection in the first version.
+
+Mixed selections are supported only for independent, non-overlapping wrappers. For example, `**bold** and *italic*` becomes `bold and italic`.
+
+Nested wrappers are out of scope for the first version. For example, `**_text_**` should be returned unchanged rather than partially cleaned.
+
+Partial wrappers are out of scope for the first version. If the selection contains only part of a wrapped span, such as `text**` from `**text**`, Clear Style should return the selected text unchanged.
 
 ## Data Flow
 
@@ -225,6 +239,9 @@ Add tests for `MarkdownInlineFormatOperations`:
 - `ClearInlineStyle_CommentSelection_RemovesWrapper`
 - `ClearInlineStyle_LinkSelection_KeepsLinkText`
 - `ClearInlineStyle_MixedSelection_RemovesSupportedWrappers`
+- `ClearInlineStyle_SelectionWithNoWrapper_ReturnsUnchangedText`
+- `ClearInlineStyle_NestedWrapper_ReturnsUnchangedText`
+- `ClearInlineStyle_PartialWrapper_ReturnsUnchangedText`
 
 ### WPF Integration Tests
 
@@ -258,6 +275,8 @@ Add a sample app menu test for first-version menu shape:
 - `MainWindow.EditorUi.cs` remains a thin bridge and does not gain inline parsing algorithms.
 - New clear-style algorithm lives in a focused WPF-layer helper with pure operation tests.
 - Clear Style with no selection leaves the document unchanged.
+- Clear Style keeps Markdown link display text and intentionally discards the URL.
+- Clear Style cleans independent non-nested wrappers and leaves nested or partial wrappers unchanged.
 - Text edits preserve one undo unit where operations rewrite selected text.
 - `Markdown` stays synchronized with the editor text.
 - English and Chinese localization keys are complete.
