@@ -7,6 +7,18 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
+    <!-- User-facing product identity. The WpfMarkdownEditor.Sample assembly name
+         stays for stable namespaces, but the Windows shell "Open with" list and
+         file properties read these Win32 version-info fields, so they must say
+         Quillora or the app shows up with its internal project name. -->
+    <Product>Quillora</Product>
+    <Company>WenMingMing</Company>
+    <FileDescription>Quillora</FileDescription>
+    <AssemblyTitle>Quillora</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Copyright>Copyright © 2026 WenMingMing</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
