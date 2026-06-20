@@ -6,6 +6,20 @@
 #define AppPublisher "WenMingMing"
 #define AppExeName "WpfMarkdownEditor.Sample.exe"
 #define AppCopyright "Copyright (c) 2026 WenMingMing"
+; Target CPU architecture for this build. Override from the command line with
+; ISCC /DArch=arm64 (defaults to x64). The #ifndef guard lets /D win over the
+; in-file default, per the ISPP override rules.
+#ifndef Arch
+  #define Arch "x64"
+#endif
+; Map the .NET RID-style arch to the Inno Setup Architectures* token. arm64 is
+; only honored by Inno Setup 6.3+, so an arm64 build requires that upgrade;
+; the script itself is already written to accept it.
+#if Arch == "arm64"
+  #define ArchAllowed "arm64"
+#else
+  #define ArchAllowed "x64"
+#endif
 ; Previous product identity ("Markdown Viewer"). Kept only to detect and
 ; cleanly uninstall legacy builds during a Quillora install. The braces are
 ; part of the value because the Uninstall registry subkey is literally
@@ -38,13 +52,13 @@ DisableDirPage=no
 UsePreviousAppDir=yes
 AllowNoIcons=yes
 OutputDir=installer-output
-OutputBaseFilename=Quillora-{#AppVersion}-Setup
+OutputBaseFilename=Quillora-{#AppVersion}-{#Arch}-Setup
 SetupIconFile=assets\app.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed={#ArchAllowed}
+ArchitecturesInstallIn64BitMode={#ArchAllowed}
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 MinVersion=10.0.17763
@@ -74,7 +88,7 @@ chinesesimplified.AssociateMarkdownFiles=将 .md 文件关联到 %1（加入"打
 chinesesimplified.FileAssociationsGroup=文件关联:
 
 [Files]
-Source: "samples\WpfMarkdownEditor.Sample\bin\Release\net8.0-windows\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "samples\WpfMarkdownEditor.Sample\bin\Release\net8.0-windows\publish\win-{#Arch}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppExeName}"
